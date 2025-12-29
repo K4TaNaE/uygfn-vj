@@ -1243,6 +1243,7 @@ baby_ailments = {
 
 local function init_autofarm(cat) -- optimized
 	local pet = get_equiped_pet()
+	print("Farm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1251,8 +1252,10 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
+		print(`pet: {pet.remote} was unequiped. Soski`)
 	end
 	if count(get_owned_pets()) == 0 then
+		print("SUKA NETU PETOV SCRIPT HUJNIA")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1326,6 +1329,7 @@ local function init_autofarm(cat) -- optimized
 								equip_as_last = false
 							}
 						)
+						print("Nu vrode nashlo, daze jajko. +_+")
 						break
 					end
 				end
@@ -1333,6 +1337,7 @@ local function init_autofarm(cat) -- optimized
 		end 
 		while true do
 			local curpet = get_equiped_pet()
+			print(curpet.remote, " farming now")
 			if curpet then
 				farming_pet = pet.unique
 				while farming_pet do 
@@ -2253,4 +2258,4 @@ end)
 
 license()
 task.spawn(__init)
---
+
