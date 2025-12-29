@@ -2010,6 +2010,7 @@ end)()
 	API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
 	UIManager.set_app_visibility("DailyLoginApp", false)
 	API["PayAPI/DisablePopups"]:FireServer()
+	repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart
 	task.wait(.5)
 end)()
 
