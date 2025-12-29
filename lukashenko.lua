@@ -1345,6 +1345,7 @@ local function init_autofarm() -- optimized
 				end
 			end
 		end 
+		task.wait(4)
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
@@ -1352,10 +1353,13 @@ local function init_autofarm() -- optimized
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
+					print("getting ailments")
 					if eqpetailms then
 						for k,v in pet_ailments do 
 							if eqpetailms[k] then
+								print("ailment found in eqpetailms")
 								if active_ailments[k] then continue end
+								print("enqueueing ailments")
 								queue:enqueue({"ailment pet", v})
 								active_ailments[k] = true
 							end
