@@ -1242,6 +1242,7 @@ baby_ailments = {
 
 local function init_autofarm(cat) -- optimized
 	local pet = get_equiped_pet()
+	print("::Start AutoFarm::")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1250,8 +1251,10 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
+		print(`{pet.remote} was unequiped`)
 	end
 	if count(get_owned_pets()) == 0 then
+		print("::No pets found SOski::")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1312,6 +1315,7 @@ local function init_autofarm(cat) -- optimized
 								equip_as_last = false
 							}
 						)
+						print("::Found Pet::")
 						break
 					end
 				end
@@ -1325,6 +1329,7 @@ local function init_autofarm(cat) -- optimized
 								equip_as_last = false
 							}
 						)
+						print("::Found egg::")
 						break
 					end
 				end
@@ -1333,6 +1338,7 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
+				print(`::Farming pet started: {curpet.remote} selected::`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
@@ -1350,6 +1356,7 @@ local function init_autofarm(cat) -- optimized
 					end
 				end
 			else
+				print("::Pet not found SOsi. Timeout 60s::")
 				task.wait(60)
 				break
 			end
