@@ -406,8 +406,7 @@ local function get_equiped_pet() -- not optimzed
 		xp = cdata.properties.xp
 	end
 	for _,v in ipairs(game.Workspace.Pets:GetChildren()) do
-		local pet = PetEntityManager.get_pet_entity(v)	
-		if pet.session_memory.meta.owned_by_local_player then
+		if PetEntityManager.get_pet_entity(v).session_memory.meta.owned_by_local_player then
 			model = v
 		end
 	end
@@ -540,6 +539,14 @@ local function check_remote_existance(category, remote) -- optimized
 		return true
 	end
 	return false
+end
+
+local function count(t)
+	local n = 0
+	for _ in pairs(t) do
+		n +=1 
+	end
+	return n
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
@@ -808,7 +815,7 @@ local pet_ailments = {
 	end,
 	["salon"] = function() 
 		local pet = get_equiped_pet() 
-		if not Parent or not farming_pet then
+		if not pet or not farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -1235,6 +1242,7 @@ baby_ailments = {
 
 local function init_autofarm(cat) -- optimized
 	local pet = get_equiped_pet()
+	print("::Start AutoFarm::")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1243,11 +1251,13 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
+		print(`{pet.remote} was unequiped`)
 	end
-	if table.getn(get_owned_pets()) == 0 then
+	if count(get_owned_pets()) == 0 then
+		print("::No pets found SOski::")
 		repeat 
 			task.wait(50)
-		until table.getn(get_owned_pets()) > 0
+		until count(get_owned_pets()) > 0
 	end
 
 	while true do
@@ -1305,6 +1315,7 @@ local function init_autofarm(cat) -- optimized
 								equip_as_last = false
 							}
 						)
+						print("::Found Pet::")
 						break
 					end
 				end
@@ -1318,6 +1329,7 @@ local function init_autofarm(cat) -- optimized
 								equip_as_last = false
 							}
 						)
+						print("::Found egg::")
 						break
 					end
 				end
@@ -1326,6 +1338,7 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
+				print(`::Farming pet started: {curpet.remote} selected::`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
@@ -1343,6 +1356,7 @@ local function init_autofarm(cat) -- optimized
 					end
 				end
 			else
+				print("::Pet not found SOsi. Timeout 60s::")
 				task.wait(60)
 				break
 			end
@@ -1553,10 +1567,10 @@ end
 
 local function init_gift_autoopen() -- optimized
 	while true do
-		if #get_owned_category("gifts") > 0 then
-			repeat task.wait(300) until #get_owned_category("gifts") > 0
+		if count(get_owned_category("gifts")) > 0 then
+			repeat task.wait(300) until count(get_owned_category("gifts")) > 0
 		end
-		for k,_ in get_owned_category("gifts") do
+		for k,_ in count(get_owned_category("gifts")) do
 			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
 			task.wait(0.2)
 		end	
@@ -1687,7 +1701,7 @@ end)
 						colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
 					end
 				end
-				if #list > 0 then
+				if count(list) > 0 then
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 				else
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -1768,7 +1782,7 @@ end)
 							list[v] = true
 						end
 					end
-					if #list > 0 then
+					if count(list) > 0 then
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 					else
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -1997,7 +2011,7 @@ task.spawn(function() -- optimized
 
     local frame = Instance.new("Frame")
     frame.Name = "StatsFrame"
-    frame.Size = UDim2.new(0, 250, 0, 220)
+    frame.Size = UDim2.new(0, 250, 0, 200)
     frame.Position = UDim2.new(0, 5, 0, 5)
     frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     frame.BackgroundTransparency = 0.3
@@ -2031,7 +2045,7 @@ end)
 
 
 -- furniture init
-(function() -- optimized
+;(function() -- optimized
 	to_home()
 	local furniture = {}
 	local filter = {
@@ -2232,7 +2246,7 @@ end)
 	end
 
 	colorprint({markup.SUCCESS}, "[+] Furniture init done")
-end)
+end)()
 
 task.spawn(function() -- optimized
 	local part:Part = Instance.new("Part")
@@ -2243,6 +2257,6 @@ task.spawn(function() -- optimized
 	part.Parent = game.Workspace
 end)
 
-task.spawn(license())
+license()
 task.spawn(__init)
 
