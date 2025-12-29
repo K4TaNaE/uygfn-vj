@@ -139,38 +139,45 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
-		__run = function(self) -- start doing tasks.
+		__run = function(self)
 			self.running = true
-			
-			local err = function(err)
-				print("Error to task\n" .. debug.info(self.__run, "n"), "adding task to end of queue")
-				pcall(self:enqueue(self:dequeue(true)))
-			end
-			
-			repeat
-				if self.blocked then repeat task.wait(2) until not self.blocked end
-				local task = self._data[1]
-				print("Current task: " .. task[1])
-				
-				if task[3] then
-					local status, _ = xpcall(task.spawn, err, task[2])
-					if status then
-						print(`Task {self:dequeue(true)[1]} successfully completed.`)
-						task.wait(.5)
-					end
-				else
-					local status, _ = pcall(task.spawn, task[2])
-					if status then
-						print(`Task {self:dequeue(true)[1]} successfully completed.`)
-						task.wait(.5)
-					end 
-				end
-				task.wait(1)
-				
-			until self.__head > self.__tail
-			
-			self.running = false
 
+			local function onTaskError(errMsg)
+				pcall(function()
+					local failed = self:dequeue(true)
+					self:enqueue(failed)
+				end)
+			end
+
+			while self.__head <= self.__tail do
+				if self.blocked then
+					repeat task.wait(0.1) until not self.blocked
+				end
+
+				local taskData = self._data[self.__head]
+				if not taskData then
+					break
+				end
+
+				local name = taskData[1]
+				local callback = taskData[2]
+
+				print("Current task:", name)
+
+				task.spawn(function()
+					local ok, errMsg = xpcall(callback, debug.traceback)
+
+					if ok then
+						local finished = self:dequeue(true)
+					else
+						onTaskError(errMsg)
+					end
+				end)
+
+				task.wait(0.5)
+			end
+
+			self.running = false
 		end
 	}
 end
@@ -1240,9 +1247,9 @@ baby_ailments = {
 }
 
 
-local function init_autofarm(cat) -- optimized
+local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
-	print("::Start AutoFarm::")
+	print("autofarm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1251,10 +1258,10 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
-		print(`{pet.remote} was unequiped`)
+		print(`Pet unequiped {pet.remote}`)
 	end
 	if count(get_owned_pets()) == 0 then
-		print("::No pets found SOski::")
+		print("No pets sosi")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1267,12 +1274,13 @@ local function init_autofarm(cat) -- optimized
 			for k,v in owned_pets do
 				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 					API["ToolAPI/Equip"]:InvokeServer(
-						inv_get_category_unique("pets", k),
+						k,
 						{
 							use_sound_deulay = true,
 							equip_as_last = false
 						}
 					)
+					print("Potion farm suka")
 					flag = true		
 					break				
 				end
@@ -1281,12 +1289,13 @@ local function init_autofarm(cat) -- optimized
 				for k,v in owned_pets do
 					if not (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
+						print("Potion farm suka")
 						flag = true
 						break
 					end
@@ -1294,42 +1303,43 @@ local function init_autofarm(cat) -- optimized
 				if not flag then
 					for k, _ in owned_pets do
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
+						print("Potion farm suka")
 						break
 					end
 				end
 			end
 		else
-			if cat == "pets" then			
+			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
-					if v.age ~= 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
-						print("::Found Pet::")
+						print("Pet a ne egg suka")
 						break
 					end
 				end
 			else 
 				for k,v in owned_pets do
-					if v.age > 1 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
+					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
-						print("::Found egg::")
+						print("egg ura")
 						break
 					end
 				end
@@ -1338,7 +1348,7 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`::Farming pet started: {curpet.remote} selected::`)
+				print(`farming {curpet.remote}`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
@@ -1356,7 +1366,7 @@ local function init_autofarm(cat) -- optimized
 					end
 				end
 			else
-				print("::Pet not found SOsi. Timeout 60s::")
+				print("ne farming potomuchto blyat pet ne vybran suka gori v adu")
 				task.wait(60)
 				break
 			end
@@ -1578,12 +1588,9 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	if _G.InternalConfig.FarmPriority == "pets" then
-		task.spawn(init_autofarm, "pets")
-	elseif _G.InternalConfig.FarmPriority == "eggs" then
-		task.spawn(init_autofarm, "eggs")
+	if _G.InternalConfig.FarmPriority then
+		task.spawn(init_autofarm)
 	end
-
 	task.wait(1)
 
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
@@ -2259,4 +2266,3 @@ end)
 
 license()
 task.spawn(__init)
-
