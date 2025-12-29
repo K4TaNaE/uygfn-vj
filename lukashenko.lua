@@ -1235,6 +1235,7 @@ baby_ailments = {
 
 
 local function init_autofarm(cat) -- optimized
+	print("autofarm started")
 	local pet = get_equiped_pet()
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
@@ -1247,11 +1248,13 @@ local function init_autofarm(cat) -- optimized
 	end
 	if table.getn(get_owned_pets()) == 0 then
 		repeat 
+			print("no owned pets")
 			task.wait(50)
 		until table.getn(get_owned_pets()) > 0
 	end
 
 	while true do
+		print("дошли до цикла")
 		local owned_pets = get_owned_pets()
 		if _G.InternalConfig.PotionFarm then
 			local flag = false
@@ -1327,6 +1330,7 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
+				print("pet found")
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
