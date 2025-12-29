@@ -1348,7 +1348,7 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`farming {cupret.remote}`)
+				print(`farming {curpet.remote}`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
