@@ -405,8 +405,7 @@ local function get_equiped_pet() -- not optimzed
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
-	local dir = game.Workspace:WaitForChild("Pets")
-	for _,v in ipairs(dir:GetChildren()) do
+	for _,v in ipairs(game.Workspace:GetChildren()) do
 		local pet = PetEntityManager.get_pet_entity(v)	
 		if pet.session_memory.meta.owned_by_local_player then
 			model = v
@@ -541,6 +540,14 @@ local function check_remote_existance(category, remote) -- optimized
 		return true
 	end
 	return false
+end
+
+local function count(t)
+	local n = 0
+	for _ in pairs(t) do
+		n +=1 
+	end
+	return n
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
@@ -1235,7 +1242,6 @@ baby_ailments = {
 
 
 local function init_autofarm(cat) -- optimized
-	print("autofarm started")
 	local pet = get_equiped_pet()
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
@@ -1246,15 +1252,13 @@ local function init_autofarm(cat) -- optimized
 			}
 		)
 	end
-	if table.getn(get_owned_pets()) == 0 then
+	if count(get_owned_pets()) == 0 then
 		repeat 
-			print("no owned pets")
 			task.wait(50)
-		until table.getn(get_owned_pets()) > 0
+		until count(get_owned_pets()) > 0
 	end
 
 	while true do
-		print("дошли до цикла")
 		local owned_pets = get_owned_pets()
 		if _G.InternalConfig.PotionFarm then
 			local flag = false
@@ -1330,7 +1334,6 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print("pet found")
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
@@ -1558,10 +1561,10 @@ end
 
 local function init_gift_autoopen() -- optimized
 	while true do
-		if #get_owned_category("gifts") > 0 then
-			repeat task.wait(300) until #get_owned_category("gifts") > 0
+		if count(get_owned_category("gifts")) > 0 then
+			repeat task.wait(300) until count(get_owned_category("gifts")) > 0
 		end
-		for k,_ in get_owned_category("gifts") do
+		for k,_ in count(get_owned_category("gifts")) do
 			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
 			task.wait(0.2)
 		end	
@@ -1692,7 +1695,7 @@ end)
 						colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
 					end
 				end
-				if #list > 0 then
+				if count(list) > 0 then
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 				else
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -1773,7 +1776,7 @@ end)
 							list[v] = true
 						end
 					end
-					if #list > 0 then
+					if count(list) > 0 then
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 					else
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -2250,4 +2253,4 @@ end)
 
 license()
 task.spawn(__init)
-
+--
