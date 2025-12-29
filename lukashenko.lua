@@ -1355,13 +1355,12 @@ local function init_autofarm() -- optimized
 					local eqpetailms = get_equiped_pet_ailments()
 					print("getting ailments")
 					if eqpetailms then
-						for k,v in pet_ailments do 
-							if eqpetailms[k] then
-								print("ailment found in eqpetailms")
-								if active_ailments[k] then continue end
-								print("enqueueing ailments")
+						for _,v in eqpetailms do 
+							print("ailment found")
+							if active_ailments[v] then continue end
+							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
-								active_ailments[k] = true
+								active_ailments[v] = true
 							end
 						end
 						task.wait(20)
@@ -1378,6 +1377,7 @@ local function init_autofarm() -- optimized
 	end
 end
 	
+	
 local function init_baby_autofarm() -- optimized
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
 		"babies",
@@ -1390,10 +1390,10 @@ local function init_baby_autofarm() -- optimized
 	while true do
 		local active_ailments = get_baby_ailments()
 		if active_ailments then
-			for k,v in baby_ailments do
-				if active_ailments[k] then
-					if baby_active_ailments[k] then continue end
-					baby_active_ailments[k] = true
+			for k,v in active_ailments do
+				if baby_active_ailments[k] then continue end
+				if baby_ailments[v] then
+					baby_active_ailments[v] = true
 					queue:enqueue({"ailment baby", v})
 				end
 			end
@@ -1403,6 +1403,7 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 end
+
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
