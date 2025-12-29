@@ -2,6 +2,8 @@ if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 
+-- niga
+
 --[[ Lua Stuff ]]
 local Queue = {} 
 Queue.new = function() 
@@ -1240,9 +1242,8 @@ baby_ailments = {
 }
 
 
-local function init_autofarm(cat) -- optimized
+local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
-	print("::Start AutoFarm::")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1251,10 +1252,8 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
-		print(`{pet.remote} was unequiped`)
 	end
 	if count(get_owned_pets()) == 0 then
-		print("::No pets found SOski::")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1267,7 +1266,7 @@ local function init_autofarm(cat) -- optimized
 			for k,v in owned_pets do
 				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 					API["ToolAPI/Equip"]:InvokeServer(
-						inv_get_category_unique("pets", k),
+						k,
 						{
 							use_sound_deulay = true,
 							equip_as_last = false
@@ -1281,7 +1280,7 @@ local function init_autofarm(cat) -- optimized
 				for k,v in owned_pets do
 					if not (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
@@ -1294,7 +1293,7 @@ local function init_autofarm(cat) -- optimized
 				if not flag then
 					for k, _ in owned_pets do
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
@@ -1305,31 +1304,29 @@ local function init_autofarm(cat) -- optimized
 				end
 			end
 		else
-			if cat == "pets" then			
+			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
-					if v.age ~= 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
-						print("::Found Pet::")
 						break
 					end
 				end
 			else 
 				for k,v in owned_pets do
-					if v.age > 1 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
+					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
-						print("::Found egg::")
 						break
 					end
 				end
@@ -1338,7 +1335,6 @@ local function init_autofarm(cat) -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`::Farming pet started: {curpet.remote} selected::`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
@@ -1356,7 +1352,6 @@ local function init_autofarm(cat) -- optimized
 					end
 				end
 			else
-				print("::Pet not found SOsi. Timeout 60s::")
 				task.wait(60)
 				break
 			end
@@ -1578,12 +1573,9 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	if _G.InternalConfig.FarmPriority == "pets" then
-		task.spawn(init_autofarm, "pets")
-	elseif _G.InternalConfig.FarmPriority == "eggs" then
-		task.spawn(init_autofarm, "eggs")
+	if _G.InternalConfig.FarmPriority then
+		task.spawn(init_autofarm)
 	end
-
 	task.wait(1)
 
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
