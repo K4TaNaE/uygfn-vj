@@ -13,12 +13,12 @@ Queue.new = function()
 		blocked = false,
 
 		enqueue = function(self, task: table) -- task must be {taskname, callback, repeat: boolean}.
-			if type(task) == "table" and type(task[1]) == "string" and type(task[2]) == "function" and self.blocked == false then
+			-- if type(task) == "table" and type(task[1]) == "string" and type(task[2]) == "function" and self.blocked == false then
 				self.__tail += 1
 				table.insert(self._data, self.__tail, task)
-
+				print("queue:enqueue -? enqueued")
 				if not self.running then self:__run() end
-			end
+			-- end
 		end,
 
 		dequeue = function(self,raw)
@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -141,7 +141,8 @@ Queue.new = function()
 
 		__run = function(self)
 			self.running = true
-
+			peint("Started work")
+			
 			local function onTaskError(errMsg)
 				pcall(function()
 					local failed = self:dequeue(true)
@@ -169,8 +170,10 @@ Queue.new = function()
 
 					if ok then
 						local finished = self:dequeue(true)
+							print("task completed", name)
 					else
 						onTaskError(errMsg)
+							print("error to task", name)
 					end
 				end)
 
@@ -207,11 +210,11 @@ local InteriorsM = loader("InteriorsM")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-getgenv().farming_pet = nil
+_G.farming_pet = nil
 getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-local queue = Queue.new()
+_G.queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -620,9 +623,9 @@ end
 
 local function enstat(xp, friendship, money, ailment)  -- optimized
 	if _G.InternalConfig.FarmPriority == "eggs" then
-		if not get_equiped_pet().unique == farming_pet then
+		if not get_equiped_pet().unique == _G.farming_pet then
 			farmed.eggs_hatched += 1 
-			farming_pet = nil 
+			_G.farming_pet = nil 
 			queue:destroy_linked("ailment pet")
 			table.clear(active_ailments)
 			farmed.money += ClientData.get("money") - money
@@ -654,9 +657,9 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 	else 
 		if xp >= xp_thresholds[get_equiped_pet().rarity][6] then
 			farmed.pets_fullgrown += 1
-			table.insert(total_fullgrowned, farming_pet)
+			table.insert(total_fullgrowned, _G.farming_pet)
 			update_gui("fullgrown", farmed.pets_fullgrown)
-			farming_pet = nil
+			_G.farming_pet = nil
 			table.clear(active_ailments)
 			queue:destroy_linked("ailment pet")
 		else
@@ -680,8 +683,8 @@ end
 local pet_ailments = { 
 	["camping"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -699,8 +702,8 @@ local pet_ailments = {
 	end,
 	["hungry"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -742,8 +745,8 @@ local pet_ailments = {
 	end,
 	["thirsty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -785,8 +788,8 @@ local pet_ailments = {
 	end,
 	["sick"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -803,8 +806,8 @@ local pet_ailments = {
 	end,
 	["bored"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -822,8 +825,8 @@ local pet_ailments = {
 	end,
 	["salon"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -840,8 +843,8 @@ local pet_ailments = {
 	end,
 	["play"] = function() -- improve. add something without task.wait
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -862,8 +865,8 @@ local pet_ailments = {
 	end,
 	["toilet"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -889,8 +892,8 @@ local pet_ailments = {
 	end,
 	["beach_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -908,8 +911,8 @@ local pet_ailments = {
 	end,
 	["ride"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -928,8 +931,8 @@ local pet_ailments = {
 	end,
 	["dirty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -955,8 +958,8 @@ local pet_ailments = {
 	end,
 	["walk"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -973,8 +976,8 @@ local pet_ailments = {
 	end,
 	["school"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -991,8 +994,8 @@ local pet_ailments = {
 	end,
 	["sleepy"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -1018,8 +1021,8 @@ local pet_ailments = {
 	end,
 	["mystery"] = function() 
 		local pet = get_equiped_pet()
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		for k,_ in loader("new:AilmentsDB") do
@@ -1033,8 +1036,8 @@ local pet_ailments = {
 	end,
 	["pizza_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			_G.queue:destroy_linked("ailment pet")
 			return 
 		end
 		local xp = pet.xp
@@ -1257,6 +1260,7 @@ local function init_autofarm() -- optimized
 				equip_as_last = false
 			}
 		)
+		print("pet unequiped")
 	end
 	if count(get_owned_pets()) == 0 then
 		repeat 
@@ -1277,6 +1281,7 @@ local function init_autofarm() -- optimized
 							equip_as_last = false
 						}
 					)
+					print("pet equiped potion farm")
 					flag = true		
 					break				
 				end
@@ -1291,6 +1296,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped potion farm")
 						flag = true
 						break
 					end
@@ -1304,6 +1310,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped potion farm")
 						break
 					end
 				end
@@ -1319,6 +1326,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped pets")
 						break
 					end
 				end
@@ -1332,6 +1340,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped eggs")
 						break
 					end
 				end
@@ -1341,14 +1350,17 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				farming_pet = curpet.unique
-				while farming_pet do 
+				print(`Pet equiped {curpet.remote}`)
+				_G.farming_pet = curpet.unique
+				while _G.farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					if eqpetailms then
 						for _,v in eqpetailms do 
+							print("iterating over ailments")
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
-								queue:enqueue({"ailment pet", v})
+								warn("found and enqueued")
+								_G.queue:enqueue({"ailment pet", v})
 								active_ailments[v] = true
 							end
 						end
@@ -1358,6 +1370,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else
+				print("no pet. Timeout 60s")
 				task.wait(60)
 				break
 			end
@@ -2257,3 +2270,4 @@ end)
 
 license()
 task.spawn(__init)
+
