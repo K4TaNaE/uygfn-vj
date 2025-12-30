@@ -1608,15 +1608,15 @@ local function __init()
 	-- 	task.defer(init_autofarm)
 	-- end
 	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		task.defer(init_auto_buy)
-	end
+	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		-- task.defer(init_auto_buy)
+	-- end
 
 	-- task.wait(1)
 
-	-- if _G.InternalConfig.BabyAutoFarm then
-	-- 	task.spawn(init_baby_autofarm)
-	-- end
+	if _G.InternalConfig.BabyAutoFarm then
+		task.spawn(init_baby_autofarm)
+	end
 
 	-- task.wait(1)
 
