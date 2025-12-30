@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -1408,6 +1408,7 @@ local function init_autofarm() -- optimized
 				while _G.farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					if eqpetailms then
+						print("found equiped ailments")
 						for _,v in eqpetailms do 
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
@@ -1417,10 +1418,12 @@ local function init_autofarm() -- optimized
 						end
 						task.wait(25)
 					else
+						print("no pets. Timeout")
 						task.wait(25)
 					end
 				end
 			else
+				print("no pet selected. Timeout")
 				task.wait(60)
 				break
 			end
