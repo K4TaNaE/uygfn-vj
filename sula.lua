@@ -208,10 +208,10 @@ local API = ReplicatedStorage.API
 -- local Router = loader("")
 
 _G.farming_pet = nil
-local active_ailments = {}
+getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-local queue = Queue.new()
+getgenv().queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
