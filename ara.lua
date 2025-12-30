@@ -1350,7 +1350,7 @@ local function init_autofarm() -- optimized
 			local curpet = get_equiped_pet()
 			if curpet then
 				print(`farming {curpet.remote}`)
-				farming_pet = pet.unique
+				farming_pet = curpet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					print("getting ailments")
