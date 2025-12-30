@@ -13,12 +13,12 @@ Queue.new = function()
 		blocked = false,
 
 		enqueue = function(self, task: table) -- task must be {taskname, callback, repeat: boolean}.
-			-- if type(task) == "table" and type(task[1]) == "string" and type(task[2]) == "function" and self.blocked == false then
+			if type(task) == "table" and type(task[1]) == "string" and type(task[2]) == "function" and self.blocked == false then
 				self.__tail += 1
 				table.insert(self._data, self.__tail, task)
 				print("queue:enqueue -? enqueued")
 				if not self.running then self:__run() end
-			-- end
+			end
 		end,
 
 		dequeue = function(self,raw)
