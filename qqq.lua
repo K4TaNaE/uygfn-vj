@@ -207,8 +207,8 @@ local InteriorsM = loader("InteriorsM")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-local farming_pet = nil
-local active_ailments = {}
+getgenv().farming_pet = nil
+getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
 local queue = Queue.new()
@@ -1249,7 +1249,6 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
-	print("autofarm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1258,10 +1257,8 @@ local function init_autofarm() -- optimized
 				equip_as_last = false
 			}
 		)
-		print(`Pet unequiped {pet.remote}`)
 	end
 	if count(get_owned_pets()) == 0 then
-		print("No pets sosi")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1280,7 +1277,6 @@ local function init_autofarm() -- optimized
 							equip_as_last = false
 						}
 					)
-					print("Potion farm suka")
 					flag = true		
 					break				
 				end
@@ -1295,7 +1291,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						flag = true
 						break
 					end
@@ -1309,7 +1304,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						break
 					end
 				end
@@ -1325,7 +1319,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Pet a ne egg suka")
 						break
 					end
 				end
@@ -1339,34 +1332,32 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("egg ura")
 						break
 					end
 				end
 			end
 		end 
+		task.wait(2)
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`farming {curpet.remote}`)
-				farming_pet = pet.unique
+				farming_pet = curpet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					if eqpetailms then
-						for k,v in pet_ailments do 
-							if eqpetailms[k] then
-								if active_ailments[k] then continue end
+						for _,v in eqpetailms do 
+							if active_ailments[v] then continue end
+							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
-								active_ailments[k] = true
+								active_ailments[v] = true
 							end
 						end
-						task.wait(20)
+						task.wait(40)
 					else
-						task.wait(30)
+						task.wait(40)
 					end
 				end
 			else
-				print("ne farming potomuchto blyat pet ne vybran suka gori v adu")
 				task.wait(60)
 				break
 			end
@@ -1386,10 +1377,10 @@ local function init_baby_autofarm() -- optimized
 	while true do
 		local active_ailments = get_baby_ailments()
 		if active_ailments then
-			for k,v in baby_ailments do
-				if active_ailments[k] then
-					if baby_active_ailments[k] then continue end
-					baby_active_ailments[k] = true
+			for k,v in active_ailments do
+				if baby_active_ailments[k] then continue end
+				if baby_ailments[v] then
+					baby_active_ailments[v] = true
 					queue:enqueue({"ailment baby", v})
 				end
 			end
@@ -1591,8 +1582,7 @@ local function __init()
 	if _G.InternalConfig.FarmPriority then
 		task.spawn(init_autofarm)
 	end
-	task.wait(1)
-
+	
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
 		task.spawn(init_auto_buy)
 	end
@@ -2006,6 +1996,7 @@ end)()
 	API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
 	UIManager.set_app_visibility("DailyLoginApp", false)
 	API["PayAPI/DisablePopups"]:FireServer()
+	repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart
 	task.wait(.5)
 end)()
 
@@ -2266,4 +2257,3 @@ end)
 
 license()
 task.spawn(__init)
-
