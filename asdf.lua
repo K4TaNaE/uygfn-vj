@@ -1416,7 +1416,7 @@ local function init_autofarm() -- optimized
 				_G.farming_pet = curpet.unique
 				while _G.farming_pet do 
 					local res,eqpetailms = pcall(get_equiped_pet_ailments)
-					if not res then print("no res, waiting")task.wait(1) continue end
+					if not res then print("no res, waiting") break end
 					if eqpetailms then
 						print("found equiped ailments")
 						for _,v in eqpetailms do 
