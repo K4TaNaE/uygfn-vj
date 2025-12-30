@@ -141,7 +141,7 @@ Queue.new = function()
 
 		__run = function(self)
 			self.running = true
-			peint("Started work")
+			print("Started work")
 			
 			local function onTaskError(errMsg)
 				pcall(function()
