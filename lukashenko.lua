@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		size = function(self)
-			return self.__tail
-		end,
+		-- size = function(self)
+		-- 	return self.__tail
+		-- end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -211,7 +211,7 @@ local farming_pet = nil
 local active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-getgenv().queue = Queue.new()
+local queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -1249,7 +1249,6 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
-	print("autofarm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1258,10 +1257,8 @@ local function init_autofarm() -- optimized
 				equip_as_last = false
 			}
 		)
-		print(`Pet unequiped {pet.remote}`)
 	end
 	if count(get_owned_pets()) == 0 then
-		print("No pets sosi")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1280,7 +1277,6 @@ local function init_autofarm() -- optimized
 							equip_as_last = false
 						}
 					)
-					print("Potion farm suka")
 					flag = true		
 					break				
 				end
@@ -1295,7 +1291,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						flag = true
 						break
 					end
@@ -1309,7 +1304,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						break
 					end
 				end
@@ -1325,7 +1319,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Pet a ne egg suka")
 						break
 					end
 				end
@@ -1339,7 +1332,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("egg ura")
 						break
 					end
 				end
@@ -1349,35 +1341,29 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`farming {curpet.remote}`)
-				farming_pet = pet.unique
+				farming_pet = curpet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
-					print("getting ailments")
 					if eqpetailms then
 						for _,v in eqpetailms do 
-							print("ailment found")
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
-								print("enqueued")
 								active_ailments[v] = true
 							end
 						end
-						task.wait(20)
+						task.wait(40)
 					else
-						task.wait(30)
+						task.wait(40)
 					end
 				end
 			else
-				print("ne farming potomuchto blyat pet ne vybran suka gori v adu")
 				task.wait(60)
 				break
 			end
 		end
 	end
 end
-	
 	
 local function init_baby_autofarm() -- optimized
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
@@ -1404,7 +1390,6 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 end
-
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
@@ -1597,8 +1582,7 @@ local function __init()
 	if _G.InternalConfig.FarmPriority then
 		task.spawn(init_autofarm)
 	end
-	task.wait(1)
-
+	
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
 		task.spawn(init_auto_buy)
 	end
@@ -2273,3 +2257,4 @@ end)
 
 license()
 task.spawn(__init)
+
