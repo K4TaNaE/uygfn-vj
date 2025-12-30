@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -211,7 +211,7 @@ local farming_pet = nil
 local active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-local queue = Queue.new()
+local getgenv().queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -1345,7 +1345,7 @@ local function init_autofarm() -- optimized
 				end
 			end
 		end 
-		task.wait(4)
+		task.wait(2)
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
@@ -1360,6 +1360,7 @@ local function init_autofarm() -- optimized
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
+								print("enqueued")
 								active_ailments[v] = true
 							end
 						end
