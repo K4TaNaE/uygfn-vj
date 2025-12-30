@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -139,38 +139,45 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
-		__run = function(self) -- start doing tasks.
+		__run = function(self)
 			self.running = true
-			
-			local err = function(err)
-				print("Error to task\n" .. debug.info(self.__run, "n"), "adding task to end of queue")
-				pcall(self:enqueue(self:dequeue(true)))
-			end
-			
-			repeat
-				if self.blocked then repeat task.wait(2) until not self.blocked end
-				local task = self._data[1]
-				print("Current task: " .. task[1])
-				
-				if task[3] then
-					local status, _ = xpcall(task.spawn, err, task[2])
-					if status then
-						print(`Task {self:dequeue(true)[1]} successfully completed.`)
-						task.wait(.5)
-					end
-				else
-					local status, _ = pcall(task.spawn, task[2])
-					if status then
-						print(`Task {self:dequeue(true)[1]} successfully completed.`)
-						task.wait(.5)
-					end 
-				end
-				task.wait(1)
-				
-			until self.__head > self.__tail
-			
-			self.running = false
 
+			local function onTaskError(errMsg)
+				pcall(function()
+					local failed = self:dequeue(true)
+					self:enqueue(failed)
+				end)
+			end
+
+			while self.__head <= self.__tail do
+				if self.blocked then
+					repeat task.wait(0.1) until not self.blocked
+				end
+
+				local taskData = self._data[self.__head]
+				if not taskData then
+					break
+				end
+
+				local name = taskData[1]
+				local callback = taskData[2]
+
+				print("Current task:", name)
+
+				task.spawn(function()
+					local ok, errMsg = xpcall(callback, debug.traceback)
+
+					if ok then
+						local finished = self:dequeue(true)
+					else
+						onTaskError(errMsg)
+					end
+				end)
+
+				task.wait(0.5)
+			end
+
+			self.running = false
 		end
 	}
 end
@@ -204,7 +211,7 @@ local farming_pet = nil
 local active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-local queue = Queue.new()
+getgenv().queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -406,8 +413,7 @@ local function get_equiped_pet() -- not optimzed
 		xp = cdata.properties.xp
 	end
 	for _,v in ipairs(game.Workspace.Pets:GetChildren()) do
-		local pet = PetEntityManager.get_pet_entity(v)	
-		if pet.session_memory.meta.owned_by_local_player then
+		if PetEntityManager.get_pet_entity(v).session_memory.meta.owned_by_local_player then
 			model = v
 		end
 	end
@@ -540,6 +546,14 @@ local function check_remote_existance(category, remote) -- optimized
 		return true
 	end
 	return false
+end
+
+local function count(t)
+	local n = 0
+	for _ in pairs(t) do
+		n +=1 
+	end
+	return n
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
@@ -1233,8 +1247,9 @@ baby_ailments = {
 }
 
 
-local function init_autofarm(cat) -- optimized
+local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
+	print("autofarm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1243,11 +1258,13 @@ local function init_autofarm(cat) -- optimized
 				equip_as_last = false
 			}
 		)
+		print(`Pet unequiped {pet.remote}`)
 	end
-	if table.getn(get_owned_pets()) == 0 then
+	if count(get_owned_pets()) == 0 then
+		print("No pets sosi")
 		repeat 
 			task.wait(50)
-		until table.getn(get_owned_pets()) > 0
+		until count(get_owned_pets()) > 0
 	end
 
 	while true do
@@ -1257,12 +1274,13 @@ local function init_autofarm(cat) -- optimized
 			for k,v in owned_pets do
 				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 					API["ToolAPI/Equip"]:InvokeServer(
-						inv_get_category_unique("pets", k),
+						k,
 						{
 							use_sound_deulay = true,
 							equip_as_last = false
 						}
 					)
+					print("Potion farm suka")
 					flag = true		
 					break				
 				end
@@ -1271,12 +1289,13 @@ local function init_autofarm(cat) -- optimized
 				for k,v in owned_pets do
 					if not (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
+						print("Potion farm suka")
 						flag = true
 						break
 					end
@@ -1284,57 +1303,65 @@ local function init_autofarm(cat) -- optimized
 				if not flag then
 					for k, _ in owned_pets do
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
+						print("Potion farm suka")
 						break
 					end
 				end
 			end
 		else
-			if cat == "pets" then			
+			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
-					if v.age ~= 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_deulay = true,
 								equip_as_last = false
 							}
 						)
+						print("Pet a ne egg suka")
 						break
 					end
 				end
 			else 
 				for k,v in owned_pets do
-					if v.age > 1 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
+					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
-							inv_get_category_unique("pets", k),
+							k,
 							{
 								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
+						print("egg ura")
 						break
 					end
 				end
 			end
 		end 
+		task.wait(2)
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
+				print(`farming {curpet.remote}`)
 				farming_pet = pet.unique
 				while farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
+					print("getting ailments")
 					if eqpetailms then
-						for k,v in pet_ailments do 
-							if eqpetailms[k] then
-								if active_ailments[k] then continue end
+						for _,v in eqpetailms do 
+							print("ailment found")
+							if active_ailments[v] then continue end
+							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
-								active_ailments[k] = true
+								print("enqueued")
+								active_ailments[v] = true
 							end
 						end
 						task.wait(20)
@@ -1343,12 +1370,14 @@ local function init_autofarm(cat) -- optimized
 					end
 				end
 			else
+				print("ne farming potomuchto blyat pet ne vybran suka gori v adu")
 				task.wait(60)
 				break
 			end
 		end
 	end
 end
+	
 	
 local function init_baby_autofarm() -- optimized
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
@@ -1362,10 +1391,10 @@ local function init_baby_autofarm() -- optimized
 	while true do
 		local active_ailments = get_baby_ailments()
 		if active_ailments then
-			for k,v in baby_ailments do
-				if active_ailments[k] then
-					if baby_active_ailments[k] then continue end
-					baby_active_ailments[k] = true
+			for k,v in active_ailments do
+				if baby_active_ailments[k] then continue end
+				if baby_ailments[v] then
+					baby_active_ailments[v] = true
 					queue:enqueue({"ailment baby", v})
 				end
 			end
@@ -1375,6 +1404,7 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 end
+
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
@@ -1553,10 +1583,10 @@ end
 
 local function init_gift_autoopen() -- optimized
 	while true do
-		if #get_owned_category("gifts") > 0 then
-			repeat task.wait(300) until #get_owned_category("gifts") > 0
+		if count(get_owned_category("gifts")) > 0 then
+			repeat task.wait(300) until count(get_owned_category("gifts")) > 0
 		end
-		for k,_ in get_owned_category("gifts") do
+		for k,_ in count(get_owned_category("gifts")) do
 			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
 			task.wait(0.2)
 		end	
@@ -1564,12 +1594,9 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	if _G.InternalConfig.FarmPriority == "pets" then
-		task.spawn(init_autofarm, "pets")
-	elseif _G.InternalConfig.FarmPriority == "eggs" then
-		task.spawn(init_autofarm, "eggs")
+	if _G.InternalConfig.FarmPriority then
+		task.spawn(init_autofarm)
 	end
-
 	task.wait(1)
 
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
@@ -1687,7 +1714,7 @@ end)
 						colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
 					end
 				end
-				if #list > 0 then
+				if count(list) > 0 then
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 				else
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -1768,7 +1795,7 @@ end)
 							list[v] = true
 						end
 					end
-					if #list > 0 then
+					if count(list) > 0 then
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 					else
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
@@ -1985,6 +2012,7 @@ end)()
 	API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
 	UIManager.set_app_visibility("DailyLoginApp", false)
 	API["PayAPI/DisablePopups"]:FireServer()
+	repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart
 	task.wait(.5)
 end)()
 
@@ -1997,7 +2025,7 @@ task.spawn(function() -- optimized
 
     local frame = Instance.new("Frame")
     frame.Name = "StatsFrame"
-    frame.Size = UDim2.new(0, 250, 0, 220)
+    frame.Size = UDim2.new(0, 250, 0, 200)
     frame.Position = UDim2.new(0, 5, 0, 5)
     frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     frame.BackgroundTransparency = 0.3
@@ -2245,4 +2273,3 @@ end)
 
 license()
 task.spawn(__init)
-
