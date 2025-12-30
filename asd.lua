@@ -141,6 +141,7 @@ Queue.new = function()
 
 		__run = function(self)
 			self.running = true
+			self.ended = false
 
 			local function onTaskError(errMsg)
 				-- pcall(function()
@@ -148,7 +149,6 @@ Queue.new = function()
 				-- 	self:enqueue(failed)
 				-- end)
 			end
-
 			while self.__head <= self.__tail do
 				if self.blocked then
 					repeat task.wait(0.1) until not self.blocked
@@ -158,7 +158,6 @@ Queue.new = function()
 				if not taskData then
 					break
 				end
-
 				local name = taskData[1]
 				local callback = taskData[2]
 
@@ -169,18 +168,27 @@ Queue.new = function()
 
 					if ok then
 						local finished = self:dequeue(true)
+						self.ended = true
 					else
 						onTaskError(errMsg)
+					self.ended = true
 					end
 				end)
-
-				task.wait(0.5)
+				while task.wait(.5) do
+					if self.ended then
+						self.ended = false 
+						break
+					end
+			
+				end
 			end
 
 			self.running = false
 		end
 	}
 end
+
+
 
 --[[ sUNC ]]--
 -- vegax, codex, delta x, xeno, velocity, volcano, yub-x, xenith, bunni, potassium  --- test on this provided sunc below
