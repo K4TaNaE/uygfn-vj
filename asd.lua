@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -143,10 +143,10 @@ Queue.new = function()
 			self.running = true
 
 			local function onTaskError(errMsg)
-				pcall(function()
-					local failed = self:dequeue(true)
-					self:enqueue(failed)
-				end)
+				-- pcall(function()
+				-- 	local failed = self:dequeue(true)
+				-- 	self:enqueue(failed)
+				-- end)
 			end
 
 			while self.__head <= self.__tail do
@@ -207,11 +207,11 @@ local InteriorsM = loader("InteriorsM")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-_G.farming_p = nil
+_G.farming_pet = nil
 local active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
-local queue = Queue.new()
+_G.queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -620,10 +620,10 @@ end
 
 local function enstat(xp, friendship, money, ailment)  -- optimized
 	if _G.InternalConfig.FarmPriority == "eggs" then
-		if not get_equiped_pet().unique == _G.farming_p then
+		if not get_equiped_pet().unique == _G.farming_pet then
 			farmed.eggs_hatched += 1 
-			_G.farming_p = nil 
-			queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil 
+			_G.queue:destroy_linked("ailment pet")
 			table.clear(active_ailments)
 			farmed.money += ClientData.get("money") - money
 			farmed.ailments += 1
@@ -654,11 +654,11 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 	else 
 		if xp >= xp_thresholds[get_equiped_pet().rarity][6] then
 			farmed.pets_fullgrown += 1
-			table.insert(total_fullgrowned, _G.farming_p)
+			table.insert(total_fullgrowned, _G.farming_pet)
 			update_gui("fullgrown", farmed.pets_fullgrown)
-			_G.farming_p = nil
+			_G.farming_pet = nil
 			table.clear(active_ailments)
-			queue:destroy_linked("ailment pet")
+			_G.queue:destroy_linked("ailment pet")
 		else
 			active_ailments[ailment] = nil
 		end
@@ -680,8 +680,11 @@ end
 local pet_ailments = { 
 	["camping"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to camping. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -695,12 +698,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("camping success")
 		enstat(xp, friendship, money, "camping")
 	end,
 	["hungry"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to hungry. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -738,12 +745,16 @@ local pet_ailments = {
 		while active_ailments.hungry do
 			task.wait(1)
 		end
+		print("hungry success")
 		enstat(xp, friendship, money, "hungry")  
 	end,
 	["thirsty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to thirsty. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -781,12 +792,16 @@ local pet_ailments = {
 		while active_ailments.thirsty do
 			task.wait(1)
 		end
+		print("thirdty success")
 		enstat(xp, friendship, money, "thirsty")  
 	end,
 	["sick"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to sick. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -799,12 +814,16 @@ local pet_ailments = {
 			"Yes",
 			LocalPlayer.Character
 		)
+		print("sick success")
 		enstat(xp, friendship, money, "sick") 
 	end,
 	["bored"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to bored. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -818,12 +837,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("bored success")
 		enstat(xp, friendship, money, "bored")  
 	end,
 	["salon"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to salon. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -836,12 +859,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("salon success")
 		enstat(xp, friendship, money, "salon")  
 	end,
 	["play"] = function() -- improve. add something without task.wait
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to play. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -858,12 +885,16 @@ local pet_ailments = {
 			)
 			task.wait(5) 
 		end
+		print("play success")
 		enstat(xp, friendship, money, "play") 
 	end,
 	["toilet"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to toilet. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -885,12 +916,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("toilet success")
 		enstat(xp, friendship, money, "toilet")  
 	end,
 	["beach_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to beach_party. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -904,12 +939,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("beach_party success")
 		enstat(xp, friendship, money, "beach_party")  
 	end,
 	["ride"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to ride. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -924,12 +963,16 @@ local pet_ailments = {
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
+		print("ride succcess")
 		enstat(xp, friendship, money, "ride") 
 	end,
 	["dirty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to dirty. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -951,12 +994,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("dirty success")
 		enstat(xp, friendship, money, "dirty")  
 	end,
 	["walk"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to walk. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -969,12 +1016,16 @@ local pet_ailments = {
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
+		print("walk success")
 		enstat(xp, friendship, money, "walk") 
 	end,
 	["school"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to school. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -987,12 +1038,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("school success")
 		enstat(xp, friendship, money, "school")  
 	end,
 	["sleepy"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to sleepy. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -1014,12 +1069,16 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("sleepy success")
 		enstat(xp, friendship, money, "sleepy")  
 	end,
 	["mystery"] = function() 
 		local pet = get_equiped_pet()
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to mystery. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		for k,_ in loader("new:AilmentsDB") do
@@ -1033,8 +1092,11 @@ local pet_ailments = {
 	end,
 	["pizza_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not _G.farming_p then
-			queue:destroy_linked("ailment pet")
+		if not pet or not _G.farming_pet then
+			print("error to pizza_party. Farming pet and equiped:", _G.farming_pet, pet)
+			_G.queue:destroy_linked("ailment pet")
+			_G.farming_pet = nil
+			table.clear(active_ailments)
 			return 
 		end
 		local xp = pet.xp
@@ -1047,6 +1109,7 @@ local pet_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		print("pizza_party success")
 		enstat(xp, friendship, money, "pizza_party")  
 	end,
 	
@@ -1341,23 +1404,26 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				_G.farming_p = curpet.unique
-				while _G.farming_p do 
+				_G.farming_pet = curpet.unique
+				while _G.farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					if eqpetailms then
+						print("found equiped ailments")
 						for _,v in eqpetailms do 
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
-								queue:enqueue({"ailment pet", v})
+								_G.queue:enqueue({"ailment pet", pet_ailments[v]})
 								active_ailments[v] = true
 							end
 						end
-						task.wait(40)
+						task.wait(25)
 					else
-						task.wait(40)
+						print("no pets. Timeout")
+						task.wait(25)
 					end
 				end
 			else
+				print("no pet selected. Timeout")
 				task.wait(60)
 				break
 			end
@@ -1381,7 +1447,7 @@ local function init_baby_autofarm() -- optimized
 				if baby_active_ailments[k] then continue end
 				if baby_ailments[v] then
 					baby_active_ailments[v] = true
-					queue:enqueue({"ailment baby", v})
+					_G.queue:enqueue({"ailment baby", v})
 				end
 			end
 			task.wait(30)
