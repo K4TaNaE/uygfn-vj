@@ -217,7 +217,7 @@ local API = ReplicatedStorage.API
 -- local Router = loader("")
 
 _G.farming_pet = nil
-local active_ailments = {}
+getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
 _G.queue = Queue.new()
@@ -1659,54 +1659,54 @@ local function __init()
 		task.spawn(init_autofarm)
 	end
 	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		task.spawn(init_auto_buy)
-	end
-
-	task.wait(1)
-
-	if _G.InternalConfig.BabyAutoFarm then
-		task.spawn(init_baby_autofarm)
-	end
-
-	task.wait(1)
-
-	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.spawn(init_crystall_auto)
+	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+	-- 	task.spawn(init_auto_buy)
 	-- end
 
-	if _G.InternalConfig.PetAutoTrade then
-		task.spawn(init_auto_trade)
-	end
+	-- task.wait(1)
 
-	if _G.InternalConfig.DiscordWebhookURL then
-		task.spawn(function()
-			while true do
-				task.wait(_G.InternalConfig.WebhookSendDelay)
-				webhook(
-					"AutoFarm Log",
-					`**💸Money Earned :** {farmed.money}\n\
-					**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-					**🐶Pet Needs Completed :** {farmed.ailments}\n\
-					**🧪Potions Farmed :** {farmed.potions}\n\
-					**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-					**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-					**🥚Eggs Hatched :** {farmed.eggs_hatched}\
-					**📦Found in LureBox :** {farmed.lurebox}`
-				)
-			end
-		end)
-	end
+	-- if _G.InternalConfig.BabyAutoFarm then
+	-- 	task.spawn(init_baby_autofarm)
+	-- end
 
-	task.wait(1)
+	-- task.wait(1)
 
-	if _G.InternalConfig.LureboxFarm then
-		task.spawn(init_lurebox)
-	end
+	-- -- if _G.InternalConfig.CrystallEggFarm then
+	-- -- 	task.spawn(init_crystall_auto)
+	-- -- end
 
-	if _G.InternalConfig.GiftsAutoOpen then
-		task.spawn(init_gift_autoopen)
-	end
+	-- if _G.InternalConfig.PetAutoTrade then
+	-- 	task.spawn(init_auto_trade)
+	-- end
+
+	-- if _G.InternalConfig.DiscordWebhookURL then
+	-- 	task.spawn(function()
+	-- 		while true do
+	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
+	-- 			webhook(
+	-- 				"AutoFarm Log",
+	-- 				`**💸Money Earned :** {farmed.money}\n\
+	-- 				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	-- 				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	-- 				**🧪Potions Farmed :** {farmed.potions}\n\
+	-- 				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	-- 				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	-- 				**🥚Eggs Hatched :** {farmed.eggs_hatched}\
+	-- 				**📦Found in LureBox :** {farmed.lurebox}`
+	-- 			)
+	-- 		end
+	-- 	end)
+	-- end
+
+	-- task.wait(1)
+
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.spawn(init_lurebox)
+	-- end
+
+	-- if _G.InternalConfig.GiftsAutoOpen then
+	-- 	task.spawn(init_gift_autoopen)
+	-- end
 
 end
 
