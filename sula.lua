@@ -453,7 +453,7 @@ local function get_equiped_pet_ailments() -- optimized
 			table.insert(ailments, k)
 		end
 	else
-		return nil
+		return {}
 	end
 	return ailments
 end
@@ -1367,7 +1367,6 @@ local function init_autofarm() -- optimized
 				StateDB.farming_pet = curpet.unique
 				while StateDB.farming_pet do 
 					local res,eqpetailms = pcall(get_equiped_pet_ailments)
-					if not res then print("no res, waiting") task.wait(2) continue end
 					if res and eqpetailms then
 						for _,v in eqpetailms do 
 							if StateDB.active_ailments[v] then continue end
