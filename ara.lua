@@ -143,10 +143,10 @@ Queue.new = function()
 			self.running = true
 
 			local function onTaskError(errMsg)
-				pcall(function()
-					local failed = self:dequeue(true)
-					self:enqueue(failed)
-				end)
+				-- pcall(function()
+				-- 	local failed = self:dequeue(true)
+				-- 	self:enqueue(failed)
+				-- end)
 			end
 
 			while self.__head <= self.__tail do
