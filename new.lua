@@ -1085,6 +1085,13 @@ local pet_ailments = {
 	["pet_me"] = function() end,
 	["party_zone"] = function() end -- available on admin abuse
 }
+;(function() -- api deash
+	colorprint({markup.INFO}, "[?] Starting..")
+	for k, v in pairs(getupvalue(require(ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient")).init, 7)) do
+		v.Name = k
+	end
+	colorprint({markup.SUCCESS}, "[+] API dehashed.")
+end)()
 
 
 -- launch screen
