@@ -551,11 +551,11 @@ local function gotovec(x:number, y:number, z:number) -- optimized
 	if get_equiped_pet() then
 		API["AdoptAPI/HoldBaby"]:FireServer(get_equiped_pet().model)
 		task.wait(.1)
-		game.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
+		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.1)
 		API["AdoptAPI/EjectBaby"]:FireServer(get_equiped_pet().model)
 	else
-		game.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
+		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 	end
 end
 
@@ -610,6 +610,7 @@ local function update_gui(label, val: number) -- optimized
 end
 
 local function enstat(xp, friendship, money, ailment)  -- optimized
+	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
 		if StateDB.farming_pet ~= get_equiped_pet().unique then
 			farmed.eggs_hatched += 1 
@@ -661,6 +662,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 end
 
 local function enstat_baby(money, ailment) -- optimized
+	task.wait(.5)
 	farmed.money += ClientData.get("money") - money 
 	farmed.baby_ailments += 1
 	StateDB.baby_active_ailments[ailment] = nil
@@ -1365,22 +1367,24 @@ local function init_autofarm() -- optimized
 			local curpet = get_equiped_pet()
 			if curpet then
 				StateDB.farming_pet = curpet.unique
-				while StateDB.farming_pet do 
-					local res,eqpetailms = pcall(get_equiped_pet_ailments)
-					if res and eqpetailms then
-						for _,v in eqpetailms do 
-							if StateDB.active_ailments[v] then continue end
-							if pet_ailments[v] then
-								_G.queue:enqueue({"ailment pet", pet_ailments[v]})
-								StateDB.active_ailments[v] = true
+				if StateDB.farming_pet then
+					while StateDB.farming_pet do 
+						local res,eqpetailms = pcall(get_equiped_pet_ailments)
+						if res and eqpetailms then
+							for _,v in eqpetailms do 
+								if StateDB.active_ailments[v] then continue end
+								if pet_ailments[v] then
+									_G.queue:enqueue({"ailment pet", pet_ailments[v]})
+									StateDB.active_ailments[v] = true
+								end
 							end
+							task.wait(25)
+						else
+							task.wait(25)
 						end
-						task.wait(25)
-					else
-						task.wait(25)
 					end
 				end
-			else
+				else
 				task.wait(60)
 				break
 			end
