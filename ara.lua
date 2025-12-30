@@ -1260,6 +1260,7 @@ local function init_autofarm() -- optimized
 				equip_as_last = false
 			}
 		)
+		print("pet unequiped")
 	end
 	if count(get_owned_pets()) == 0 then
 		repeat 
@@ -1280,6 +1281,7 @@ local function init_autofarm() -- optimized
 							equip_as_last = false
 						}
 					)
+					print("pet equiped potion farm")
 					flag = true		
 					break				
 				end
@@ -1294,6 +1296,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped potion farm")
 						flag = true
 						break
 					end
@@ -1307,6 +1310,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped potion farm")
 						break
 					end
 				end
@@ -1322,6 +1326,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped pets")
 						break
 					end
 				end
@@ -1335,6 +1340,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						print("pet equiped eggs")
 						break
 					end
 				end
@@ -1344,13 +1350,16 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
+				print(`Pet equiped {curpet.remote}`)
 				_G.farming_pet = curpet.unique
 				while _G.farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
 					if eqpetailms then
 						for _,v in eqpetailms do 
+							print("iterating over ailments")
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
+								warn("found and enqueued")
 								queue:enqueue({"ailment pet", v})
 								active_ailments[v] = true
 							end
@@ -1361,6 +1370,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else
+				print("no pet. Timeout 60s")
 				task.wait(60)
 				break
 			end
