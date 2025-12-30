@@ -207,8 +207,8 @@ local InteriorsM = loader("InteriorsM")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-local farming_pet = nil
-local active_ailments = {}
+getgenv().farming_pet = nil
+getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
 getgenv().queue = Queue.new()
