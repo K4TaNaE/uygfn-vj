@@ -403,6 +403,7 @@ local function get_equiped_pet() -- not optimzed
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
+	if #game.Workspace.Pets:GetChildren() == 0 then repeat task.wait(0.1) until #game.Workspace.Pets:GetChildren() > 0 end
 	for _,v in ipairs(game.Workspace.Pets:GetChildren()) do
 		if PetEntityManager.get_pet_entity(v).session_memory.meta.owned_by_local_player then
 			model = v
@@ -1273,16 +1274,6 @@ baby_ailments = {
 
 
 local function init_autofarm() -- optimized
-	local pet = get_equiped_pet()
-	if pet then
-		API["ToolAPI/Unequip"]:InvokeServer(
-			pet.unique,
-			{
-				use_sound_delay = true,
-				equip_as_last = false
-			}
-		)
-	end
 	if count(get_owned_pets()) == 0 then
 		repeat 
 			task.wait(50)
@@ -1290,9 +1281,19 @@ local function init_autofarm() -- optimized
 	end
 
 	while true do
+		local pet = get_equiped_pet()
+		if pet then
+			API["ToolAPI/Unequip"]:InvokeServer(
+				pet.unique,
+				{
+					use_sound_delay = true,
+					equip_as_last = false
+				}
+			)
+		end
 		local owned_pets = get_owned_pets()
+		local flag = false
 		if _G.InternalConfig.PotionFarm then
-			local flag = false
 			for k,v in owned_pets do
 				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 					API["ToolAPI/Equip"]:InvokeServer(
@@ -1329,6 +1330,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						flag = true
 						break
 					end
 				end
@@ -1344,6 +1346,7 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						flag = true
 						break
 					end
 				end
@@ -1357,37 +1360,26 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						flag = true
 						break
 					end
 				end
 			end
 		end 
-		task.wait(2)
-		while true do
-			local curpet = get_equiped_pet()
-			if curpet then
-				StateDB.farming_pet = curpet.unique
-				if StateDB.farming_pet then
-					while StateDB.farming_pet do 
-						local res,eqpetailms = pcall(get_equiped_pet_ailments)
-						if res and eqpetailms then
-							for _,v in eqpetailms do 
-								if StateDB.active_ailments[v] then continue end
-								if pet_ailments[v] then
-									_G.queue:enqueue({"ailment pet", pet_ailments[v]})
-									StateDB.active_ailments[v] = true
-								end
-							end
-							task.wait(25)
-						else
-							task.wait(25)
-						end
-					end
+		if not flag then task.wait(50) continue end
+		local curpet = get_equiped_pet()
+		StateDB.farming_pet = curpet.unique
+
+		while StateDB.farming_pet do
+			local eqpetailms = get_equiped_pet_ailments()
+			for _,v in eqpetailms do 
+				if StateDB.active_ailments[v] then continue end
+				if pet_ailments[v] then
+					_G.queue:enqueue({"ailment pet", pet_ailments[v]})
+					StateDB.active_ailments[v] = true
 				end
-				else
-				task.wait(60)
-				break
 			end
+			task.wait(30)
 		end
 	end
 end
