@@ -1367,7 +1367,12 @@ local function init_autofarm() -- optimized
 			end
 		end 
 		if not flag then task.wait(50) continue end
-		local curpet = get_equiped_pet()
+		while true do
+			if not get_equiped_pet() then
+				task.wait(.2)
+			end
+		end
+		local curpet = get_equiped_pet() 
 		StateDB.farming_pet = curpet.unique
 
 		while StateDB.farming_pet do
