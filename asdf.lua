@@ -126,9 +126,9 @@ Queue.new = function()
 			end
 		end,
 
-		-- size = function(self)
-		-- 	return self.__tail
-		-- end,
+		size = function(self)
+			return self.__tail
+		end,
 
 		-- clear = function(self)
 		-- 	 table.clear(self._data)
@@ -141,7 +141,8 @@ Queue.new = function()
 
 		__run = function(self)
 			self.running = true
-
+			peint("Started work")
+			
 			local function onTaskError(errMsg)
 				pcall(function()
 					local failed = self:dequeue(true)
@@ -169,8 +170,10 @@ Queue.new = function()
 
 					if ok then
 						local finished = self:dequeue(true)
+							print("task completed", name)
 					else
 						onTaskError(errMsg)
+							print("error to task", name)
 					end
 				end)
 
