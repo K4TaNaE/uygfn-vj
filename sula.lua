@@ -1360,7 +1360,7 @@ local function init_autofarm() -- optimized
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
 								warn("found and enqueued")
-								_G.queue:enqueue({"ailment pet", v})
+								_G.queue:enqueue({"ailment pet", pet_ailments[v]})
 								active_ailments[v] = true
 							end
 						end
