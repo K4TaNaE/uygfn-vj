@@ -138,7 +138,7 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
-		run = function(self)
+		__run = function(self)
 			if self.running then
 				return
 			end
