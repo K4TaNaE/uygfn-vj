@@ -23,7 +23,7 @@ Queue.new = function()
 
 		dequeue = function(self,raw)
 			if self.__head > self.__tail then
-				error() 
+				return
 			end
 
 			local value = self._data[self.__head]
@@ -147,6 +147,7 @@ Queue.new = function()
 				-- pcall(function()
 				-- 	local failed = self:dequeue(true)
 				-- 	self:enqueue(failed)
+				self:enqueue(self.data[self.__head])
 				-- end)
 			end
 			while self.__head <= self.__tail do
