@@ -141,7 +141,8 @@ Queue.new = function()
 
 		__run = function(self)
 			self.running = true
-
+			peint("Started work")
+			
 			local function onTaskError(errMsg)
 				pcall(function()
 					local failed = self:dequeue(true)
@@ -169,8 +170,10 @@ Queue.new = function()
 
 					if ok then
 						local finished = self:dequeue(true)
+							print("task completed", name)
 					else
 						onTaskError(errMsg)
+							print("error to task", name)
 					end
 				end)
 
@@ -207,7 +210,7 @@ local InteriorsM = loader("InteriorsM")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-getgenv().farming_pet = nil
+_G.farming_pet = nil
 getgenv().active_ailments = {}
 local baby_active_ailments = {}
 local total_fullgrowned = {}
@@ -620,9 +623,9 @@ end
 
 local function enstat(xp, friendship, money, ailment)  -- optimized
 	if _G.InternalConfig.FarmPriority == "eggs" then
-		if not get_equiped_pet().unique == farming_pet then
+		if not get_equiped_pet().unique == _G.farming_pet then
 			farmed.eggs_hatched += 1 
-			farming_pet = nil 
+			_G.farming_pet = nil 
 			queue:destroy_linked("ailment pet")
 			table.clear(active_ailments)
 			farmed.money += ClientData.get("money") - money
@@ -654,9 +657,9 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 	else 
 		if xp >= xp_thresholds[get_equiped_pet().rarity][6] then
 			farmed.pets_fullgrown += 1
-			table.insert(total_fullgrowned, farming_pet)
+			table.insert(total_fullgrowned, _G.farming_pet)
 			update_gui("fullgrown", farmed.pets_fullgrown)
-			farming_pet = nil
+			_G.farming_pet = nil
 			table.clear(active_ailments)
 			queue:destroy_linked("ailment pet")
 		else
@@ -680,7 +683,7 @@ end
 local pet_ailments = { 
 	["camping"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -699,7 +702,7 @@ local pet_ailments = {
 	end,
 	["hungry"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -742,7 +745,7 @@ local pet_ailments = {
 	end,
 	["thirsty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -785,7 +788,7 @@ local pet_ailments = {
 	end,
 	["sick"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -803,7 +806,7 @@ local pet_ailments = {
 	end,
 	["bored"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -822,7 +825,7 @@ local pet_ailments = {
 	end,
 	["salon"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -840,7 +843,7 @@ local pet_ailments = {
 	end,
 	["play"] = function() -- improve. add something without task.wait
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -862,7 +865,7 @@ local pet_ailments = {
 	end,
 	["toilet"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -889,7 +892,7 @@ local pet_ailments = {
 	end,
 	["beach_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -908,7 +911,7 @@ local pet_ailments = {
 	end,
 	["ride"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -928,7 +931,7 @@ local pet_ailments = {
 	end,
 	["dirty"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -955,7 +958,7 @@ local pet_ailments = {
 	end,
 	["walk"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -973,7 +976,7 @@ local pet_ailments = {
 	end,
 	["school"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -991,7 +994,7 @@ local pet_ailments = {
 	end,
 	["sleepy"] = function()
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -1018,7 +1021,7 @@ local pet_ailments = {
 	end,
 	["mystery"] = function() 
 		local pet = get_equiped_pet()
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -1033,7 +1036,7 @@ local pet_ailments = {
 	end,
 	["pizza_party"] = function() 
 		local pet = get_equiped_pet() 
-		if not pet or not farming_pet then
+		if not pet or not _G.farming_pet then
 			queue:destroy_linked("ailment pet")
 			return 
 		end
@@ -1249,7 +1252,6 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	local pet = get_equiped_pet()
-	print("autofarm started")
 	if pet then
 		API["ToolAPI/Unequip"]:InvokeServer(
 			pet.unique,
@@ -1258,10 +1260,8 @@ local function init_autofarm() -- optimized
 				equip_as_last = false
 			}
 		)
-		print(`Pet unequiped {pet.remote}`)
 	end
 	if count(get_owned_pets()) == 0 then
-		print("No pets sosi")
 		repeat 
 			task.wait(50)
 		until count(get_owned_pets()) > 0
@@ -1280,7 +1280,6 @@ local function init_autofarm() -- optimized
 							equip_as_last = false
 						}
 					)
-					print("Potion farm suka")
 					flag = true		
 					break				
 				end
@@ -1295,7 +1294,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						flag = true
 						break
 					end
@@ -1309,7 +1307,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Potion farm suka")
 						break
 					end
 				end
@@ -1325,7 +1322,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("Pet a ne egg suka")
 						break
 					end
 				end
@@ -1339,7 +1335,6 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
-						print("egg ura")
 						break
 					end
 				end
@@ -1349,35 +1344,29 @@ local function init_autofarm() -- optimized
 		while true do
 			local curpet = get_equiped_pet()
 			if curpet then
-				print(`farming {curpet.remote}`)
-				farming_pet = curpet.unique
-				while farming_pet do 
+				_G.farming_pet = curpet.unique
+				while _G.farming_pet do 
 					local eqpetailms = get_equiped_pet_ailments()
-					print("getting ailments")
 					if eqpetailms then
 						for _,v in eqpetailms do 
-							print("ailment found")
 							if active_ailments[v] then continue end
 							if pet_ailments[v] then
 								queue:enqueue({"ailment pet", v})
-								print("enqueued")
 								active_ailments[v] = true
 							end
 						end
-						task.wait(20)
+						task.wait(40)
 					else
-						task.wait(30)
+						task.wait(40)
 					end
 				end
 			else
-				print("ne farming potomuchto blyat pet ne vybran suka gori v adu")
 				task.wait(60)
 				break
 			end
 		end
 	end
 end
-	
 	
 local function init_baby_autofarm() -- optimized
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
@@ -1404,7 +1393,6 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 end
-
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
@@ -1597,8 +1585,7 @@ local function __init()
 	if _G.InternalConfig.FarmPriority then
 		task.spawn(init_autofarm)
 	end
-	task.wait(1)
-
+	
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
 		task.spawn(init_auto_buy)
 	end
@@ -2273,3 +2260,4 @@ end)
 
 license()
 task.spawn(__init)
+
