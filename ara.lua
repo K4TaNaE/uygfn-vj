@@ -864,8 +864,10 @@ local pet_ailments = {
 		enstat(xp, friendship, money, "play") 
 	end,
 	["toilet"] = function() 
+		print("toilet im here")
 		local pet = get_equiped_pet() 
 		if not pet or not _G.farming_pet then
+			print("toilet: not pet to farm")
 			queue:destroy_linked("ailment pet")
 			return 
 		end
