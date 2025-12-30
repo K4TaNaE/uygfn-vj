@@ -147,7 +147,7 @@ Queue.new = function()
 				-- pcall(function()
 				-- 	local failed = self:dequeue(true)
 				-- 	self:enqueue(failed)
-					self:dequeue(self.data[self.__head])
+					self:dequeue()
 				-- end)
 			end
 			while self.__head <= self.__tail do
