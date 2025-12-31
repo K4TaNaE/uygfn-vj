@@ -1217,7 +1217,7 @@ baby_ailments = {
 		local timer = 15
 		to_home()
 		API['HousingAPI/ActivateFurniture']:InvokeServer(
-			game.LocalPlayer,
+			LocalPlayer,
 			furn.bath.unique,
 			furn.bath.usepart,
 			{
