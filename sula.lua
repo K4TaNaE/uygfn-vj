@@ -1237,7 +1237,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("School", "MainDoor")
-		while get_baby_ailments().school and timer > 0 do
+		while StateDB.baby_active_ailments.school and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1399,15 +1399,15 @@ local function init_baby_autofarm() -- optimized
 			source_for_logging = "avatar_editor"
 		}
 	)
-	task.wait(1)
+	task.wait(2)
 	while true do
 		local active_ailments = get_baby_ailments()
 		if active_ailments then
-			for k,v in active_ailments do
-				if StateDB.baby_active_ailments[k] then continue end
+			for _,v in active_ailments do
+				if StateDB.baby_active_ailments[v] then continue end
 				if baby_ailments[v] then
 					StateDB.baby_active_ailments[v] = true
-					_G.queue:enqueue({"ailment baby", v})
+					_G.queue:enqueue({"ailment baby", baby_ailments[v]})
 				end
 			end
 			task.wait(30)
@@ -1416,6 +1416,7 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 end
+
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
