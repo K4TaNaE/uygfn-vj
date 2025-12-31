@@ -1205,6 +1205,7 @@ baby_ailments = {
 		end
 		task.wait(.2)
 		ClientData.get("state_manager_raw").is_sitting = false
+		LocalPlayer.Character.Humanoid.Jump = true
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1238,6 +1239,7 @@ baby_ailments = {
 		end
 		task.wait(.3)
 		ClientData.get("state_manager_raw").is_sitting = false
+		LocalPlayer.Character.Humanoid.Jump = true
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
@@ -1589,58 +1591,58 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	-- if _G.InternalConfig.FarmPriority then
-	-- 	task.defer(init_autofarm)
-	-- end
+	if _G.InternalConfig.FarmPriority then
+		task.defer(init_autofarm)
+	end
 	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
-	-- end
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
 
-	-- task.wait(1)
+	task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
 
-	-- task.wait(1)
+	task.wait(1)
 
 	-- if _G.InternalConfig.CrystallEggFarm then
 	-- 	task.defer(init_crystall_auto)
 	-- end
 
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
+	end
 
-	-- if _G.InternalConfig.DiscordWebhookURL then
-	-- 	task.defer(function()
-	-- 		while true do
-	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
-	-- 			webhook(
-	-- 				"AutoFarm Log",
-	-- 				`**💸Money Earned :** {farmed.money}\n\
-	-- -- 				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	-- -- 				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	-- -- 				**🧪Potions Farmed :** {farmed.potions}\n\
-	-- -- 				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	-- -- 				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	-- -- 				**🥚Eggs Hatched :** {farmed.eggs_hatched}\
-	-- -- 				**📦Found in LureBox :** {farmed.lurebox}`
-	-- 			)
-	-- 		end
-	-- 	end)
-	-- end
+	if _G.InternalConfig.DiscordWebhookURL then
+		task.defer(function()
+			while true do
+				task.wait(_G.InternalConfig.WebhookSendDelay)
+				webhook(
+					"AutoFarm Log",
+					`**💸Money Earned :** {farmed.money}\n\
+	-- 				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	-- 				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	-- 				**🧪Potions Farmed :** {farmed.potions}\n\
+	-- 				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	-- 				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	-- 				**🥚Eggs Hatched :** {farmed.eggs_hatched}\
+	-- 				**📦Found in LureBox :** {farmed.lurebox}`
+				)
+			end
+		end)
+	end
 
-	-- task.wait(1)
+	task.wait(1)
 
-	-- if _G.InternalConfig.LureboxFarm then
-	-- 	task.defer(init_lurebox)
-	-- end
+	if _G.InternalConfig.LureboxFarm then
+		task.defer(init_lurebox)
+	end
 
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
-	-- end
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 end
 
