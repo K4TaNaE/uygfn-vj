@@ -195,6 +195,7 @@ local PetEntityManager = loader("PetEntityManager")
 local InteriorsM = loader("InteriorsM")
 local HouseClient = loader("HouseClient")
 local PetActions = loader("PetActions")
+local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
@@ -794,6 +795,7 @@ local pet_ailments = {
 			"Yes",
 			LocalPlayer.Character
 		)
+		task.wait(1)
 		enstat(xp, friendship, money, "sick") 
 	end,
 	["bored"] = function() 
@@ -1149,6 +1151,7 @@ baby_ailments = {
 			"Yes",
 			LocalPlayer.Character
 		)
+		task.wait(1)
 		enstat_baby(money, "sick") 
 	end,
 	["bored"] = function() 
@@ -1205,8 +1208,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(.3)
-		API["AdoptAPI/ExitSeatStates"]:FireServer()
+		task.wait(.5)
+		StateManagerClient.exit_seat_states()
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1238,8 +1241,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(.3)
-		API["AdoptAPI/ExitSeatStates"]:FireServer()
+		task.wait(.5)
+		StateManagerClient.exit_seat_states()
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
