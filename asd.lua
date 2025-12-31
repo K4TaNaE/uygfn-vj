@@ -1601,7 +1601,7 @@ local function __init()
 	-- 	task.defer(init_auto_buy)
 	-- end
 
-	-- -- task.wait(1)
+	-- task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
@@ -1609,9 +1609,9 @@ local function __init()
 
 	-- task.wait(1)
 
-	-- -- if _G.InternalConfig.CrystallEggFarm then
-	-- -- 	task.defer(init_crystall_auto)
-	-- -- end
+	-- if _G.InternalConfig.CrystallEggFarm then
+	-- 	task.defer(init_crystall_auto)
+	-- end
 
 	-- if _G.InternalConfig.PetAutoTrade then
 	-- 	task.defer(init_auto_trade)
@@ -1704,7 +1704,7 @@ end)
 		if (Config.FarmPriority):lower() == "eggs" or (Config.FarmPriority):lower() == "pets" then
 			_G.InternalConfig.FarmPriority = Config.FarmPriority
 			if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
-				if not (Config.AutoFarmFilter.PetsToExclude):find("^%s*$") ~= nil then 
+				if not (#Config.AutoFarmFilter.PetsToExclude == 1 and Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$")) then
 					local list = {}
 					for _,v in Config.AutoFarmFilter.PetsToExclude do
 						if check_remote_existance("pets", v) then
@@ -1740,7 +1740,7 @@ end)
 			end
 
 			if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
-				if not (Config.FarmPriority):match("^%s*$") ~= nil then 
+				if not (Config.FarmPriority):match("^%s*$") then 
 					if check_remote_existance("pets", Config.AutoFarmFilter.EggAutoBuy) then
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 					else
@@ -1754,7 +1754,7 @@ end)
 				error("Wrong datatype of EggAutoBuy!")
 			end
 			
-		elseif (Config.FarmPriority):match("^%s*$") ~= nil then 
+		elseif (Config.FarmPriority):match("^%s*$") then 
 			_G.InternalConfig.FarmPriority = false
 			_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false 
 			_G.InternalConfig.AutoFarmFilter.PotionFarm = false 
@@ -1822,7 +1822,7 @@ end)
 
 
 				if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
-					if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") ~= nil then 
+					if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") then 
 						if check_remote_existance("pets", Config.AutoFarmFilter.EggAutoBuy) then
 							_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 						else
@@ -1838,7 +1838,7 @@ end)
 
 			local possible = {"common", "uncommon", "rare", "ultra_rare", "legendary"}
 			if type(Config.PetExchangeRarity) == "string" then -- PetExchangeRarity
-				if not (Config.PetExchangeRarity):match("^%s*$") ~= nil then 
+				if not (Config.PetExchangeRarity):match("^%s*$") then 
 					if table.find(possible, Config.PetExchangeRarity) then
 						_G.InternalConfig.PetExchangeRarity = Config.PetExchangeRarity
 					else
@@ -1860,7 +1860,7 @@ end)
 				["fullgrown"] = 6
 			}
 			if type(Config.PetExchangeAge) == "string" then -- PetExchangeAge
-				if not (Config.PetExchangeAge):match("^%s*$") ~= nil then 
+				if not (Config.PetExchangeAge):match("^%s*$") then 
 					_G.InternalConfig.PetExchangeAge = 6
 					for k,v in possible do
 						if k == Config.PetExchangeAge then
@@ -1882,7 +1882,7 @@ end)
 	end
 
 	if type(Config.DiscordWebhookURL) == "string" then -- DiscordWebhookURL
-		if not (Config.DiscordWebhookURL):match("^%s*$") ~= nil then 
+		if not (Config.DiscordWebhookURL):match("^%s*$") then 
 			local res, _ = pcall(function() 
 				request({
 				Url = Config.DiscordWebhookURL,
@@ -1906,7 +1906,7 @@ end)
 		if Config.PetAutoTrade then 
 			_G.InternalConfig.PetAutoTrade = true	
 			if type(Config.AutoTradeFilter.PlayerTradeWith) == "string" then -- PlayerTradeWith
-				if not (Config.PlayerTradeWith):match("^%s*$") ~= nil then 
+				if not (Config.PlayerTradeWith):match("^%s*$") then 
 					_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = Config.AutoTradeFilter.PlayerTradeWith
 					local possible = {
 						["common"] = "common", 
