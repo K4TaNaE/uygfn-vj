@@ -1206,14 +1206,18 @@ baby_ailments = {
 				LocalPlayer.Character
 			)
 		end)
+		print("dirty task activated")
 		while get_baby_ailments().dirty and timer > 0 do
+			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
+		print("state exited")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
+		print("enstated")
 	end,
 	["school"] = function() 
 		local money = ClientData.get("money")
@@ -1241,14 +1245,18 @@ baby_ailments = {
 				LocalPlayer.Character
 			)
 		end)
+		print("sleepy task activated")
 		while get_baby_ailments().sleepy and timer > 0 do
+			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
+		print("state exited")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
+		print('enstated')
 	end,
 	["pizza_party"] = function() 
 		local money = ClientData.get("money")
