@@ -1227,10 +1227,9 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
+		LocalPlayer.Character.Humanoid.Jump = true
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
-		task.wait(.3)
-		LocalPlayer.Character.Humanoid.Jump = true
 	end,
 	["school"] = function() 
 		local money = ClientData.get("money")
@@ -1260,10 +1259,9 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
+		LocalPlayer.Character.Humanoid.Jump = true
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
-		task.wait(.3)
-		LocalPlayer.Character.Humanoid.Jump = true
 	end,
 	["pizza_party"] = function() 
 		local money = ClientData.get("money")
@@ -1400,6 +1398,18 @@ local function init_baby_autofarm() -- optimized
 		}
 	)
 	task.wait(2)
+	if _G.InternalConfig.FarmPriority then
+		local pet = get_equiped_pet()
+		if pet then
+			API["ToolAPI/Unequip"]:InvokeServer(
+				pet.unique,
+				{
+					use_sound_delay = true,
+					equip_as_last = false
+				}
+			)
+		end
+	end
 	while true do
 		local active_ailments = get_baby_ailments()
 		for k,_ in active_ailments do
