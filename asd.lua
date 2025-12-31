@@ -1195,24 +1195,23 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 15
 		to_home()
-		API['HousingAPI/ActivateFurniture']:InvokeServer(
-			LocalPlayer,
-			furn.bath.unique,
-			furn.bath.usepart,
-			{
-				cframe = furn.bath.cframe
-			},
-			LocalPlayer.Character
-		)
+		task.spawn(function() 
+			API['HousingAPI/ActivateFurniture']:InvokeServer(
+				LocalPlayer,
+				furn.bath.unique,
+				furn.bath.usepart,
+				{
+					cframe = furn.bath.cframe
+				},
+				LocalPlayer.Character
+			)
+		end)
 		while get_baby_ailments().dirty and timer > 0 do
-			print('IN the cycle')
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(.5)
-		print("Before sleepy")
+		task.wait(.3)
 		StateManagerClient.exit_seat_states()
-		print("after sleepy")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1231,24 +1230,23 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 20
 		to_home()
-		API['HousingAPI/ActivateFurniture']:InvokeServer(
-			LocalPlayer,
-			furn.bed.unique,
-			furn.bed.usepart,
-			{
-				cframe = furn.bed.cframe
-			},
-			LocalPlayer.Character
-		)
+		task.spawn(function() 
+			API['HousingAPI/ActivateFurniture']:InvokeServer(
+				LocalPlayer,
+				furn.bed.unique,
+				furn.bed.usepart,
+				{
+					cframe = furn.bed.cframe
+				},
+				LocalPlayer.Character
+			)
+		end)
 		while get_baby_ailments().sleepy and timer > 0 do
-			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(.5)
-		print("Before sleepy")
+		task.wait(.3)
 		StateManagerClient.exit_seat_states()
-		print("after sleepy")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
@@ -2014,6 +2012,13 @@ end)()
 
 -- launch screen
 ;(function() -- optmized
+	while true do
+		if not UIManager.is_visible("NewsApp") then
+			task.wait(1)
+		else
+			break
+		end
+	end
 	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
