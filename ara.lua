@@ -1393,7 +1393,7 @@ end
 local function init_baby_autofarm() -- optimized
 	print("baby farming started")
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
-		"babies",
+		"Babies",
 		{
 			dont_respawn = true,
 			source_for_logging = "avatar_editor"
