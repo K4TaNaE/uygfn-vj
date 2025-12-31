@@ -691,7 +691,7 @@ local pet_ailments = {
 		local timer = 30
 		to_mainmap()
 		gotovec(-23, 37, -1063)
-		while StateDB.active_ailments.camping and timer > 0 do
+		while get_equiped_pet_ailments().camping and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -738,7 +738,7 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "healing_apple")
 			}
 		)
-		while StateDB.active_ailments.hungry do
+		while get_equiped_pet_ailments().hungry do
 			task.wait(1)
 		end
 		enstat(xp, friendship, money, "hungry")  
@@ -783,7 +783,7 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
-		while StateDB.active_ailments.thirsty do
+		while get_equiped_pet_ailments().thirsty do
 			task.wait(1)
 		end
 		enstat(xp, friendship, money, "thirsty")  
@@ -822,7 +822,7 @@ local pet_ailments = {
 		local timer = 60
 		to_mainmap()
 		gotovec(-365, 30, -1749)
-		while StateDB.active_ailments.bored and timer > 0 do
+		while get_equiped_pet_ailments().bored and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -842,7 +842,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("Salon", "MainDoor")
-		while StateDB.active_ailments.salon and timer > 0 do
+		while get_equiped_pet_ailments().salon and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -895,7 +895,7 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while StateDB.active_ailments.toilet and timer > 0 do
+		while get_equiped_pet_ailments().toilet and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -916,7 +916,7 @@ local pet_ailments = {
 		local timer = 60
 		to_mainmap()
 		gotovec(-596, 27, -1473)
-		while StateDB.active_ailments.beach_party and timer > 0 do
+		while get_equiped_pet_ailments().beach_party and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -936,7 +936,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
-		while StateDB.active_ailments.ride do
+		while get_equiped_pet_ailments().ride do
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
@@ -967,7 +967,7 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while StateDB.active_ailments.dirty and timer > 0 do
+		while get_equiped_pet_ailments().dirty and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -986,7 +986,7 @@ local pet_ailments = {
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		while StateDB.active_ailments.walk do 
+		while get_equiped_pet_ailments().walk do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
@@ -1007,7 +1007,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("School", "MainDoor")
-		while StateDB.active_ailments.school and timer > 0 do
+		while get_equiped_pet_ailments().school and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1036,7 +1036,7 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while StateDB.active_ailments.sleepy and timer > 0 do
+		while get_equiped_pet_ailments().sleepy and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1073,7 +1073,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("PizzaShop", "MainDoor")
-		while StateDB.active_ailments.pizza_party and timer > 0 do
+		while get_equiped_pet_ailments().pizza_party and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1091,7 +1091,7 @@ baby_ailments = {
 		local timer = 30
 		to_mainmap()
 		gotovec(-23, 37, -1063)
-		while StateDB.baby_active_ailments.camping and timer > 0 do
+		while get_baby_ailments().camping and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1122,7 +1122,7 @@ baby_ailments = {
 			end
 		end
 
-		while StateDB.baby_active_ailments.hungry do
+		while get_baby_ailments().hungry do
 			API["ToolAPI/ServerUseTool"]:InvokeServer(
 				inv_get_category_unique("food", "healing_apple"),
 				"END"
@@ -1155,7 +1155,7 @@ baby_ailments = {
 			end
 		end
 		
-		while StateDB.baby_active_ailments.thirsty do
+		while get_baby_ailments().thirsty do
 			API["ServerUseTool"]:InvokeServer(
 				inv_get_category_unique("food", "water"),
 				"END"
@@ -1174,7 +1174,6 @@ baby_ailments = {
 			LocalPlayer.Character
 		)
 		enstat_baby(money, "sick") 
-
 	end,
 	["bored"] = function() 
 		local money = ClientData.get("money")
@@ -1192,7 +1191,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("Salon", "MainDoor")
-		while StateDB.baby_active_ailments.salon and timer > 0 do
+		while get_baby_ailments().salon and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1205,7 +1204,7 @@ baby_ailments = {
 		local timer = 60
 		to_mainmap()
 		gotovec(-596, 27, -1473)
-		while StateDB.baby_active_ailments.beach_party and timer > 0 do
+		while get_baby_ailments().beach_party and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1226,7 +1225,7 @@ baby_ailments = {
 			},
 			LocalPlayer.Character
 		)
-		while StateDB.baby_active_ailments.dirty and timer > 0 do
+		while get_baby_ailments().dirty and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1237,7 +1236,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("School", "MainDoor")
-		while StateDB.baby_active_ailments.school and timer > 0 do
+		while get_baby_ailments().school and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1257,7 +1256,7 @@ baby_ailments = {
 			},
 			LocalPlayer.Character
 		)
-		while StateDB.baby_active_ailments.sleepy and timer > 0 do
+		while get_baby_ailments().sleepy and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
@@ -1268,7 +1267,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		local timer = 60
 		goto("PizzaShop", "MainDoor")
-		while StateDB.baby_active_ailments.pizza_party and timer > 0 do
+		while get_baby_ailments().pizza_party and timer > 0 do
 			task.wait(1)
 			timer -= 1
 		end
