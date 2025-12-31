@@ -193,6 +193,8 @@ local ClientData = loader("ClientData")
 local InventoryDB = loader("InventoryDB")
 local PetEntityManager = loader("PetEntityManager")
 local InteriorsM = loader("InteriorsM")
+local HouseClient = loader("HouseClient")
+local PetActions = loader("PetActions")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
@@ -552,7 +554,7 @@ end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
 	if get_equiped_pet() then
-		API["AdoptAPI/HoldBaby"]:FireServer(get_equiped_pet().model)
+		PetActions.pick_up(ClientData.get("pet_char_wrappers")[1])
 		task.wait(.1)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.1)
@@ -1203,8 +1205,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(3)
-		LocalPlayer.Character.Humanoid.Jump = true
+		task.wait(.1)
+		API["AdoptAPI/ExitSeatStates"]:FireServer()
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1236,8 +1238,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		task.wait(3)
-		LocalPlayer.Character.Humanoid.Jump = true
+		task.wait(.1)
+		API["AdoptAPI/ExitSeatStates"]:FireServer()
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
@@ -1368,15 +1370,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	API["TeamAPI/ChooseTeam"]:InvokeServer(
-		"Babies",
-		{
-			dont_respawn = true,
-			source_for_logging = "avatar_editor"
-		}
-	)
-	task.wait(2)
-	if _G.InternalConfig.FarmPriority then
+	if not _G.InternalConfig.FarmPriority then
 		local pet = get_equiped_pet()
 		if pet then
 			API["ToolAPI/Unequip"]:InvokeServer(
@@ -1389,6 +1383,16 @@ local function init_baby_autofarm() -- optimized
 		end
 	end
 	while true do
+		if ClientData.get("team") == "Parents" then
+			API["TeamAPI/ChooseTeam"]:InvokeServer(
+				"Babies",
+				{
+					dont_respawn = true,
+					source_for_logging = "avatar_editor"
+				}
+			)
+			task.wait(1)
+		end
 		local active_ailments = get_baby_ailments()
 		for k,_ in active_ailments do
 			if StateDB.baby_active_ailments[k] then task.wait(2) continue end
@@ -1597,17 +1601,17 @@ local function __init()
 	-- 	task.defer(init_auto_buy)
 	-- end
 
-	-- task.wait(1)
+	-- -- task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
--- 
+
 	-- task.wait(1)
 
-	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.defer(init_crystall_auto)
-	-- end
+	-- -- if _G.InternalConfig.CrystallEggFarm then
+	-- -- 	task.defer(init_crystall_auto)
+	-- -- end
 
 	-- if _G.InternalConfig.PetAutoTrade then
 	-- 	task.defer(init_auto_trade)
@@ -1700,16 +1704,20 @@ end)
 		if (Config.FarmPriority):lower() == "eggs" or (Config.FarmPriority):lower() == "pets" then
 			_G.InternalConfig.FarmPriority = Config.FarmPriority
 			if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
-				local list = {}
-				for _,v in Config.AutoFarmFilter.PetsToExclude do
-					if check_remote_existance("pets", v) then
-						list[v] = true
-					else
-						colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+				if not (Config.AutoFarmFilter.PetsToExclude):find("^%s*$") ~= nil then 
+					local list = {}
+					for _,v in Config.AutoFarmFilter.PetsToExclude do
+						if check_remote_existance("pets", v) then
+							list[v] = true
+						else
+							colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+						end
 					end
-				end
-				if count(list) > 0 then
-					_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
+					if count(list) > 0 then
+						_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
+					else
+						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
+					end
 				else
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 				end
@@ -2252,8 +2260,8 @@ end)
 			}
 		end
 	end
-
-	colorprint({markup.SUCCESS}, "[+] Furniture init done")
+	HouseClient.lock_door()
+	colorprint({markup.SUCCESS}, "[+] Furniture init done. Door locked.")
 end)()
 
 task.spawn(function() -- optimized
@@ -2267,3 +2275,4 @@ end)
 
 license()
 task.spawn(__init)
+
