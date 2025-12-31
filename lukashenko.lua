@@ -458,8 +458,6 @@ local function get_equiped_pet_ailments() -- optimized
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.unique] do
 			ailments[k] = true
 		end
-	else
-		return {}
 	end
 	return ailments
 end
@@ -469,7 +467,6 @@ local function get_baby_ailments() -- optimized
 	for k, _ in ClientData.get("ailments_manager")["baby_ailments"] do
 		ailments[k] = true
 	end 
-    if #ailments == 0 then return nil end
 	return ailments 
 end
 
@@ -1403,18 +1400,14 @@ local function init_baby_autofarm() -- optimized
 	task.wait(2)
 	while true do
 		local active_ailments = get_baby_ailments()
-		if active_ailments then
-			for k,_ in active_ailments do
-				if StateDB.baby_active_ailments[k] then task.wait(2) continue end
-				if baby_ailments[k] then
-					StateDB.baby_active_ailments[k] = true
-					_G.queue:enqueue({"ailment baby", baby_ailments[k]})
-				end
+		for k,_ in active_ailments do
+			if StateDB.baby_active_ailments[k] then task.wait(2) continue end
+			if baby_ailments[k] then
+				StateDB.baby_active_ailments[k] = true
+				_G.queue:enqueue({"ailment baby", baby_ailments[k]})
 			end
-			task.wait(20)
-		else
-			task.wait(20)
 		end
+		task.wait(20)
 	end
 end
 
@@ -1620,7 +1613,7 @@ local function __init()
 		task.spawn(init_baby_autofarm)
 	end
 
-	task.wait(1)
+	-- task.wait(1)
 
 	-- if _G.InternalConfig.CrystallEggFarm then
 	-- 	task.defer(init_crystall_auto)
