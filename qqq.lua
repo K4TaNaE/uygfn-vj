@@ -946,7 +946,7 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 15
+		local timer = 20
 		to_home()
 		API['HousingAPI/ActivateFurniture']:InvokeServer(
 			LocalPlayer,
@@ -1193,7 +1193,7 @@ baby_ailments = {
 	end,
 	["dirty"] = function() 
 		local money = ClientData.get("money")
-		local timer = 15
+		local timer = 20
 		to_home()
 		task.spawn(function() 
 			API['HousingAPI/ActivateFurniture']:InvokeServer(
@@ -1206,18 +1206,14 @@ baby_ailments = {
 				LocalPlayer.Character
 			)
 		end)
-		print("dirty task activated")
 		while get_baby_ailments().dirty and timer > 0 do
-			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
-		print("state exited")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
-		print("enstated")
 	end,
 	["school"] = function() 
 		local money = ClientData.get("money")
@@ -1245,18 +1241,14 @@ baby_ailments = {
 				LocalPlayer.Character
 			)
 		end)
-		print("sleepy task activated")
 		while get_baby_ailments().sleepy and timer > 0 do
-			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
-		print("state exited")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
-		print('enstated')
 	end,
 	["pizza_party"] = function() 
 		local money = ClientData.get("money")
@@ -1545,55 +1537,55 @@ local function init_auto_trade() -- optimized
 	end
 end
 
--- сделать детект предметов которые ты можешшь положить в бокс
-local function init_lurebox() -- optimized
-	while true do
-		API["HousingAPI/ActivateFurniture"]:InvokeServer(
-			LocalPlayer,
-			furn.lurebox.usepart,
-			"UseBlock",
-			{
-				bait_unique = "2_91644c5593d247da9297c3d05a83cb53"
-			},
-			LocalPlayer.Character
-		)
-		task.wait(2)
-		local timesleep = nil
-		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
-            if v.Name == "Template" then
-                local msg = v:FindFirstChild("Message")
-                if not msg then continue end
+-- -- сделать детект предметов которые ты можешшь положить в бокс
+-- local function init_lurebox() -- optimized
+-- 	while true do
+-- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+-- 			LocalPlayer,
+-- 			furn.lurebox.usepart,
+-- 			"UseBlock",
+-- 			{
+-- 				bait_unique = "2_91644c5593d247da9297c3d05a83cb53"
+-- 			},
+-- 			LocalPlayer.Character
+-- 		)
+-- 		task.wait(2)
+-- 		local timesleep = nil
+-- 		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
+--             if v.Name == "Template" then
+--                 local msg = v:FindFirstChild("Message")
+--                 if not msg then continue end
 
-                local holder = msg:FindFirstChild("FragmentHolder")
-                if not holder then continue end
+--                 local holder = msg:FindFirstChild("FragmentHolder")
+--                 if not holder then continue end
 
-                local lure = holder:FindFirstChild("LuresTimerFragment")
-                if not lure then continue end
+--                 local lure = holder:FindFirstChild("LuresTimerFragment")
+--                 if not lure then continue end
 
-                local cont = lure:FindFirstChild("Container")
-                if not cont then continue end
+--                 local cont = lure:FindFirstChild("Container")
+--                 if not cont then continue end
 
-                local contents = cont:FindFirstChild("Contents")
-                if not contents then continue end
+--                 local contents = cont:FindFirstChild("Contents")
+--                 if not contents then continue end
 
-                local timer = contents:FindFirstChild("Timer")
-                if timer then
-                    timesleep = tonumber(timer.Text)
-                    break
-                end
-            end
-		end
-		timesleep = tonumber(timesleep)
-		task.wait((timesleep or 3600) + 5)
-		API["HousingAPI/ActivateFurniture"]:InvokeServer(
-			LocalPlayer,
-			furn.lurebox.unique,
-			"UseBlock",
-			false,
-			LocalPlayer.Character
-		)
-	end
-end
+--                 local timer = contents:FindFirstChild("Timer")
+--                 if timer then
+--                     timesleep = tonumber(timer.Text)
+--                     break
+--                 end
+--             end
+-- 		end
+-- 		timesleep = tonumber(timesleep)
+-- 		task.wait((timesleep or 3600) + 5)
+-- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+-- 			LocalPlayer,
+-- 			furn.lurebox.unique,
+-- 			"UseBlock",
+-- 			false,
+-- 			LocalPlayer.Character
+-- 		)
+-- 	end
+-- end
 
 local function init_gift_autoopen() -- optimized
 	while true do
@@ -1653,9 +1645,9 @@ local function __init()
 
 	task.wait(1)
 
-	if _G.InternalConfig.LureboxFarm then
-		task.defer(init_lurebox)
-	end
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.defer(init_lurebox)
+	-- end
 
 	if _G.InternalConfig.GiftsAutoOpen then
 		task.defer(init_gift_autoopen)
