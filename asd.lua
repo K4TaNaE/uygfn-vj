@@ -1209,7 +1209,9 @@ baby_ailments = {
 			timer -= 1
 		end
 		task.wait(.5)
+		print("Before sleepy")
 		StateManagerClient.exit_seat_states()
+		print("after sleepy")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1242,7 +1244,9 @@ baby_ailments = {
 			timer -= 1
 		end
 		task.wait(.5)
+		print("Before sleepy")
 		StateManagerClient.exit_seat_states()
+		print("after sleepy")
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
