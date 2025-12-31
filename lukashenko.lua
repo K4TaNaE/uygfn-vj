@@ -154,15 +154,15 @@ Queue.new = function()
 				local name = taskData[1]
 				local callback = taskData[2]
 
-				print("Running task:", name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
 
 				if not ok then
 					print("Task failed:", err)
+				else
+					print("TaskSuccessed")
 				end
-
-				task.wait() 
+				task.wait(0.5) 
 			end
 
 			self.running = false
@@ -618,6 +618,7 @@ end
 local function enstat(xp, friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
+		task.wait(0.5)
 		if StateDB.farming_pet ~= get_equiped_pet().unique then
 			farmed.eggs_hatched += 1 
 			StateDB.farming_pet = nil 
@@ -1230,6 +1231,7 @@ baby_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		LocalPlayer.Character.Humanoid.Jump = true
 		enstat_baby(money, "dirty")  
 	end,
 	["school"] = function() 
@@ -1261,6 +1263,7 @@ baby_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
+		LocalPlayer.Character.Humanoid.Jump = true
 		enstat_baby(money, "sleepy")  
 	end,
 	["pizza_party"] = function() 
@@ -1378,20 +1381,19 @@ local function init_autofarm() -- optimized
 		while StateDB.farming_pet do
 			local eqpetailms = get_equiped_pet_ailments()
 			for _,v in eqpetailms do 
-				if StateDB.active_ailments[v] then continue end
+				if StateDB.active_ailments[v] then task.wait(2) continue end
 				if pet_ailments[v] then
 					_G.queue:enqueue({"ailment pet", pet_ailments[v]})
 					StateDB.active_ailments[v] = true
 				end
 			end
-			task.wait(30)
+			task.wait(20)
 		end
 	end
 end
 	
 local function init_baby_autofarm() -- optimized
-	print("baby farming started")
-	API["TeamAPI/ChooseTeam"]:InvokeServer(
+	game.ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer(
 		"Babies",
 		{
 			dont_respawn = true,
@@ -1403,19 +1405,18 @@ local function init_baby_autofarm() -- optimized
 		local active_ailments = get_baby_ailments()
 		if active_ailments then
 			for _,v in active_ailments do
-				if StateDB.baby_active_ailments[v] then continue end
+				if StateDB.baby_active_ailments[v] then task.wait(2) continue end
 				if baby_ailments[v] then
 					StateDB.baby_active_ailments[v] = true
 					_G.queue:enqueue({"ailment baby", baby_ailments[v]})
 				end
 			end
-			task.wait(30)
+			task.wait(20)
 		else
-			task.wait(30)
+			task.wait(20)
 		end
 	end
 end
-
 
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
@@ -1605,37 +1606,37 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	-- if _G.InternalConfig.FarmPriority then
-	-- 	task.defer(init_autofarm)
-	-- end
+	if _G.InternalConfig.FarmPriority then
+		task.defer(init_autofarm)
+	end
 	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		-- task.defer(init_auto_buy)
-	-- end
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
 
-	-- task.wait(1)
+	task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.spawn(init_baby_autofarm)
 	end
 
-	-- task.wait(1)
+	task.wait(1)
 
-	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.defer(init_crystall_auto)
-	-- end
+	if _G.InternalConfig.CrystallEggFarm then
+		task.defer(init_crystall_auto)
+	end
 
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
+	end
 
-	-- if _G.InternalConfig.DiscordWebhookURL then
-	-- 	task.defer(function()
-	-- 		while true do
-	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
-	-- 			webhook(
-	-- 				"AutoFarm Log",
-	-- 				`**💸Money Earned :** {farmed.money}\n\
+	if _G.InternalConfig.DiscordWebhookURL then
+		task.defer(function()
+			while true do
+				task.wait(_G.InternalConfig.WebhookSendDelay)
+				webhook(
+					"AutoFarm Log",
+					`**💸Money Earned :** {farmed.money}\n\
 	-- 				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
 	-- 				**🐶Pet Needs Completed :** {farmed.ailments}\n\
 	-- 				**🧪Potions Farmed :** {farmed.potions}\n\
@@ -1643,20 +1644,20 @@ local function __init()
 	-- 				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
 	-- 				**🥚Eggs Hatched :** {farmed.eggs_hatched}\
 	-- 				**📦Found in LureBox :** {farmed.lurebox}`
-	-- 			)
-	-- 		end
-	-- 	end)
-	-- end
+				)
+			end
+		end)
+	end
 
-	-- task.wait(1)
+	task.wait(1)
 
-	-- if _G.InternalConfig.LureboxFarm then
-	-- 	task.defer(init_lurebox)
-	-- end
+	if _G.InternalConfig.LureboxFarm then
+		task.defer(init_lurebox)
+	end
 
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
-	-- end
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 end
 
