@@ -1205,6 +1205,7 @@ baby_ailments = {
 			LocalPlayer.Character
 		)
 		while get_baby_ailments().dirty and timer > 0 do
+			print('IN the cycle')
 			task.wait(1)
 			timer -= 1
 		end
@@ -1240,6 +1241,7 @@ baby_ailments = {
 			LocalPlayer.Character
 		)
 		while get_baby_ailments().sleepy and timer > 0 do
+			print("in the cycle")
 			task.wait(1)
 			timer -= 1
 		end
