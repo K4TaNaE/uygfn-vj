@@ -708,25 +708,13 @@ local pet_ailments = {
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
 		if count_of_product("food", "healing_apple") == 0 then
-			local money = ClientData.get("money") 
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"healing_apple",
-					{
-						buy_count = 20
-					}
-				)
-			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"healing_apple",
-					{
-						buy_count = money
-					}
-				)
-			end
+			API["ShopAPI/BuyItem"]:InvokeServer(
+				"food",
+				"healing_apple",
+				{
+					buy_count = 99
+				}
+			)
 		end
 		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 			"__Enum_PetObjectCreatorType_2",
@@ -1096,72 +1084,60 @@ baby_ailments = {
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "camping")
 	end,
-	["hungry"] = function() 
-		local money = ClientData.get("money")
-		if count_of_product("food", "healing_apple") == 0 then
-			local money = ClientData.get("money") 
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"healing_apple",
-					{
-						buy_count = 20
-					}
-				)
-			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"healing_apple",
-					{
-						buy_count = money
-					}
-				)
-			end
-		end
+	-- ["hungry"] = function() 
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "healing_apple") < 3 then
+	-- 		API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 			"food",
+	-- 			"healing_apple",
+	-- 			{
+	-- 				buy_count = 99
+	-- 			}
+	-- 		)
+	-- 	end
+	-- 	while get_baby_ailments().hungry do
 
-		while get_baby_ailments().hungry do
-			API["ToolAPI/ServerUseTool"]:FireServer(
-				inv_get_category_unique("food", "healing_apple"),
-				"END"
-			)
-			task.wait(.1)
-		end
-		enstat_baby(money, "hungry")  
-	end,
-	["thirsty"] = function() 
-		local money = ClientData.get("money")
-		if count_of_product("food", "water") == 0 then
-			local money = ClientData.get("money") 
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"water",
-					{
-						buy_count = 20
-					}
-				)
-			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"water",
-					{
-						buy_count = money
-					}
-				)
-			end
-		end
+	-- 		API["ToolAPI/ServerUseTool"]:FireServer(
+	-- 			inv_get_category_unique("food", "healing_apple"),
+	-- 			"END"
+	-- 		)
+	-- 		task.wait(.3)
+	-- 	end
+	-- 	enstat_baby(money, "hungry")  
+	-- end,
+	-- ["thirsty"] = function() 
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "water") == 0 then
+	-- 		local money = ClientData.get("money") 
+	-- 		if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+	-- 		if money > 20 then
+	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = 20
+	-- 				}
+	-- 			)
+	-- 		else 
+	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = money
+	-- 				}
+	-- 			)
+	-- 		end
+	-- 	end
 		
-		while get_baby_ailments().thirsty do
-			API["ToolAPI/ServerUseTool"]:FireServer(
-				inv_get_category_unique("food", "water"),
-				"END"
-			)
-			task.wait(.1)
-		end
-		enstat_baby(money, "thirsty")  
-	end,
+	-- 	while get_baby_ailments().thirsty do
+	-- 		API["ToolAPI/ServerUseTool"]:FireServer(
+	-- 			inv_get_category_unique("food", "water"),
+	-- 			"END"
+	-- 		)
+	-- 		task.wait(.1)
+	-- 	end
+	-- 	enstat_baby(money, "thirsty")  
+	-- end,
 	["sick"] = function() 
 		local money = ClientData.get("money")
 		goto("Hospital", "MainDoor")
@@ -1227,7 +1203,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		LocalPlayer.Character.Humanoid.Jump = true
+		task.wait(.2)
+		ClientData.get("state_manager_raw").is_sitting = false
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "dirty")  
 	end,
@@ -1259,7 +1236,8 @@ baby_ailments = {
 			task.wait(1)
 			timer -= 1
 		end
-		LocalPlayer.Character.Humanoid.Jump = true
+		task.wait(.3)
+		ClientData.get("state_manager_raw").is_sitting = false
 		if timer == 0 then error("Out of limits") end
 		enstat_baby(money, "sleepy")  
 	end,
