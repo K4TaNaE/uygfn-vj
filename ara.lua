@@ -1391,6 +1391,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
+	print("baby farming started")
 	API["TeamAPI/ChooseTeam"]:InvokeServer(
 		"babies",
 		{
