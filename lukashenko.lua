@@ -1121,7 +1121,7 @@ baby_ailments = {
 		end
 
 		while get_baby_ailments().hungry do
-			API["ToolAPI/ServerUseTool"]:InvokeServer(
+			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "healing_apple"),
 				"END"
 			)
@@ -1154,7 +1154,7 @@ baby_ailments = {
 		end
 		
 		while get_baby_ailments().thirsty do
-			API["ServerUseTool"]:InvokeServer(
+			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "water"),
 				"END"
 			)
@@ -1228,8 +1228,9 @@ baby_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
-		LocalPlayer.Character.Humanoid.Jump = true
 		enstat_baby(money, "dirty")  
+		task.wait(.3)
+		LocalPlayer.Character.Humanoid.Jump = true
 	end,
 	["school"] = function() 
 		local money = ClientData.get("money")
@@ -1260,8 +1261,9 @@ baby_ailments = {
 			timer -= 1
 		end
 		if timer == 0 then error("Out of limits") end
-		LocalPlayer.Character.Humanoid.Jump = true
 		enstat_baby(money, "sleepy")  
+		task.wait(.3)
+		LocalPlayer.Character.Humanoid.Jump = true
 	end,
 	["pizza_party"] = function() 
 		local money = ClientData.get("money")
@@ -1390,7 +1392,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	game.ReplicatedStorage.API["TeamAPI/ChooseTeam"]:InvokeServer(
+	API["TeamAPI/ChooseTeam"]:InvokeServer(
 		"Babies",
 		{
 			dont_respawn = true,
@@ -1610,7 +1612,7 @@ local function __init()
 	-- task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
-		task.spawn(init_baby_autofarm)
+		task.defer(init_baby_autofarm)
 	end
 
 	-- task.wait(1)
