@@ -820,25 +820,25 @@ local pet_ailments = {
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "bored")  
 	end,
-	["salon"] = function() 
-		local pet = get_equiped_pet() 
-		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
-			_G.queue:destroy_linked("ailment pet")
-			StateDB.farming_pet = nil
-			table.clear(StateDB.active_ailments)
-			return 
-		end
-		local xp = pet.xp
-		local friendship = pet.friendship
-		local money = ClientData.get("money")
-		goto("Salon", "MainDoor")
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment("salon") or os.clock() > deadline
-        if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "salon")  
-	end,
+	-- ["salon"] = function() 
+	-- 	local pet = get_equiped_pet() 
+	-- 	if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
+	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		StateDB.farming_pet = nil
+	-- 		table.clear(StateDB.active_ailments)
+	-- 		return 
+	-- 	end
+	-- 	local xp = pet.xp
+	-- 	local friendship = pet.friendship
+	-- 	local money = ClientData.get("money")
+	-- 	goto("Salon", "MainDoor")
+    --     local deadline = os.clock() + 60
+    --     repeat 
+    --         task.wait(1)
+    --     until not has_ailment("salon") or os.clock() > deadline
+    --     if os.clock() > deadline then error("Out of limits") end
+	-- 	enstat(xp, friendship, money, "salon")  
+	-- end,
 	["play"] = function() -- improve. add something without task.wait
 		local pet = get_equiped_pet() 
 		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
@@ -981,25 +981,25 @@ local pet_ailments = {
 		end
 		enstat(xp, friendship, money, "walk") 
 	end,
-	["school"] = function() 
-		local pet = get_equiped_pet() 
-		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
-			_G.queue:destroy_linked("ailment pet")
-			StateDB.farming_pet = nil
-			table.clear(StateDB.active_ailments)
-			return 
-		end
-		local xp = pet.xp
-		local friendship = pet.friendship
-		local money = ClientData.get("money")
-		goto("School", "MainDoor")
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment("school") or os.clock() > deadline
-        if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "school")  
-	end,
+	-- ["school"] = function() 
+	-- 	local pet = get_equiped_pet() 
+	-- 	if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
+	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		StateDB.farming_pet = nil
+	-- 		table.clear(StateDB.active_ailments)
+	-- 		return 
+	-- 	end
+	-- 	local xp = pet.xp
+	-- 	local friendship = pet.friendship
+	-- 	local money = ClientData.get("money")
+	-- 	goto("School", "MainDoor")
+    --     local deadline = os.clock() + 60
+    --     repeat 
+    --         task.wait(1)
+    --     until not has_ailment("school") or os.clock() > deadline
+    --     if os.clock() > deadline then error("Out of limits") end
+	-- 	enstat(xp, friendship, money, "school")  
+	-- end,
 	["sleepy"] = function()
 		local pet = get_equiped_pet() 
 		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
