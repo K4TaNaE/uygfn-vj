@@ -990,12 +990,14 @@ local pet_ailments = {
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
+		PetActions.pick_up(pet.wrapper)
 		while has_ailment("walk") do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
+		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		enstat(xp, friendship, money, "walk") 
 		print('task walk enedd')
 	end,
