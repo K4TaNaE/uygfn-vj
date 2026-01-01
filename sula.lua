@@ -458,7 +458,7 @@ local function get_equiped_pet_ailments() -- optimized
 	local ailments = {}
 	local pet = get_equiped_pet()
 	task.wait(.2)
-	if pet then
+	if pet and ClientData.get("ailments_manager")["ailments"][pet.unique] then
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.unique] do
 			ailments[k] = true
 		end
@@ -700,84 +700,84 @@ local pet_ailments = {
 		if timer == 0 then error("Out of limits") end
 		enstat(xp, friendship, money, "camping")
 	end,
-	["hungry"] = function() 
-		local pet = get_equiped_pet() 
-		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
-			_G.queue:destroy_linked("ailment pet")
-			StateDB.farming_pet = nil
-			table.clear(StateDB.active_ailments)
-			return 
-		end
-		local xp = pet.xp
-		local friendship = pet.friendship
-		local money = ClientData.get("money")
-		if count_of_product("food", "healing_apple") == 0 then
-			API["ShopAPI/BuyItem"]:InvokeServer(
-				"food",
-				"healing_apple",
-				{
-					buy_count = 99
-				}
-			)
-		end
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-			"__Enum_PetObjectCreatorType_2",
-			{
-				additional_consume_uniques={},
-				pet_unique = pet.unique,
-				unique_id = inv_get_category_unique("food", "healing_apple")
-			}
-		)
-		while get_equiped_pet_ailments().hungry do
-			task.wait(1)
-		end
-		enstat(xp, friendship, money, "hungry")  
-	end,
-	["thirsty"] = function() 
-		local pet = get_equiped_pet() 
-		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
-			_G.queue:destroy_linked("ailment pet")
-			StateDB.farming_pet = nil
-			table.clear(StateDB.active_ailments)
-			return 
-		end
-		local xp = pet.xp
-		local friendship = pet.friendship
-		local money = ClientData.get("money")
-		if count_of_product("food", "water") == 0 then
-			local money = ClientData.get("money") 
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"water",
-					{
-						buy_count = 20
-					}
-				)
-			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
-					"food",
-					"water",
-					{
-						buy_count = money
-					}
-				)
-			end
-		end
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-			"__Enum_PetObjectCreatorType_2",
-			{
-				additional_consume_uniques={},
-				pet_unique = pet.unique,
-				unique_id = inv_get_category_unique("food", "water")
-			}
-		)
-		while get_equiped_pet_ailments().thirsty do
-			task.wait(1)
-		end
-		enstat(xp, friendship, money, "thirsty")  
-	end,
+	-- ["hungry"] = function() 
+	-- 	local pet = get_equiped_pet() 
+	-- 	if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
+	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		StateDB.farming_pet = nil
+	-- 		table.clear(StateDB.active_ailments)
+	-- 		return 
+	-- 	end
+	-- 	local xp = pet.xp
+	-- 	local friendship = pet.friendship
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "healing_apple") == 0 then
+	-- 		API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 			"food",
+	-- 			"healing_apple",
+	-- 			{
+	-- 				buy_count = 99
+	-- 			}
+	-- 		)
+	-- 	end
+	-- 	API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+	-- 		"__Enum_PetObjectCreatorType_2",
+	-- 		{
+	-- 			additional_consume_uniques={},
+	-- 			pet_unique = pet.unique,
+	-- 			unique_id = inv_get_category_unique("food", "healing_apple")
+	-- 		}
+	-- 	)
+	-- 	while get_equiped_pet_ailments().hungry do
+	-- 		task.wait(1)
+	-- 	end
+	-- 	enstat(xp, friendship, money, "hungry")  
+	-- end,
+	-- ["thirsty"] = function() 
+	-- 	local pet = get_equiped_pet() 
+	-- 	if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
+	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		StateDB.farming_pet = nil
+	-- 		table.clear(StateDB.active_ailments)
+	-- 		return 
+	-- 	end
+	-- 	local xp = pet.xp
+	-- 	local friendship = pet.friendship
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "water") == 0 then
+	-- 		local money = ClientData.get("money") 
+	-- 		if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+	-- 		if money > 20 then
+	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = 20
+	-- 				}
+	-- 			)
+	-- 		else 
+	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = money
+	-- 				}
+	-- 			)
+	-- 		end
+	-- 	end
+	-- 	API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+	-- 		"__Enum_PetObjectCreatorType_2",
+	-- 		{
+	-- 			additional_consume_uniques={},
+	-- 			pet_unique = pet.unique,
+	-- 			unique_id = inv_get_category_unique("food", "water")
+	-- 		}
+	-- 	)
+	-- 	while get_equiped_pet_ailments().thirsty do
+	-- 		task.wait(1)
+	-- 	end
+	-- 	enstat(xp, friendship, money, "thirsty")  
+	-- end,
 	["sick"] = function() 
 		local pet = get_equiped_pet() 
 		if not pet or not StateDB.farming_pet or pet.unique ~= StateDB.farming_pet then
