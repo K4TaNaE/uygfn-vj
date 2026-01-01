@@ -406,13 +406,7 @@ local function get_equiped_pet() -- not optimzed
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
-	local pets = game.Workspace.Pets
-	if #pets:GetChildren() == 0 then
-		repeat
-			pets.ChildAdded:Wait()
-		until #pets:GetChildren() > 0
-	end
-	for _,v in ipairs(pets:GetChildren()) do
+	for _,v in ipairs(game.Workspace.Pets:GetChildren() or {}) do
 		local entity = PetEntityManager.get_pet_entity(v)
 		if entity.session_memory then 
 			local session = entity.session_memory
