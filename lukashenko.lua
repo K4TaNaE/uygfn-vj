@@ -413,11 +413,15 @@ local function get_equiped_pet() -- not optimzed
 		until #pets:GetChildren() > 0
 	end
 	for _,v in ipairs(pets:GetChildren()) do
-		if PetEntityManager.get_pet_entity(v).session_memory.meta.owned_by_local_player then
-			model = v
+		local entity = PetEntityManager.get_pet_entity(v)
+		if entity.session_memory then 
+			local session = entity.session_memory
+			if session.meta.owned_by_local_player then
+				model = v
+			end				
 		end
 	end
-	data.remote = remote; data.unique = unique; data.model = model; data.wrapper = wrapper; 
+	data.remote = remote; data.unique = unique; data.model = model or {}; data.wrapper = wrapper; 
 	data.age = age; data.rarity = rarity; data.friendship = friendship; data.xp = xp
  	return data
 end
@@ -557,7 +561,7 @@ end
 local function gotovec(x:number, y:number, z:number) -- optimized
 	if get_equiped_pet() then
 		PetActions.pick_up(ClientData.get("pet_char_wrappers")[1])
-		task.wait(.1)
+		task.wait(.2)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.1)
 		API["AdoptAPI/EjectBaby"]:FireServer(get_equiped_pet().model)
