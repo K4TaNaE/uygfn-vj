@@ -461,13 +461,17 @@ end
 local function get_equiped_pet_ailments() -- optimized
 	local ailments = {}
 	local pet = get_equiped_pet()
-	task.wait(.2)
 	if pet and ClientData.get("ailments_manager")["ailments"][pet.unique] then
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.unique] do
 			ailments[k] = true
 		end
 	end
 	return ailments
+end
+
+local function has_ailment(ailment) 
+    local ail = ClientData.get("ailments_manager")["ailments"][StateDB.farming_pet]
+    return ail and ail[ailment] ~= nil
 end
 
 local function get_baby_ailments() -- optimized
@@ -694,14 +698,13 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		to_mainmap()
 		gotovec(-23, 37, -1063)
-		while get_equiped_pet_ailments().camping and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("camping") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "camping")
 	end,
 	-- ["hungry"] = function() 
@@ -732,10 +735,10 @@ local pet_ailments = {
 	-- 			unique_id = inv_get_category_unique("food", "healing_apple")
 	-- 		}
 	-- 	)
-	-- 	while get_equiped_pet_ailments().hungry do
-	-- 		task.wait(1)
-	-- 	end
-	-- 	enstat(xp, friendship, money, "hungry")  
+        -- repeat 
+        --     task.wait(1)
+        -- until not has_ailment("hungry") 
+        -- 	enstat(xp, friendship, money, "hungry")  
 	-- end,
 	-- ["thirsty"] = function() 
 	-- 	local pet = get_equiped_pet() 
@@ -777,10 +780,10 @@ local pet_ailments = {
 	-- 			unique_id = inv_get_category_unique("food", "water")
 	-- 		}
 	-- 	)
-	-- 	while get_equiped_pet_ailments().thirsty do
-	-- 		task.wait(1)
-	-- 	end
-	-- 	enstat(xp, friendship, money, "thirsty")  
+        -- repeat 
+        --     task.wait(1)
+        -- until not has_ailment("thirsty")
+    -- 	enstat(xp, friendship, money, "thirsty")  
 	-- end,
 	["sick"] = function() 
 		local pet = get_equiped_pet() 
@@ -814,14 +817,13 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		to_mainmap()
 		gotovec(-365, 30, -1749)
-		while get_equiped_pet_ailments().bored and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("bored") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "bored")  
 	end,
 	["salon"] = function() 
@@ -835,13 +837,12 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		goto("Salon", "MainDoor")
-		while get_equiped_pet_ailments().salon and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("salon") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "salon")  
 	end,
 	["play"] = function() -- improve. add something without task.wait
@@ -856,7 +857,7 @@ local pet_ailments = {
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
 		API["ToolAPI/Equip"]:InvokeServer("2_48207a6d86754985a58ee57c758331de", {})
-		while get_equiped_pet_ailments().play do
+		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
 				{
@@ -879,7 +880,6 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 15
 		to_home()
 		API['HousingAPI/ActivateFurniture']:InvokeServer(
 			LocalPlayer,
@@ -890,11 +890,11 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while get_equiped_pet_ailments().toilet and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 15
+        repeat 
+            task.wait(1)
+        until not has_ailment("toilet") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "toilet")  
 	end,
 	["beach_party"] = function() 
@@ -908,14 +908,13 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		to_mainmap()
 		gotovec(-596, 27, -1473)
-		while get_equiped_pet_ailments().beach_party and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("beach_party") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "beach_party")  
 	end,
 	["ride"] = function()
@@ -931,7 +930,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
-		while get_equiped_pet_ailments().ride do
+		while has_ailment("ride") do
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
@@ -951,7 +950,6 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 20
 		to_home()
 		API['HousingAPI/ActivateFurniture']:InvokeServer(
 			LocalPlayer,
@@ -962,11 +960,11 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while get_equiped_pet_ailments().dirty and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 20
+        repeat 
+            task.wait(1)
+        until not has_ailment("dirty") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "dirty")  
 	end,
 	["walk"] = function() 
@@ -981,7 +979,7 @@ local pet_ailments = {
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		while get_equiped_pet_ailments().walk do 
+		while has_ailment("walk") do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
@@ -1000,13 +998,12 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		goto("School", "MainDoor")
-		while get_equiped_pet_ailments().school and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("school") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "school")  
 	end,
 	["sleepy"] = function()
@@ -1020,7 +1017,6 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 20
 		to_home()
 		API['HousingAPI/ActivateFurniture']:InvokeServer(
 			LocalPlayer,
@@ -1031,11 +1027,11 @@ local pet_ailments = {
 			},
 			pet.model
 		)
-		while get_equiped_pet_ailments().sleepy and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 20
+        repeat 
+            task.wait(1)
+        until not has_ailment("sleepy") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "sleepy")  
 	end,
 	["mystery"] = function() 
@@ -1066,13 +1062,12 @@ local pet_ailments = {
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
-		local timer = 60
 		goto("PizzaShop", "MainDoor")
-		while get_equiped_pet_ailments().pizza_party and timer > 0 do
-			task.wait(1)
-			timer -= 1
-		end
-		if timer == 0 then error("Out of limits") end
+        local deadline = os.clock() + 60
+        repeat 
+            task.wait(1)
+        until not has_ailment("pizza_party") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "pizza_party")  
 	end,
 	
