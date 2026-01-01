@@ -689,6 +689,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task camping started")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -700,6 +701,7 @@ local pet_ailments = {
         until not has_ailment("camping") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "camping")
+		print("task camping ended")
 	end,
 	-- ["hungry"] = function() 
 	-- 	local pet = get_equiped_pet() 
@@ -787,6 +789,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task sick started")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -799,6 +802,7 @@ local pet_ailments = {
 		)
 		task.wait(1)
 		enstat(xp, friendship, money, "sick") 
+		print("task sick ended")
 	end,
 	["bored"] = function() 
 		local pet = get_equiped_pet() 
@@ -808,6 +812,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print('task bored started')
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -819,6 +824,7 @@ local pet_ailments = {
         until not has_ailment("bored") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "bored")  
+		print('task bored ended')
 	end,
 	-- ["salon"] = function() 
 	-- 	local pet = get_equiped_pet() 
@@ -847,6 +853,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task play started")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -862,6 +869,7 @@ local pet_ailments = {
 			task.wait(5) 
 		end
 		enstat(xp, friendship, money, "play") 
+		print('task play completed')
 	end,
 	["toilet"] = function() 
 		local pet = get_equiped_pet() 
@@ -871,6 +879,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print('task toilet started')
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -890,6 +899,7 @@ local pet_ailments = {
         until not has_ailment("toilet") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "toilet")  
+		print("toilet task ended")
 	end,
 	["beach_party"] = function() 
 		local pet = get_equiped_pet() 
@@ -899,6 +909,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task beach party started ")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -910,6 +921,7 @@ local pet_ailments = {
         until not has_ailment("beach_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "beach_party")  
+		print("beachparty ended")
 	end,
 	["ride"] = function()
 		local pet = get_equiped_pet() 
@@ -919,6 +931,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task ride started")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -932,6 +945,7 @@ local pet_ailments = {
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		enstat(xp, friendship, money, "ride") 
+		print('task ride done')
 	end,
 	["dirty"] = function() 
 		local pet = get_equiped_pet() 
@@ -941,6 +955,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print('task dirty started')
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -960,6 +975,7 @@ local pet_ailments = {
         until not has_ailment("dirty") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "dirty")  
+		print("task dirty completed")
 	end,
 	["walk"] = function() 
 		local pet = get_equiped_pet() 
@@ -969,6 +985,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print('task walk started')
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -980,6 +997,7 @@ local pet_ailments = {
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		enstat(xp, friendship, money, "walk") 
+		print('task walk enedd')
 	end,
 	-- ["school"] = function() 
 	-- 	local pet = get_equiped_pet() 
@@ -1008,6 +1026,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task sleepy started")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -1027,6 +1046,7 @@ local pet_ailments = {
         until not has_ailment("sleepy") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "sleepy")  
+		print("task sleepy completed")
 	end,
 	["mystery"] = function() 
 		local pet = get_equiped_pet()
@@ -1036,6 +1056,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task mystery started")
 		for k,_ in loader("new:AilmentsDB") do
 		API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
 			pet.unique,
@@ -1044,6 +1065,8 @@ local pet_ailments = {
 			k
 		)
 		end				
+		print("task mystery completed")
+
 	end,
 	["pizza_party"] = function() 
 		local pet = get_equiped_pet() 
@@ -1053,6 +1076,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("task pizza party completed")
 		local xp = pet.xp
 		local friendship = pet.friendship
 		local money = ClientData.get("money")
@@ -1063,6 +1087,7 @@ local pet_ailments = {
         until not has_ailment("pizza_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "pizza_party")  
+		print("task pizza party completed")
 	end,
 	
 	["pet_me"] = function() end,
@@ -1362,6 +1387,7 @@ local function init_autofarm() -- optimized
 				if StateDB.active_ailments[k] then task.wait(2) continue end
 				if pet_ailments[k] then
 					_G.queue:enqueue({"ailment pet", pet_ailments[k]})
+					print(k, "enqueued")
 					StateDB.active_ailments[k] = true
 				end
 			end
