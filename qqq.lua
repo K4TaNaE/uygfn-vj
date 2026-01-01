@@ -1367,7 +1367,7 @@ local function init_autofarm() -- optimized
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then task.wait(2) continue end
 				if pet_ailments[k] then
-					_G.queue:enqueue({"ailment pet", pet_ailments[v]})
+					_G.queue:enqueue({"ailment pet", pet_ailments[k]})
 					StateDB.active_ailments[k] = true
 				end
 			end
@@ -1589,10 +1589,10 @@ end
 
 local function init_gift_autoopen() -- optimized
 	while true do
-		if count(get_owned_category("gifts")) > 0 then
+		if count(get_owned_category("gifts")) < 0 then
 			repeat task.wait(300) until count(get_owned_category("gifts")) > 0
 		end
-		for k,_ in count(get_owned_category("gifts")) do
+		for k,_ in get_owned_category("gifts") do
 			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
 			task.wait(0.2)
 		end	
@@ -1604,25 +1604,25 @@ local function __init()
 		task.defer(init_autofarm)
 	end
 	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		task.defer(init_auto_buy)
-	end
+	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+	-- 	task.defer(init_auto_buy)
+	-- end
 
-	task.wait(1)
+	-- task.wait(1)
 
-	if _G.InternalConfig.BabyAutoFarm then
-		task.defer(init_baby_autofarm)
-	end
+	-- if _G.InternalConfig.BabyAutoFarm then
+	-- 	task.defer(init_baby_autofarm)
+	-- end
 
-	task.wait(1)
+	-- task.wait(1)
 
 	-- if _G.InternalConfig.CrystallEggFarm then
 	-- 	task.defer(init_crystall_auto)
 	-- end
 
-	if _G.InternalConfig.PetAutoTrade then
-		task.defer(init_auto_trade)
-	end
+	-- if _G.InternalConfig.PetAutoTrade then
+	-- 	task.defer(init_auto_trade)
+	-- end
 
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
@@ -1631,27 +1631,27 @@ local function __init()
 				webhook(
 					"AutoFarm Log",
 					`**💸Money Earned :** {farmed.money}\n\
-	-- 				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	-- 				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	-- 				**🧪Potions Farmed :** {farmed.potions}\n\
-	-- 				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	-- 				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	-- 				**🥚Eggs Hatched :** {farmed.eggs_hatched}\
-	-- 				**📦Found in LureBox :** {farmed.lurebox}`
+	   				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	   				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	   				**🧪Potions Farmed :** {farmed.potions}\n\
+	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}\n\
+	   				**📦Found in LureBox :** {farmed.lurebox}`
 				)
 			end
 		end)
 	end
 
-	task.wait(1)
+	-- task.wait(1)
 
-	-- if _G.InternalConfig.LureboxFarm then
-	-- 	task.defer(init_lurebox)
+	-- -- if _G.InternalConfig.LureboxFarm then
+	-- -- 	task.defer(init_lurebox)
+	-- -- end
+
+	-- if _G.InternalConfig.GiftsAutoOpen then
+	-- 	task.defer(init_gift_autoopen)
 	-- end
-
-	if _G.InternalConfig.GiftsAutoOpen then
-		task.defer(init_gift_autoopen)
-	end
 
 end
 
