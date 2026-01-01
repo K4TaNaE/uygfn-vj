@@ -457,6 +457,7 @@ end
 local function get_equiped_pet_ailments() -- optimized
 	local ailments = {}
 	local pet = get_equiped_pet()
+	task.wait(.2)
 	if pet then
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.unique] do
 			ailments[k] = true
