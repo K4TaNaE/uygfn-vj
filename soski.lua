@@ -12,7 +12,7 @@ Queue.new = function()
 		running = false,
 		blocked = false,
 
-		enqueue = function(self, task: table) -- task must be {taskname, callback, repeat: boolean}.
+		enqueue = function(self, task: table) -- task must be {taskname, callback}.
 			if type(task) == "table" and type(task[1]) == "string" and type(task[2]) == "function" and self.blocked == false then
 				self.__tail += 1
 				table.insert(self._data, self.__tail, task)
@@ -118,7 +118,7 @@ Queue.new = function()
 		destroy_linked = function(self, taskname) 
 			if not self:empty() then
 				for k,v in self._data do
-					if v[1] == taskname then
+					if v[1]:match(taskname) then
 						table.remove(self._data, k)
 						self.__tail -= 1
 					end
@@ -139,27 +139,20 @@ Queue.new = function()
 		end,
 
 		__run = function(self)
-			if self.running then
-				return
-			end
-
 			self.running = true
 
-			while self.__head <= self.__tail do
-				local taskData = self._data[self.__head]
-				if not taskData then
-					break
-				end
+			while not self:empty() do
+				local task = self._data[self.__head]
 
-				local name = taskData[1]
-				local callback = taskData[2]
+				local name = task[1]
+				local callback = task[2]
 
-				print("Running task:", name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
 
 				if not ok then
 					print("Task failed:", err)
+					active_ailments[name:split(": ")[2]] = nil
 				end
 
 				task.wait(.5) 
@@ -211,7 +204,7 @@ local actual_pet = {
 	rarity = nil
 }
 local total_fullgrowned = {}
-_G.queue = Queue.new()
+local queue = Queue.new()
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -572,7 +565,7 @@ end
 local function gotovec(x:number, y:number, z:number) -- optimized
 	local pet = get_equiped_pet()
 	if pet then
-		PetActions.pick_up(pet.wrapper)
+		PetActions.pick_up(pet.model)
 		task.wait(.2)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.1)
@@ -639,7 +632,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 		if actual_pet.unique ~= ClientData.get("pet_char_wrappers")[1].pet_unique then
 			farmed.eggs_hatched += 1 
 			actual_pet.unique = nil 
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			table.clear(StateDB.active_ailments)
 			farmed.money += ClientData.get("money") - money
 			farmed.ailments += 1
@@ -674,7 +667,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 			update_gui("fullgrown", farmed.pets_fullgrown)
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 		else
 			StateDB.active_ailments[ailment] = nil
 		end
@@ -698,7 +691,7 @@ local pet_ailments = {
 	["camping"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -719,7 +712,7 @@ local pet_ailments = {
 	-- ["hungry"] = function() 
 	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
 	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		queue:destroy_linked("ailment pet")
 	-- 		actual_pet.unique = nil
 	-- 		table.clear(StateDB.active_ailments)
 	-- 		return 
@@ -753,7 +746,7 @@ local pet_ailments = {
 	-- ["thirsty"] = function() 
 	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
 	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-	-- 		_G.queue:destroy_linked("ailment pet")
+	-- 		queue:destroy_linked("ailment pet")
 	-- 		actual_pet.unique = nil
 	-- 		table.clear(StateDB.active_ailments)
 	-- 		return 
@@ -798,7 +791,7 @@ local pet_ailments = {
 	["sick"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -820,7 +813,7 @@ local pet_ailments = {
 	["bored"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -841,7 +834,7 @@ local pet_ailments = {
 	["salon"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -861,7 +854,7 @@ local pet_ailments = {
 	["play"] = function() -- improve. add something without task.wait
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -886,7 +879,7 @@ local pet_ailments = {
 	["toilet"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -915,7 +908,7 @@ local pet_ailments = {
 	["beach_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -936,7 +929,7 @@ local pet_ailments = {
 	["ride"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -959,7 +952,7 @@ local pet_ailments = {
 	["dirty"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -988,7 +981,7 @@ local pet_ailments = {
 	["walk"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -998,7 +991,7 @@ local pet_ailments = {
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		PetActions.pick_up(pet.wrapper)
+		PetActions.pick_up(pet.model)
 		while has_ailment("walk") do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
@@ -1011,7 +1004,7 @@ local pet_ailments = {
 	["school"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -1031,7 +1024,7 @@ local pet_ailments = {
 	["sleepy"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -1060,7 +1053,7 @@ local pet_ailments = {
 	["mystery"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -1077,7 +1070,7 @@ local pet_ailments = {
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
-			_G.queue:destroy_linked("ailment pet")
+			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
@@ -1386,7 +1379,7 @@ local function init_autofarm() -- optimized
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
-					_G.queue:enqueue({"ailment pet", pet_ailments[k]})
+					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 					StateDB.active_ailments[k] = true
 				end
 			end
@@ -1424,7 +1417,7 @@ local function init_baby_autofarm() -- optimized
 			if StateDB.baby_active_ailments[k] then continue end
 			if baby_ailments[k] then
 				StateDB.baby_active_ailments[k] = true
-				_G.queue:enqueue({"ailment baby", baby_ailments[k]})
+				queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
 			end
 		end
 		task.wait(15)
