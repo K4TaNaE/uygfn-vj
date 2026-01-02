@@ -1398,8 +1398,8 @@ local function init_autofarm() -- optimized
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
-					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 					StateDB.active_ailments[k] = true
+					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
 			task.wait(20)
