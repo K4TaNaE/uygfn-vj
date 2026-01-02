@@ -406,7 +406,6 @@ local function get_equiped_pet() -- not optimzed
 	local cdata = ClientData.get("inventory").pets[unique]
 	if cdata then
 		age = cdata.properties.age
-		rarity = cdata.properties.rarity
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
@@ -416,6 +415,7 @@ local function get_equiped_pet() -- not optimzed
 			local session = entity.session_memory
 			if session.meta.owned_by_local_player then
 				model = v
+				rarity = entity.base.entry.rarity
 			end				
 		end
 	end
@@ -575,8 +575,8 @@ local function count(t)
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
-	local pet = get_equiped_pet()
-	if pet then
+	local pet = actual_pet
+	if pet.unique then
 		PetActions.pick_up(pet.wrapper)
 		task.wait(.2)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
@@ -663,7 +663,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 	end
 
 	if _G.InternalConfig.AutoFarmFilter.PotionFarm then
-		if friendship < get_equiped_pet().friendship then
+		if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
 			farmed.friendship_levels += 1
 			farmed.potions += 1
 			table.clear(StateDB.active_ailments)
@@ -673,7 +673,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 			StateDB.active_ailments[ailment] = nil
 		end
 	else 
-		if xp >= xp_thresholds[get_equiped_pet().rarity][6] then
+		if xp >= xp_thresholds[actual_pet.rarity]["fullgrown"] then
 			farmed.pets_fullgrown += 1
 			table.insert(total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
@@ -1390,7 +1390,7 @@ local function init_autofarm() -- optimized
 		actual_pet.rarity = curpet.rarity
 
 		while true do
-			if not actual_pet.unique == cur_unique() then
+			if actual_pet.unique ~= cur_unique() then
 				actual_pet.unique = nil
 				break
 			end
@@ -1742,17 +1742,21 @@ end)
 		if (Config.FarmPriority):lower() == "eggs" or (Config.FarmPriority):lower() == "pets" then
 			_G.InternalConfig.FarmPriority = Config.FarmPriority
 			if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
-				if not (#Config.AutoFarmFilter.PetsToExclude == 0 and Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$")) then
-					local list = {}
-					for _,v in Config.AutoFarmFilter.PetsToExclude do
-						if check_remote_existance("pets", v) then
-							list[v] = true
-						else
-							colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+				if not #Config.AutoFarmFilter.PetsToExclude == 0 then
+					if Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$") then
+						local list = {}
+						for _,v in Config.AutoFarmFilter.PetsToExclude do
+							if check_remote_existance("pets", v) then
+								list[v] = true
+							else
+								colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+							end
 						end
-					end
-					if count(list) > 0 then
-						_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
+						if count(list) > 0 then
+							_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
+						else
+							_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
+						end
 					else
 						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 					end
