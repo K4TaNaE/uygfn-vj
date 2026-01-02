@@ -2,6 +2,112 @@ if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 
+--[[ sUNC ]]--
+-- vegax, codex, delta x, xeno, velocity, volcano, yub-x, xenith, bunni, potassium  --- test on this provided sunc below
+local cloneref =  cloneref -- potassium, seliware, volcano, delta, bunni, cryptic
+local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
+
+--[[ Services ]]--
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local RunService = game:GetService("RunService")
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local HttpService = game:GetService("HttpService")
+local NetworkClient = game:GetService("NetworkClient")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+
+--[[ Adopt stuff ]]--
+local loader = require(ReplicatedStorage.Fsys).load
+local UIManager = loader("UIManager")
+local ClientData = loader("ClientData")
+local InventoryDB = loader("InventoryDB")
+local PetEntityManager = loader("PetEntityManager")
+local InteriorsM = loader("InteriorsM")
+local HouseClient = loader("HouseClient")
+local PetActions = loader("PetActions")
+local StateManagerClient = loader("StateManagerClient")
+local API = ReplicatedStorage.API
+-- local Router = loader("")
+
+local StateDB = {
+	active_ailments = {},
+	baby_active_ailments = {}
+}
+local actual_pet = {
+	unique = nil,
+	remote = nil,
+	model = nil,
+	wrapper = nil,
+	rarity = nil
+}
+local total_fullgrowned = {}
+local farmed = {
+	money = 0,
+	pets_fullgrown = 0,
+	ailments = 0,
+	potions = 0,
+	friendship_levels = 0,
+	event_currency = 0,
+	baby_ailments = 0,
+	eggs_hatched = 0,
+	lurebox = {}
+}
+
+local furn = {}
+_G.InternalConfig = {}
+
+local markup = {
+	["INFO"] = "80, 200, 255",
+	["ERROR"] = "255, 70, 70",
+	["SUCCESS"] = "80, 255, 120",
+	["WARNING"] = "255, 200, 0"
+}
+
+local xp_thresholds = {
+    common = {
+        newborn = 0,
+        junior = 200,
+        pre_teen = 500,
+        teen = 900,
+        post_teen = 1500,
+        fullgrown = 2500
+    },
+    uncommon = {
+        newborn = 0,
+        junior = 300,
+        pre_teen = 800,
+        teen = 1500,
+        post_teen = 2700,
+        fullgrown = 3600
+    },
+    rare = {
+        newborn = 0,
+        junior = 500,
+        pre_teen = 1200,
+        teen = 2100,
+        post_teen = 3400,
+        fullgrown = 5400
+    },
+    ultra_rare = {
+        newborn = 0,
+        junior = 700,
+        pre_teen = 1700,
+        teen = 3400,
+        post_teen = 8000,
+        fullgrown = 10700
+    },
+    legendary = {
+        newborn = 0,
+        junior = 1000,
+        pre_teen = 2700,
+        teen = 5600,
+        post_teen = 10400,
+        fullgrown = 18300
+    }
+}
+
+
 --[[ Lua Stuff ]]
 local Queue = {} 
 Queue.new = function() 
@@ -154,7 +260,6 @@ Queue.new = function()
 					print("Task failed:", err)
 					local spl = name:split(": ")
 					if spl[1]:match("ailment pet") then
-						print(spl[2])
 						StateDB.active_ailments[spl[2]] = nil
 					elseif spl[1]:match("ailment baby") then
 						StateDB.active_ailments_baby[spl[2]] = nil
@@ -169,113 +274,7 @@ Queue.new = function()
 
 	}
 end
-
---[[ sUNC ]]--
--- vegax, codex, delta x, xeno, velocity, volcano, yub-x, xenith, bunni, potassium  --- test on this provided sunc below
-local cloneref =  cloneref -- potassium, seliware, volcano, delta, bunni, cryptic
-local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
-
---[[ Services ]]--
-local LocalPlayer = game:GetService("Players").LocalPlayer
-local RunService = game:GetService("RunService")
-local CoreGui = cloneref(game:GetService("CoreGui"))
-local HttpService = game:GetService("HttpService")
-local NetworkClient = game:GetService("NetworkClient")
-local TeleportService = game:GetService("TeleportService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualUser = game:GetService("VirtualUser")
-
---[[ Adopt stuff ]]--
-local loader = require(ReplicatedStorage.Fsys).load
-local UIManager = loader("UIManager")
-local ClientData = loader("ClientData")
-local InventoryDB = loader("InventoryDB")
-local PetEntityManager = loader("PetEntityManager")
-local InteriorsM = loader("InteriorsM")
-local HouseClient = loader("HouseClient")
-local PetActions = loader("PetActions")
-local StateManagerClient = loader("StateManagerClient")
-local API = ReplicatedStorage.API
--- local Router = loader("")
-
-local StateDB = {
-	active_ailments = {},
-	baby_active_ailments = {}
-}
-local actual_pet = {
-	unique = nil,
-	remote = nil,
-	model = nil,
-	wrapper = nil,
-	rarity = nil
-}
-local total_fullgrowned = {}
 local queue = Queue.new()
-local farmed = {
-	money = 0,
-	pets_fullgrown = 0,
-	ailments = 0,
-	potions = 0,
-	friendship_levels = 0,
-	event_currency = 0,
-	baby_ailments = 0,
-	eggs_hatched = 0,
-	lurebox = {}
-}
-
-local furn = {}
-_G.InternalConfig = {}
-
-local markup = {
-	["INFO"] = "80, 200, 255",
-	["ERROR"] = "255, 70, 70",
-	["SUCCESS"] = "80, 255, 120",
-	["WARNING"] = "255, 200, 0"
-}
-
-local xp_thresholds = {
-    common = {
-        newborn = 0,
-        junior = 200,
-        pre_teen = 500,
-        teen = 900,
-        post_teen = 1500,
-        fullgrown = 2500
-    },
-    uncommon = {
-        newborn = 0,
-        junior = 300,
-        pre_teen = 800,
-        teen = 1500,
-        post_teen = 2700,
-        fullgrown = 3600
-    },
-    rare = {
-        newborn = 0,
-        junior = 500,
-        pre_teen = 1200,
-        teen = 2100,
-        post_teen = 3400,
-        fullgrown = 5400
-    },
-    ultra_rare = {
-        newborn = 0,
-        junior = 700,
-        pre_teen = 1700,
-        teen = 3400,
-        post_teen = 8000,
-        fullgrown = 10700
-    },
-    legendary = {
-        newborn = 0,
-        junior = 1000,
-        pre_teen = 2700,
-        teen = 5600,
-        post_teen = 10400,
-        fullgrown = 18300
-    }
-}
-
 
 --[[ Helpers ]]-- -- not optimized
 ;(function() 
@@ -407,7 +406,6 @@ local function get_equiped_pet() -- not optimzed
 	local cdata = ClientData.get("inventory").pets[unique]
 	if cdata then
 		age = cdata.properties.age
-		rarity = cdata.properties.rarity
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
@@ -417,6 +415,7 @@ local function get_equiped_pet() -- not optimzed
 			local session = entity.session_memory
 			if session.meta.owned_by_local_player then
 				model = v
+				rarity = entity.base.entry.rarity
 			end				
 		end
 	end
@@ -469,7 +468,7 @@ local function get_equiped_pet_ailments() -- optimized
 	local pet = ClientData.get("pet_char_wrappers")[1]
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
-		if not path then repeat print("waiting for path") task.wait(10) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
+		if not path then return nil end
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
 			ailments[k] = true
 		end
@@ -579,7 +578,7 @@ local function gotovec(x:number, y:number, z:number) -- optimized
 	local pet = actual_pet
 	if pet.unique then
 		PetActions.pick_up(pet.wrapper)
-		task.wait(.2)
+		task.wait(.5)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.2)
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
@@ -638,7 +637,7 @@ local function update_gui(label, val: number) -- optimized
     end
 end
 
-local function enstat(xp, friendship, money, ailment)  -- optimized
+local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
 		task.wait(0.5)
@@ -674,7 +673,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 			StateDB.active_ailments[ailment] = nil
 		end
 	else 
-		if xp >= xp_thresholds[actual_pet.rarity][6] then
+		if actual_pet.rarity == 6 then
 			farmed.pets_fullgrown += 1
 			table.insert(total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
@@ -703,14 +702,13 @@ end
 local pet_ailments = { 
 	["camping"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("camping") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_mainmap()
@@ -720,18 +718,17 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("camping") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "camping")
+		enstat(friendship, money, "camping")
 	end,
 	-- ["hungry"] = function() 
 	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
-	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
 	-- 		queue:destroy_linked("ailment pet")
 	-- 		actual_pet.unique = nil
 	-- 		table.clear(StateDB.active_ailments)
 	-- 		return 
 	-- 	end
 	-- 	local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-	-- 	local xp = cdata.properties.xp
 	-- 	local friendship = cdata.properties.friendship_level
 	-- 	local money = ClientData.get("money")
 	-- 	if count_of_product("food", "healing_apple") == 0 then
@@ -754,18 +751,17 @@ local pet_ailments = {
     --     repeat 
     --         task.wait(1)
     --     until not has_ailment("hungry") 
-    --     	enstat(xp, friendship, money, "hungry")  
+    --     	enstat(friendship, money, "hungry")  
 	-- end,
 	-- ["thirsty"] = function() 
 	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
-	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("thirsty") then
 	-- 		queue:destroy_linked("ailment pet")
 	-- 		actual_pet.unique = nil
 	-- 		table.clear(StateDB.active_ailments)
 	-- 		return 
 	-- 	end
 	-- 	local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-	-- 	local xp = cdata.properties.xp
 	-- 	local friendship = cdata.properties.friendship_level
 	-- 	local money = ClientData.get("money")
 	-- 	if count_of_product("food", "water") == 0 then
@@ -799,18 +795,17 @@ local pet_ailments = {
     --     repeat 
     --         task.wait(1)
     --     until not has_ailment("thirsty")
-    -- 	enstat(xp, friendship, money, "thirsty")  
+    -- 	enstat(friendship, money, "thirsty")  
 	-- end,
 	["sick"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sick") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		goto("Hospital", "MainDoor")
@@ -821,18 +816,17 @@ local pet_ailments = {
 			LocalPlayer.Character
 		)
 		task.wait(1)
-		enstat(xp, friendship, money, "sick") 
+		enstat(friendship, money, "sick") 
 	end,
 	["bored"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("bored") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_mainmap()
@@ -842,18 +836,17 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("bored") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "bored")  
+		enstat(friendship, money, "bored")  
 	end,
 	["salon"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("salon") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		goto("Salon", "MainDoor")
@@ -862,43 +855,42 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("salon") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "salon")  
+		enstat(friendship, money, "salon")  
 	end,
 	["play"] = function() -- improve. add something without task.wait
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("play") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		API["ToolAPI/Equip"]:InvokeServer("2_48207a6d86754985a58ee57c758331de", {})
+		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
 				{
 					reaction_name = "ThrowToyReaction",
-					unique_id = "2_48207a6d86754985a58ee57c758331de"
+					unique_id = inv_get_category_unique("toys", "squeaky_bone_default")
 				}
 			)
 			task.wait(5) 
 		end
-		enstat(xp, friendship, money, "play") 
+		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})j
+		enstat(friendship, money, "play") 
 	end,
 	["toilet"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("toilet") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_home()
@@ -916,18 +908,17 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("toilet") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "toilet")  
+		enstat(friendship, money, "toilet")  
 	end,
 	["beach_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("beach_party") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_mainmap()
@@ -937,18 +928,17 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("beach_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "beach_party")  
+		enstat(friendship, money, "beach_party")  
 	end,
 	["ride"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("ride") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
@@ -960,11 +950,11 @@ local pet_ailments = {
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
-		enstat(xp, friendship, money, "ride") 
+		enstat(friendship, money, "ride") 
 	end,
 	["dirty"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("dirty") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
@@ -972,7 +962,6 @@ local pet_ailments = {
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_home()
@@ -990,23 +979,22 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("dirty") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "dirty")  
+		enstat(friendship, money, "dirty")  
 		print("dirty completed")
 	end,
 	["walk"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("walk") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		PetActions.pick_up(pet.model)
+		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
 		while has_ailment("walk") do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
@@ -1014,18 +1002,17 @@ local pet_ailments = {
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
-		enstat(xp, friendship, money, "walk") 
+		enstat(friendship, money, "walk") 
 	end,
 	["school"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("school") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		goto("School", "MainDoor")
@@ -1034,18 +1021,17 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("school") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "school")  
+		enstat(friendship, money, "school")  
 	end,
 	["sleepy"] = function()
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sleepy") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		to_home()
@@ -1063,36 +1049,37 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("sleepy") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "sleepy")  
+		enstat(friendship, money, "sleepy")  
 	end,
 	["mystery"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("mystery") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		for k,_ in loader("new:AilmentsDB") do
-		API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
-			actual_pet.unique,
-			"mystery",
-			1,
-			k
-		)
-		task.wait(.4)
-		end				
+		local ct = 1
+		for i = 3, ct, -1 do
+			for k,_ in loader("new:AilmentsDB") do
+				API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
+					actual_pet.unique,
+					"mystery",
+					i,
+					k
+				)
+			end
+		end			
 	end,
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique then
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("pizza_party") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		goto("PizzaShop", "MainDoor")
@@ -1101,7 +1088,7 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("pizza_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		enstat(xp, friendship, money, "pizza_party")  
+		enstat(friendship, money, "pizza_party")  
 	end,
 	
 	["pet_me"] = function() end,
@@ -1353,7 +1340,7 @@ local function init_autofarm() -- optimized
 		else
 			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
-					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1395,12 +1382,19 @@ local function init_autofarm() -- optimized
 				actual_pet.unique = nil
 				break
 			end
+			if not actual_pet.unique then
+				break
+			end			
 			local eqpetailms = get_equiped_pet_ailments()
+			if not eqpetailms then
+				task.wait(10)
+				continue
+			end
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
-					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 					StateDB.active_ailments[k] = true
+					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
 			task.wait(20)
@@ -1462,11 +1456,10 @@ local function init_auto_buy() -- optimized
 	end
 end
 
--- local function init_crystall_auto()
+-- local function init_crystall_farm()
 -- 	local pet_exchange_age, pet_exchange_rar
 --  	pet_exchange_age = _G.InternalConfig.PetExchangeAge 
 -- 	pet_exchange_rar = _G.InternalConfig.PetExchangeRarity
-
 
 -- end
 
@@ -1487,7 +1480,6 @@ local function init_auto_trade() -- optimized
 	
 	game.Players.PlayerRemoving:Connect(function(player) 
 		if player == user then
-			player.CharacterRemoving:Wait()
 			exist = false
 		end
 	end)
@@ -1570,54 +1562,54 @@ local function init_auto_trade() -- optimized
 end
 
 -- -- сделать детект предметов которые ты можешшь положить в бокс
--- local function init_lurebox() -- optimized
--- 	while true do
--- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
--- 			LocalPlayer,
--- 			furn.lurebox.usepart,
--- 			"UseBlock",
--- 			{
--- 				bait_unique = "2_91644c5593d247da9297c3d05a83cb53"
--- 			},
--- 			LocalPlayer.Character
--- 		)
--- 		task.wait(2)
--- 		local timesleep = nil
--- 		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
---             if v.Name == "Template" then
---                 local msg = v:FindFirstChild("Message")
---                 if not msg then continue end
+local function init_lurebox() -- optimized
+	while true do
+		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+			LocalPlayer,
+			furn.lurebox.usepart,
+			"UseBlock",
+			{
+				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
+			},
+			LocalPlayer.Character
+		)
+		task.wait(2)
+		local timesleep = nil
+		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
+            if v.Name == "Template" then
+                local msg = v:FindFirstChild("Message")
+                if not msg then continue end
 
---                 local holder = msg:FindFirstChild("FragmentHolder")
---                 if not holder then continue end
+                local holder = msg:FindFirstChild("FragmentHolder")
+                if not holder then continue end
 
---                 local lure = holder:FindFirstChild("LuresTimerFragment")
---                 if not lure then continue end
+                local lure = holder:FindFirstChild("LuresTimerFragment")
+                if not lure then continue end
 
---                 local cont = lure:FindFirstChild("Container")
---                 if not cont then continue end
+                local cont = lure:FindFirstChild("Container")
+                if not cont then continue end
 
---                 local contents = cont:FindFirstChild("Contents")
---                 if not contents then continue end
+                local contents = cont:FindFirstChild("Contents")
+                if not contents then continue end
 
---                 local timer = contents:FindFirstChild("Timer")
---                 if timer then
---                     timesleep = tonumber(timer.Text)
---                     break
---                 end
---             end
--- 		end
--- 		timesleep = tonumber(timesleep)
--- 		task.wait((timesleep or 3600) + 5)
--- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
--- 			LocalPlayer,
--- 			furn.lurebox.unique,
--- 			"UseBlock",
--- 			false,
--- 			LocalPlayer.Character
--- 		)
--- 	end
--- end
+                local timer = contents:FindFirstChild("Timer")
+                if timer then
+                    timesleep = tonumber(timer.Text)
+                    break
+                end
+            end
+		end
+		timesleep = tonumber(timesleep)
+		task.wait((timesleep or 3600) + 5)
+		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+			LocalPlayer,
+			furn.lurebox.unique,
+			"UseBlock",
+			false,
+			LocalPlayer.Character
+		)
+	end
+end
 
 local function init_gift_autoopen() -- optimized
 	while true do
@@ -1631,10 +1623,19 @@ local function init_gift_autoopen() -- optimized
 	end
 end
 
-local function __init() 
-	if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
+local function init_mode() 
+	if _G.InternalConfig.Mode == "bot" then
+		RunService:Set3dRenderingEnabled(false)
+		setfpscap(1)
+	else
+		-- playable optmization
 	end
+end
+
+local function __init() 
+	-- if _G.InternalConfig.FarmPriority then
+	-- 	task.defer(init_autofarm)
+	-- end
 	
 	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
 	-- 	task.defer(init_auto_buy)
@@ -1649,40 +1650,46 @@ local function __init()
 	-- task.wait(1)
 
 	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.defer(init_crystall_auto)
+	-- 	task.defer(init_crystall_farm)
 	-- end
 
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
-
-	if _G.InternalConfig.DiscordWebhookURL then
-		task.defer(function()
-			while true do
-				task.wait(_G.InternalConfig.WebhookSendDelay)
-				webhook(
-					"AutoFarm Log",
-					`**💸Money Earned :** {farmed.money}\n\
-	   				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	   				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	   				**🧪Potions Farmed :** {farmed.potions}\n\
-	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}\n\
-	   				**📦Found in LureBox :** {farmed.lurebox}`
-				)
-			end
-		end)
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
 	end
+
+	-- if _G.InternalConfig.DiscordWebhookURL then
+	-- 	task.defer(function()
+	-- 		while true do
+	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
+	-- 			webhook(
+	-- 				"AutoFarm Log",
+	-- 				`**💸Money Earned :** {farmed.money}\n\
+	--    				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	--    				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	--    				**🧪Potions Farmed :** {farmed.potions}\n\
+	--    				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	--    				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	--    				**🥚Eggs Hatched :** {farmed.eggs_hatched}\n\
+	--    				**📦Found in LureBox :** {farmed.lurebox}`
+	-- 			)
+	-- 		end
+	-- 	end)
+	-- end
 
 	-- task.wait(1)
 
-	-- -- if _G.InternalConfig.LureboxFarm then
-	-- -- 	task.defer(init_lurebox)
-	-- -- end
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.defer(init_lurebox)
+	-- end
 
 	-- if _G.InternalConfig.GiftsAutoOpen then
 	-- 	task.defer(init_gift_autoopen)
+	-- end
+
+	-- task.wait(5)
+
+	-- if _G.InternalConfig.Mode then
+	-- 	task.defer(init_mode())
 	-- end
 
 end
@@ -1949,7 +1956,7 @@ end)
 		if Config.PetAutoTrade then 
 			_G.InternalConfig.PetAutoTrade = true	
 			if type(Config.AutoTradeFilter.PlayerTradeWith) == "string" then -- PlayerTradeWith
-				if not (Config.PlayerTradeWith):match("^%s*$") then 
+				if not Config.PlayerTradeWith:match("^%s*$") then 
 					_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = Config.AutoTradeFilter.PlayerTradeWith
 					local possible = {
 						["common"] = "common", 
@@ -2043,12 +2050,19 @@ end)
 	else
 		error("Wrong datatype of WebhookSendDelay")
 	end
-	task.wait(1)
+
+	if type(Config.Mode) == "string" then
+		if Config.Mode == "bot" or Config.mode == "playable" then
+			_G.InternalConfig.Mode = Config.Mode
+		end
+	else
+		error("Wrong datatype of Mode")
+	end
+	task.wait(2)
 end)()
 
 -- launch screen
 ;(function() -- optmized
-	if not UIManager.is_visible("MainMapApp") and not UIManager.is_visible("NewsApp") then return end
 	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
@@ -2058,8 +2072,8 @@ end)()
 	API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
 	UIManager.set_app_visibility("DailyLoginApp", false)
 	API["PayAPI/DisablePopups"]:FireServer()
-	repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart
-	task.wait(.5)
+	repeat task.wait(.3) until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and LocalPlayer.Character.Humanoid and LocalPlayer.PlayerGui
+	task.wait(1)
 end)()
 
 -- stats gui
