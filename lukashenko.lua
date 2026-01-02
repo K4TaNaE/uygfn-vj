@@ -1354,6 +1354,7 @@ local function init_autofarm() -- optimized
 			end
 		else
 			if _G.InternalConfig.FarmPriority == "pets" then			
+				print("true, farmpets")
 				for k,v in owned_pets do
 					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
@@ -1369,6 +1370,7 @@ local function init_autofarm() -- optimized
 				end
 			else 
 				for k,v in owned_pets do
+					print("false, farmeggs")
 					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
