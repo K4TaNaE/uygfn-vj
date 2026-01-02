@@ -197,7 +197,7 @@ local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-getgenv().StateDB = {
+local StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {}
 }
@@ -1757,6 +1757,8 @@ end)
 						else
 							_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 						end
+					else
+						_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 					end
 				else
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
