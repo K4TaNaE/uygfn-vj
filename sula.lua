@@ -1400,7 +1400,7 @@ local function init_autofarm() -- optimized
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
 				task.wait(10)
-				break
+				continue
 			end
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
@@ -1468,11 +1468,10 @@ local function init_auto_buy() -- optimized
 	end
 end
 
--- local function init_crystall_auto()
+-- local function init_crystall_farm()
 -- 	local pet_exchange_age, pet_exchange_rar
 --  	pet_exchange_age = _G.InternalConfig.PetExchangeAge 
 -- 	pet_exchange_rar = _G.InternalConfig.PetExchangeRarity
-
 
 -- end
 
@@ -1576,54 +1575,54 @@ local function init_auto_trade() -- optimized
 end
 
 -- -- сделать детект предметов которые ты можешшь положить в бокс
--- local function init_lurebox() -- optimized
--- 	while true do
--- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
--- 			LocalPlayer,
--- 			furn.lurebox.usepart,
--- 			"UseBlock",
--- 			{
--- 				bait_unique = "2_91644c5593d247da9297c3d05a83cb53"
--- 			},
--- 			LocalPlayer.Character
--- 		)
--- 		task.wait(2)
--- 		local timesleep = nil
--- 		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
---             if v.Name == "Template" then
---                 local msg = v:FindFirstChild("Message")
---                 if not msg then continue end
+local function init_lurebox() -- optimized
+	while true do
+		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+			LocalPlayer,
+			furn.lurebox.usepart,
+			"UseBlock",
+			{
+				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
+			},
+			LocalPlayer.Character
+		)
+		task.wait(2)
+		local timesleep = nil
+		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
+            if v.Name == "Template" then
+                local msg = v:FindFirstChild("Message")
+                if not msg then continue end
 
---                 local holder = msg:FindFirstChild("FragmentHolder")
---                 if not holder then continue end
+                local holder = msg:FindFirstChild("FragmentHolder")
+                if not holder then continue end
 
---                 local lure = holder:FindFirstChild("LuresTimerFragment")
---                 if not lure then continue end
+                local lure = holder:FindFirstChild("LuresTimerFragment")
+                if not lure then continue end
 
---                 local cont = lure:FindFirstChild("Container")
---                 if not cont then continue end
+                local cont = lure:FindFirstChild("Container")
+                if not cont then continue end
 
---                 local contents = cont:FindFirstChild("Contents")
---                 if not contents then continue end
+                local contents = cont:FindFirstChild("Contents")
+                if not contents then continue end
 
---                 local timer = contents:FindFirstChild("Timer")
---                 if timer then
---                     timesleep = tonumber(timer.Text)
---                     break
---                 end
---             end
--- 		end
--- 		timesleep = tonumber(timesleep)
--- 		task.wait((timesleep or 3600) + 5)
--- 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
--- 			LocalPlayer,
--- 			furn.lurebox.unique,
--- 			"UseBlock",
--- 			false,
--- 			LocalPlayer.Character
--- 		)
--- 	end
--- end
+                local timer = contents:FindFirstChild("Timer")
+                if timer then
+                    timesleep = tonumber(timer.Text)
+                    break
+                end
+            end
+		end
+		timesleep = tonumber(timesleep)
+		task.wait((timesleep or 3600) + 5)
+		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+			LocalPlayer,
+			furn.lurebox.unique,
+			"UseBlock",
+			false,
+			LocalPlayer.Character
+		)
+	end
+end
 
 local function init_gift_autoopen() -- optimized
 	while true do
@@ -1638,29 +1637,29 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	-- if _G.InternalConfig.FarmPriority then
-	-- 	task.defer(init_autofarm)
-	-- end
+	if _G.InternalConfig.FarmPriority then
+		task.defer(init_autofarm)
+	end
 	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
-	-- end
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
 
-	-- task.wait(1)
+	task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
 
-	-- task.wait(1)
+	task.wait(1)
 
 	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.defer(init_crystall_auto)
+	-- 	task.defer(init_crystall_farm)
 	-- end
 
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
+	end
 
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
@@ -1681,15 +1680,15 @@ local function __init()
 		end)
 	end
 
-	-- task.wait(1)
+	task.wait(1)
 
-	-- -- if _G.InternalConfig.LureboxFarm then
-	-- -- 	task.defer(init_lurebox)
-	-- -- end
+	if _G.InternalConfig.LureboxFarm then
+		task.defer(init_lurebox)
+	end
 
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
-	-- end
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 end
 
