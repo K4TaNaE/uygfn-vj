@@ -142,10 +142,10 @@ Queue.new = function()
 			self.running = true
 
 			while not self:empty() do
-				local task = self._data[self.__head]
+				local dtask = self._data[self.__head]
 
-				local name = task[1]
-				local callback = task[2]
+				local name = dtask[1]
+				local callback = dtask[2]
 
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
@@ -424,6 +424,13 @@ local function get_equiped_pet() -- not optimzed
  	return data
 end
 
+local function cur_unique() 
+	local path = ClientData.get("pet_char_wrappers")[1]
+	if path then
+		return path.pet_unique
+	end
+end
+
 local function get_owned_pets() -- optimized
 	local data = {}
 	for _,v in ClientData.get("inventory").pets do
@@ -461,8 +468,8 @@ local function get_equiped_pet_ailments() -- optimized
 	local pet = ClientData.get("pet_char_wrappers")[1]
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
-		if not path then repeat task.wait(20) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
-		for k,_ in path do
+		if not path then repeat print("waiting for path") task.wait(10) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
+		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
 			ailments[k] = true
 		end
 	end
@@ -570,10 +577,10 @@ end
 local function gotovec(x:number, y:number, z:number) -- optimized
 	local pet = get_equiped_pet()
 	if pet then
-		PetActions.pick_up(pet.model)
+		PetActions.pick_up(pet.wrapper)
 		task.wait(.2)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
-		task.wait(.1)
+		task.wait(.2)
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 	else
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
@@ -960,6 +967,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
+			print("error to dirty")
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -982,6 +990,7 @@ local pet_ailments = {
         until not has_ailment("dirty") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "dirty")  
+		print("dirty completed")
 	end,
 	["walk"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1070,6 +1079,7 @@ local pet_ailments = {
 			1,
 			k
 		)
+		task.wait(.4)
 		end				
 	end,
 	["pizza_party"] = function() 
@@ -1379,7 +1389,11 @@ local function init_autofarm() -- optimized
 		actual_pet.wrapper = curpet.wrapper
 		actual_pet.rarity = curpet.rarity
 
-		while actual_pet.unique do
+		while true do
+			if not actual_pet.unique == cur_unique() then
+				actual_pet.unique = nil
+				break
+			end
 			local eqpetailms = get_equiped_pet_ailments()
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
@@ -1728,7 +1742,7 @@ end)
 		if (Config.FarmPriority):lower() == "eggs" or (Config.FarmPriority):lower() == "pets" then
 			_G.InternalConfig.FarmPriority = Config.FarmPriority
 			if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
-				if not (#Config.AutoFarmFilter.PetsToExclude == 1 and Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$")) then
+				if not (#Config.AutoFarmFilter.PetsToExclude == 0 and Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$")) then
 					local list = {}
 					for _,v in Config.AutoFarmFilter.PetsToExclude do
 						if check_remote_existance("pets", v) then
