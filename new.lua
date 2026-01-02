@@ -875,13 +875,13 @@ local pet_ailments = {
 		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		API["ToolAPI/Equip"]:InvokeServer("2_48207a6d86754985a58ee57c758331de", {})
+		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
 				{
 					reaction_name = "ThrowToyReaction",
-					unique_id = "2_48207a6d86754985a58ee57c758331de"
+					unique_id = inv_get_category_unique("toys", "squeaky_bone_default")
 				}
 			)
 			task.wait(5) 
@@ -1396,10 +1396,8 @@ local function init_autofarm() -- optimized
 			end
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
-				repeat 
-					eqpetailms = get_equiped_pet_ailments()
-					task.wait(10)
-				until eqpetailms
+				task.wait(10)
+				break
 			end
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
