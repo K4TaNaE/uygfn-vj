@@ -2029,13 +2029,7 @@ end)()
 
 -- launch screen
 ;(function() -- optmized
-	while true do
-		if not UIManager.is_visible("NewsApp") then
-			task.wait(1)
-		else
-			break
-		end
-	end
+	if not UIManager.is_visible("MainMapApp") and not UIManager.is_visible("NewsApp") then return end
 	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
