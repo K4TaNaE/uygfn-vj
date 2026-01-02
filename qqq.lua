@@ -578,7 +578,7 @@ local function gotovec(x:number, y:number, z:number) -- optimized
 	local pet = actual_pet
 	if pet.unique then
 		PetActions.pick_up(pet.wrapper)
-		task.wait(.2)
+		task.wait(.5)
 		LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(x,y,z)
 		task.wait(.2)
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
@@ -1072,17 +1072,18 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		print("mystery started")
-		for k,_ in loader("new:AilmentsDB") do
-		API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
-			actual_pet.unique,
-			"mystery",
-			1,
-			k
-		)
-		task.wait(.5)
+		local ct = 0
+		for i = 3, ct, -1 do
+			for k,_ in loader("new:AilmentsDB") do
+				API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
+					actual_pet.unique,
+					"mystery",
+					i,
+					k
+				)
+				task.wait(.2)
+			end
 		end			
-		print('mystery ended')	
 	end,
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
