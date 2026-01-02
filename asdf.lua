@@ -960,6 +960,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
+			print("error to dirty")
 			return 
 		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -982,6 +983,7 @@ local pet_ailments = {
         until not has_ailment("dirty") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
 		enstat(xp, friendship, money, "dirty")  
+		print("dirty completed")
 	end,
 	["walk"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1070,6 +1072,7 @@ local pet_ailments = {
 			1,
 			k
 		)
+		task.wait(.4)
 		end				
 	end,
 	["pizza_party"] = function() 
