@@ -142,10 +142,10 @@ Queue.new = function()
 			self.running = true
 
 			while not self:empty() do
-				local task = self._data[self.__head]
+				local dtask = self._data[self.__head]
 
-				local name = task[1]
-				local callback = task[2]
+				local name = dtask[1]
+				local callback = dtask[2]
 
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
@@ -197,7 +197,7 @@ local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-getgenv().StateDB = {
+local StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {}
 }
