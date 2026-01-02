@@ -461,7 +461,7 @@ local function get_equiped_pet_ailments() -- optimized
 	local pet = ClientData.get("pet_char_wrappers")[1]
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
-		if not path then repeat task.wait(20) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
+		if not path then repeat print("waiting for path") task.wait(10) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
 		for k,_ in path do
 			ailments[k] = true
 		end
