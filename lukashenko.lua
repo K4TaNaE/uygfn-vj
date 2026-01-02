@@ -406,7 +406,6 @@ local function get_equiped_pet() -- not optimzed
 	local cdata = ClientData.get("inventory").pets[unique]
 	if cdata then
 		age = cdata.properties.age
-		rarity = cdata.properties.rarity
 		friendship = cdata.properties.friendship_level
 		xp = cdata.properties.xp
 	end
@@ -416,6 +415,7 @@ local function get_equiped_pet() -- not optimzed
 			local session = entity.session_memory
 			if session.meta.owned_by_local_player then
 				model = v
+				rarity = entity.base.entry.rarity
 			end				
 		end
 	end
@@ -468,7 +468,7 @@ local function get_equiped_pet_ailments() -- optimized
 	local pet = ClientData.get("pet_char_wrappers")[1]
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
-		if not path then repeat print("waiting for path") task.wait(10) until ClientData.get("ailments_manager")["ailments"][pet.pet_unique] end
+		if not path then return nil end
 		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
 			ailments[k] = true
 		end
@@ -673,7 +673,7 @@ local function enstat(xp, friendship, money, ailment)  -- optimized
 			StateDB.active_ailments[ailment] = nil
 		end
 	else 
-		if xp >= xp_thresholds[actual_pet.rarity][6] then
+		if xp >= xp_thresholds[actual_pet.rarity]["fullgrown"] then
 			farmed.pets_fullgrown += 1
 			table.insert(total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
@@ -875,13 +875,13 @@ local pet_ailments = {
 		local xp = cdata.properties.xp
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		API["ToolAPI/Equip"]:InvokeServer("2_48207a6d86754985a58ee57c758331de", {})
+		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
 				{
 					reaction_name = "ThrowToyReaction",
-					unique_id = "2_48207a6d86754985a58ee57c758331de"
+					unique_id = inv_get_category_unique("toys", "squeaky_bone_default")
 				}
 			)
 			task.wait(5) 
@@ -1395,11 +1395,15 @@ local function init_autofarm() -- optimized
 				break
 			end
 			local eqpetailms = get_equiped_pet_ailments()
+			if not eqpetailms then
+				task.wait(10)
+				break
+			end
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
-					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 					StateDB.active_ailments[k] = true
+					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
 			task.wait(20)
@@ -2042,12 +2046,11 @@ end)
 	else
 		error("Wrong datatype of WebhookSendDelay")
 	end
-	task.wait(1)
+	task.wait(2)
 end)()
 
 -- launch screen
 ;(function() -- optmized
-	if not UIManager.is_visible("MainMapApp") and not UIManager.is_visible("NewsApp") then return end
 	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
