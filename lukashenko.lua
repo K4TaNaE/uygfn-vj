@@ -462,7 +462,7 @@ local function get_equiped_pet_ailments() -- optimized
 	local ailments = {}
 	local pet = ClientData.get("pet_char_wrappers")[1]
 	if pet then
-		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_1unique] do
+		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
 			ailments[k] = true
 		end
 	end
