@@ -197,7 +197,7 @@ local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
 -- local Router = loader("")
 
-local StateDB = {
+getgenv().StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {}
 }
