@@ -152,7 +152,12 @@ Queue.new = function()
 
 				if not ok then
 					print("Task failed:", err)
-					active_ailments[name:split(": ")[2]] = nil
+					local spl = name:split(": ")
+					if spl[1]:match("ailment pet") then
+						StateDB.active_ailments[spl[2]] = nil
+					elseif spl[1]:match("ailment baby") then
+						StateDB.active_ailments_baby[spl[2]] = nil
+					end
 				end
 
 				task.wait(.5) 
@@ -1671,7 +1676,7 @@ local function autotutorial() end
 
 local function license() -- optimized 
 	if loader("TradeLicenseHelper").player_has_trade_license(LocalPlayer) then
-		colorprint({markup.SUCCESS}, "[+] License found")
+		colorprint({markup.SUCCESS}, "[+] License found.")
 	else
 		colorprint({markup.INFO}, "[?] License not found, trying to get..")
 		API["SettingsAPI/SetBooleanFlag"]:FireServer("has_talked_to_trade_quest_npc", true)
@@ -1680,7 +1685,7 @@ local function license() -- optimized
 		for _,v in ClientData.get("trade_license_quiz_manager").quiz do
 			API["TradeAPI/AnswerQuizQuestion"]:FireServer(v.answer)
 		end
-		colorprint({markup.SUCCESS}, "[+] Successed")
+		colorprint({markup.SUCCESS}, "[+] Successed.")
 	end
 end
 
