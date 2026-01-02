@@ -886,6 +886,7 @@ local pet_ailments = {
 			)
 			task.wait(5) 
 		end
+		API{"ToolAPI/Unequip"}:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		enstat(xp, friendship, money, "play") 
 	end,
 	["toilet"] = function() 
@@ -1072,7 +1073,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		local ct = 0
+		local ct = 1
 		for i = 3, ct, -1 do
 			for k,_ in loader("new:AilmentsDB") do
 				API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
@@ -1637,13 +1638,13 @@ local function init_gift_autoopen() -- optimized
 end
 
 local function __init() 
-	if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
-	end
-	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
+	-- if _G.InternalConfig.FarmPriority then
+	-- 	task.defer(init_autofarm)
 	-- end
+	
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
 
 	-- task.wait(1)
 
