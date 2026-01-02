@@ -1400,7 +1400,7 @@ local function init_autofarm() -- optimized
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
 				task.wait(10)
-				break
+				continue
 			end
 			for k,_ in eqpetailms do 
 				if StateDB.active_ailments[k] then continue end
