@@ -1634,25 +1634,25 @@ local function init_mode()
 end
 
 local function __init() 
-	-- if _G.InternalConfig.FarmPriority then
-	-- 	task.defer(init_autofarm)
-	-- end
+	 if _G.InternalConfig.FarmPriority then
+		task.defer(init_autofarm)
+	 end
 	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
-	-- end
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+	 	task.defer(init_auto_buy)
+	 end
 
 	-- task.wait(1)
 
-	-- if _G.InternalConfig.BabyAutoFarm then
-	-- 	task.defer(init_baby_autofarm)
-	-- end
+	 if _G.InternalConfig.BabyAutoFarm then
+	 	task.defer(init_baby_autofarm)
+	 end
 
 	-- task.wait(1)
 
-	-- if _G.InternalConfig.CrystallEggFarm then
-	-- 	task.defer(init_crystall_farm)
-	-- end
+	if _G.InternalConfig.CrystallEggFarm then
+	 	task.defer(init_crystall_farm)
+	 end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
