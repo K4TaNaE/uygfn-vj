@@ -1655,16 +1655,19 @@ end
 local function __init() 
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
+		print("autofarm started")
 	end
 	
 	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
 		task.defer(init_auto_buy)
+		print("egg auto  started")
 	end
 
 	task.wait(1)
 
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
+		print("baby started")
 	end
 
 	task.wait(1)
@@ -1675,6 +1678,7 @@ local function __init()
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
+		print("trade auto started")
 	end
 
 	if _G.InternalConfig.DiscordWebhookURL then
@@ -1694,22 +1698,26 @@ local function __init()
 				)
 			end
 		end)
+		print("auto webhook strarted")
 	end
 
 	task.wait(1)
 
 	if _G.InternalConfig.LureboxFarm then
 		task.defer(init_lurebox)
+		print("lureox started")
 	end
 
 	if _G.InternalConfig.GiftsAutoOpen then
 		task.defer(init_gift_autoopen)
+		print("gift auto started")
 	end
 
 	task.wait(5)
 
 	if _G.InternalConfig.Mode then
 		task.defer(init_mode)
+		print("mode sarted")
 	end
 
 end
