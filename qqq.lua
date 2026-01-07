@@ -1533,10 +1533,13 @@ local function init_auto_trade() -- optimized
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
-				repeat 
-					API["TradeAPI/AcceptNegotation"]:FireServer()
+				while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
+					API["TradeAPI/AcceptNegotiation"]:FireServer()
 					task.wait(5)
+				end
+				repeat 
 					API["TradeAPI/ConfirmTrade"]:FireServer()
+					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
 			end
 		end
@@ -1634,25 +1637,25 @@ local function init_mode()
 end
 
 local function __init() 
-	 if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
-	 end
+	-- if _G.InternalConfig.FarmPriority then
+	-- 	task.defer(init_autofarm)
+	-- end
 	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	 	task.defer(init_auto_buy)
-	 end
+	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+	-- 	task.defer(init_auto_buy)
+	-- end
 
 	-- task.wait(1)
 
-	 if _G.InternalConfig.BabyAutoFarm then
-	 	task.defer(init_baby_autofarm)
-	 end
+	-- if _G.InternalConfig.BabyAutoFarm then
+	-- 	task.defer(init_baby_autofarm)
+	-- end
 
 	-- task.wait(1)
 
-	if _G.InternalConfig.CrystallEggFarm then
-	 	task.defer(init_crystall_farm)
-	 end
+	-- if _G.InternalConfig.CrystallEggFarm then
+	-- 	task.defer(init_crystall_farm)
+	-- end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
@@ -1957,7 +1960,7 @@ end)
 		if Config.PetAutoTrade then 
 			_G.InternalConfig.PetAutoTrade = true	
 			if type(Config.AutoTradeFilter.PlayerTradeWith) == "string" then -- PlayerTradeWith
-				if not Config.PlayerTradeWith:match("^%s*$") then 
+				if not Config.AutoTradeFilter.PlayerTradeWith:match("^%s*$") then 
 					_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = Config.AutoTradeFilter.PlayerTradeWith
 					local possible = {
 						["common"] = "common", 
@@ -2121,6 +2124,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
+	if not _G.InternalConfig.FarmPriority or not _G.InternalConfig.BabyAutoFarm then return end
 	to_home()
 	local furniture = {}
 	local filter = {
