@@ -1634,6 +1634,10 @@ local function init_gift_autoopen() -- optimized
 		end
 		for k,_ in get_owned_category("gifts") do
 			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
+			game.ReplicatedStorage.API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(
+				k.remote,
+				k
+			)
 			task.wait(0.2)
 		end	
 	end
