@@ -1468,7 +1468,7 @@ local function init_auto_trade() -- optimized
 	local user = _G.InternalConfig.AutoTradeFilter.PlayerTradeWith 
 	local exist = false
 	local trade_successed = true
-	if game.Players[user] then
+	if game.Players:FindFirstChild(user) then
 		exist = true
 	end
 
