@@ -1094,19 +1094,29 @@ baby_ailments = {
 	end,
 	["hungry"] = function() 
 		local money = ClientData.get("money")
-		if count_of_product("food", "healing_apple") < 3 then
-			API["ShopAPI/BuyItem"]:InvokeServer(
-				"food",
-				"healing_apple",
-				{
-					buy_count = 99
-				}
-			)
+		if count_of_product("food", "apple") < 3 then
+			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
+			if money > 20 then
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"apple",
+					{
+						buy_count = 30
+					}
+				)
+			else
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"apple",
+					{
+						buy_count = money
+					}
+				)
+			end
 		end
 		while has_ailment_baby("hungry") do
-
 			API["ToolAPI/ServerUseTool"]:FireServer(
-				inv_get_category_unique("food", "healing_apple"),
+				inv_get_category_unique("food", "apple"),
 				"END"
 			)
 			task.wait(.5)
@@ -1116,7 +1126,7 @@ baby_ailments = {
 	["thirsty"] = function() 
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
@@ -1135,7 +1145,6 @@ baby_ailments = {
 				)
 			end
 		end
-		
 		while has_ailment_baby("thirsty") do
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "water"),
