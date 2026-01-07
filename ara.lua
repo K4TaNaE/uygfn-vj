@@ -1708,10 +1708,10 @@ local function __init()
 	-- 	print("lureox started")
 	-- end
 
-	if _G.InternalConfig.GiftsAutoOpen then
-		task.defer(init_gift_autoopen)
-		print("gift auto started")
-	end
+	-- if _G.InternalConfig.GiftsAutoOpen then
+	-- 	task.defer(init_gift_autoopen)
+	-- 	print("gift auto started")
+	-- end
 
 	task.wait(5)
 
