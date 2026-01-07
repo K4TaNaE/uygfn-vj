@@ -1577,6 +1577,7 @@ local function init_lurebox() -- optimized
 			},
 			LocalPlayer.Character
 		)
+		colorprint({markup.INFO}, "[~Lure~]: Bait placed.")
 		task.wait(2)
 		local timesleep = nil
 		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
@@ -1605,6 +1606,7 @@ local function init_lurebox() -- optimized
 		end
 		timesleep = tonumber(timesleep)
 		task.wait((timesleep or 3600) + 5)
+		colorprint({markup.INFO}, `[~Lure~]: Timer set: ,{(timesleep or 3600) + 5}`)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
