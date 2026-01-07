@@ -2030,7 +2030,6 @@ end)
 			end
 		else
 			_G.InternalConfig.PetAutoTrade = false
-			_G.InternalConfig.AutoTradeFilter = false
 			_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = false
 			_G.InternalConfig.AutoTradeFilter.SendAllType = false
 			_G.InternalConfig.AutoTradeFilter.SendAllFarmed = false
