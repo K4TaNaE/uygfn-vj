@@ -1450,6 +1450,7 @@ local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
 	if cost then
 		while true do
+			local farmd = farmed.money
 			API["ShopAPI/BuyItem"]:InvokeServer(
 				"pets",
 				_G.InternalConfig.AutoFarmFilter.EggAutoBuy,
@@ -1457,6 +1458,7 @@ local function init_auto_buy() -- optimized
 					buy_count = ClientData.get("money") / cost
 				}
 			)
+			farmed.money = farmd
 			task.wait(300)
 		end
 	else 
@@ -1703,7 +1705,7 @@ local function __init()
 	task.wait(5)
 
 	if _G.InternalConfig.Mode then
-		task.defer(init_mode())
+		task.defer(init_mode)
 	end
 
 end
