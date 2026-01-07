@@ -679,88 +679,88 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("camping") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		if baby_has_ailment and ClientData.get("team") == "baby" and not has_ailment_baby("camping") then
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("camping") then
 			__baby_callbak(money, "camping")
 		end
 		enstat(friendship, money, "camping")
 	end,
-	-- ["hungry"] = function() 
-	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
-	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
-	-- 		queue:destroy_linked("ailment pet")
-	-- 		actual_pet.unique = nil
-	-- 		table.clear(StateDB.active_ailments)
-	-- 		return 
-	-- 	end
-	-- 	local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-	-- 	local friendship = cdata.properties.friendship_level
-	-- 	local money = ClientData.get("money")
-	-- 	if count_of_product("food", "healing_apple") == 0 then
-	-- 		API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 			"food",
-	-- 			"healing_apple",
-	-- 			{
-	-- 				buy_count = 99
-	-- 			}
-	-- 		)
-	-- 	end
-	-- 	API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-	-- 		"__Enum_PetObjectCreatorType_2",
-	-- 		{
-	-- 			additional_consume_uniques={},
-	-- 			pet_unique = pet.unique,
-	-- 			unique_id = inv_get_category_unique("food", "healing_apple")
-	-- 		}
-	-- 	)
-    --     repeat 
-    --         task.wait(1)
-    --     until not has_ailment("hungry") 
-    --     	enstat(friendship, money, "hungry")  
-	-- end,
-	-- ["thirsty"] = function() 
-	-- 	local pet = ClientData.get("pet_char_wrappers")[1]
-	-- 	if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("thirsty") then
-	-- 		queue:destroy_linked("ailment pet")
-	-- 		actual_pet.unique = nil
-	-- 		table.clear(StateDB.active_ailments)
-	-- 		return 
-	-- 	end
-	-- 	local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-	-- 	local friendship = cdata.properties.friendship_level
-	-- 	local money = ClientData.get("money")
-	-- 	if count_of_product("food", "water") == 0 then
-	-- 		if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-	-- 		if money > 20 then
-	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 				"food",
-	-- 				"water",
-	-- 				{
-	-- 					buy_count = 20
-	-- 				}
-	-- 			)
-	-- 		else 
-	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 				"food",
-	-- 				"water",
-	-- 				{
-	-- 					buy_count = money
-	-- 				}
-	-- 			)
-	-- 		end
-	-- 	end
-	-- 	API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-	-- 		"__Enum_PetObjectCreatorType_2",
-	-- 		{
-	-- 			additional_consume_uniques={},
-	-- 			pet_unique = pet.unique,
-	-- 			unique_id = inv_get_category_unique("food", "water")
-	-- 		}
-	-- 	)
-    --     repeat 
-    --         task.wait(1)
-    --     until not has_ailment("thirsty")
-    -- 	enstat(friendship, money, "thirsty")  
-	-- end,
+	["hungry"] = function() 
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return 
+		end
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		if count_of_product("food", "healing_apple") == 0 then
+			API["ShopAPI/BuyItem"]:InvokeServer(
+				"food",
+				"healing_apple",
+				{
+					buy_count = 30
+				}
+			)
+		end
+		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+			"__Enum_PetObjectCreatorType_2",
+			{
+				additional_consume_uniques={},
+				pet_unique = pet.unique,
+				unique_id = inv_get_category_unique("food", "healing_apple")
+			}
+		)
+		repeat 
+			task.wait(1)
+        until not has_ailment("hungry") 
+        enstat(friendship, money, "hungry")  
+	end,
+	["thirsty"] = function() 
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("thirsty") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return 
+		end
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		if count_of_product("food", "water") == 0 then
+			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+			if money > 20 then
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"water",
+					{
+						buy_count = 20
+					}
+				)
+			else 
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"water",
+					{
+						buy_count = money
+					}
+				)
+			end
+		end
+		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+			"__Enum_PetObjectCreatorType_2",
+			{
+				additional_consume_uniques={},
+				pet_unique = pet.unique,
+				unique_id = inv_get_category_unique("food", "water")
+			}
+		)
+        repeat 
+            task.wait(1)
+        until not has_ailment("thirsty")
+    	enstat(friendship, money, "thirsty")  
+	end,
 	["sick"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sick") then
@@ -772,6 +772,7 @@ local pet_ailments = {
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
+		local baby_has_ailment = has_ailment_baby("sick")
 		goto("Hospital", "MainDoor")
 		API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
 			"f-14",
@@ -780,6 +781,9 @@ local pet_ailments = {
 			LocalPlayer.Character
 		)
 		task.wait(1)
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("sick") then
+			__baby_callbak(money, "sick")
+		end
 		enstat(friendship, money, "sick") 
 	end,
 	["bored"] = function() 
@@ -820,7 +824,7 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("salon") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		if baby_has_ailment and ClientData.get("team") == "baby" and not has_ailment_baby("salon") then
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("salon") then
 			__baby_callbak(money, "salon")	
 		end
 		enstat(friendship, money, "salon")  
@@ -898,7 +902,7 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("beach_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		if baby_has_ailment and ClientData.get("team") == "baby" and not has_ailment_baby("beach_party") then
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("beach_party") then
 			__baby_callbak(money, "beach_party")
 		end
 		enstat(friendship, money, "beach_party")  
@@ -993,7 +997,7 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("school") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		if baby_has_ailment and ClientData.get("team") == "baby" and not has_ailment_baby("school") then
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("school") then
 			__baby_callbak(money, "school")
 		end
 		enstat(friendship, money, "school")  
@@ -1062,7 +1066,7 @@ local pet_ailments = {
             task.wait(1)
         until not has_ailment("pizza_party") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
-		if baby_has_ailment and ClientData.get("team") == "baby" and not has_ailment_baby("pizza_party") then
+		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("pizza_party") then
 			__baby_callbak(money, "pizza_party")
 		end
 		enstat(friendship, money, "pizza_party")  
@@ -1088,59 +1092,59 @@ baby_ailments = {
 		end
 		enstat_baby(money, "camping")
 	end,
-	-- ["hungry"] = function() 
-	-- 	local money = ClientData.get("money")
-	-- 	if count_of_product("food", "healing_apple") < 3 then
-	-- 		API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 			"food",
-	-- 			"healing_apple",
-	-- 			{
-	-- 				buy_count = 99
-	-- 			}
-	-- 		)
-	-- 	end
-	-- 	while has_ailment_baby("hungry") do
+	["hungry"] = function() 
+		local money = ClientData.get("money")
+		if count_of_product("food", "healing_apple") < 3 then
+			API["ShopAPI/BuyItem"]:InvokeServer(
+				"food",
+				"healing_apple",
+				{
+					buy_count = 99
+				}
+			)
+		end
+		while has_ailment_baby("hungry") do
 
-	-- 		API["ToolAPI/ServerUseTool"]:FireServer(
-	-- 			inv_get_category_unique("food", "healing_apple"),
-	-- 			"END"
-	-- 		)
-	-- 		task.wait(.5)
-	-- 	end
-	-- 	enstat_baby(money, "hungry")  
-	-- end,
-	-- ["thirsty"] = function() 
-	-- 	local money = ClientData.get("money")
-	-- 	if count_of_product("food", "water") == 0 then
-	-- 		if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
-	-- 		if money > 20 then
-	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 				"food",
-	-- 				"water",
-	-- 				{
-	-- 					buy_count = 20
-	-- 				}
-	-- 			)
-	-- 		else 
-	-- 			API["ShopAPI/BuyItem"]:InvokeServer(
-	-- 				"food",
-	-- 				"water",
-	-- 				{
-	-- 					buy_count = money
-	-- 				}
-	-- 			)
-	-- 		end
-	-- 	end
+			API["ToolAPI/ServerUseTool"]:FireServer(
+				inv_get_category_unique("food", "healing_apple"),
+				"END"
+			)
+			task.wait(.5)
+		end
+		enstat_baby(money, "hungry")  
+	end,
+	["thirsty"] = function() 
+		local money = ClientData.get("money")
+		if count_of_product("food", "water") == 0 then
+			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+			if money > 20 then
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"water",
+					{
+						buy_count = 20
+					}
+				)
+			else 
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"water",
+					{
+						buy_count = money
+					}
+				)
+			end
+		end
 		
-	-- 	while has_ailment_baby("thirsty") do
-	-- 		API["ToolAPI/ServerUseTool"]:FireServer(
-	-- 			inv_get_category_unique("food", "water"),
-	-- 			"END"
-	-- 		)
-	-- 		task.wait(.5)
-	-- 	end
-	-- 	enstat_baby(money, "thirsty")  
-	-- end,
+		while has_ailment_baby("thirsty") do
+			API["ToolAPI/ServerUseTool"]:FireServer(
+				inv_get_category_unique("food", "water"),
+				"END"
+			)
+			task.wait(.5)
+		end
+		enstat_baby(money, "thirsty")  
+	end,
 	["sick"] = function() 
 		local money = ClientData.get("money")
 		goto("Hospital", "MainDoor")
