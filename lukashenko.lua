@@ -1468,7 +1468,7 @@ local function init_auto_trade() -- optimized
 	local user = _G.InternalConfig.AutoTradeFilter.PlayerTradeWith 
 	local exist = false
 	local trade_successed = true
-	if game.Players[user] then
+	if game.Players:FindFirstChild(user) then
 		exist = true
 	end
 
@@ -1533,10 +1533,13 @@ local function init_auto_trade() -- optimized
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
-				repeat 
-					API["TradeAPI/AcceptNegotation"]:FireServer()
+				while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
+					API["TradeAPI/AcceptNegotiation"]:FireServer()
 					task.wait(5)
+				end
+				repeat 
 					API["TradeAPI/ConfirmTrade"]:FireServer()
+					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
 			end
 		end
@@ -2121,6 +2124,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
+	if not _G.InternalConfig.FarmPriority or not _G.InternalConfig.BabyAutoFarm then return end
 	to_home()
 	local furniture = {}
 	local filter = {
