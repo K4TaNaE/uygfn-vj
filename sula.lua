@@ -1703,10 +1703,10 @@ local function __init()
 
 	task.wait(1)
 
-	if _G.InternalConfig.LureboxFarm then
-		task.defer(init_lurebox)
-		print("lureox started")
-	end
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.defer(init_lurebox)
+	-- 	print("lureox started")
+	-- end
 
 	if _G.InternalConfig.GiftsAutoOpen then
 		task.defer(init_gift_autoopen)
