@@ -387,7 +387,7 @@ local function get_owned_pets() -- optimized
 		local rarity = InventoryDB.pets[remote].rarity
 		data[v.unique] = {
 			remote=remote,unique=unique,age=age,friendship=friendship,xp=xp,
-			cost=cost,name=name,rarity=rarity
+			cost=cost,name=name,rarity=rarity, table=v
 		}
 	end
 	return data
@@ -1499,25 +1499,7 @@ local function init_auto_recycle()
 		"UseBlock",
 		{
 			action = "use",
-			uniques = {
-				["2_23a2ce71257e45dc8307a02981ab92b7"] = true,
-				["2_7255eb1f7519464d8e878ac08e87e9b0"] = true,
-				["2_ff11e70702b145b79adf4f93079c86c0"] = true,
-				["2_c8aa9b1e04054721943fb5c268e3b6bc"] = true,
-				["2_74b8bc05e19549fa823c15eaa939fa52"] = true,
-				["2_0389e069b6c04422add04cfaad197f79"] = true,
-				["2_7eb0c87995244a91b184a19a4d38163a"] = true,
-				["2_c9cdb3e5bcc04592afdcc522f8d8eb4d"] = true,
-				["2_27b7bfcc2fbf4caaa81232e899692ea1"] = true,
-				["2_417d84704d7d4f889d4ba62242fe41e0"] = true,
-				["2_1e0bf4718d4f4c54a2fe6e3f9c56990e"] = true,
-				["2_797d9d600dfa4deebce00b8270ae720e"] = true,
-				["2_0c02bbd0c1cf4591a68b7908d773e6e9"] = true,
-				["2_9741f3c057e04b0a905cd43aa4faf946"] = true,
-				["2_abee0f66e9c443ea84a0c82129a82114"] = true,
-				["2_7a73207c3c734bddafaf33d16e9b2fb9"] = true,
-				["2_237bd945908c44948c1a02c9c968c1a9"] = true
-			}
+			uniques = pet_to_exchange
 		},
 		LocalPlayer.Character
 	)
@@ -1664,8 +1646,8 @@ local function init_lurebox() -- optimized
             end
 		end
 		timesleep = tonumber(timesleep)
+		colorprint({markup.INFO}, `[Lure]: Timer set: ,{(timesleep or 3600) + 5}`)
 		task.wait((timesleep or 3600) + 5)
-		colorprint({markup.INFO}, `[~Lure~]: Timer set: ,{(timesleep or 3600) + 5}`)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
@@ -1673,6 +1655,8 @@ local function init_lurebox() -- optimized
 			false,
 			LocalPlayer.Character
 		)
+		colorprint({markup.SUCCESS}, "[Lure] Reward collected")
+		task.wait(2)
 		-- добавить енстат статистики farmed.lurebox
 	end
 end
@@ -1682,14 +1666,13 @@ local function init_gift_autoopen() -- чета тут не так
 		if count(get_owned_category("gifts")) < 0 then
 			repeat task.wait(300) until count(get_owned_category("gifts")) > 0
 		end
-		for k,_ in get_owned_category("gifts") do
-			game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
+		for k,v in get_owned_category("gifts") do
+			if v:lower():match("box") or v:lower():match("chest") then
+				game.ReplicatedStorage.API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
+			else
+				game.ReplicatedStorage.API["ShopAPI/OpenGift"]:InvokeServer(k)
+			end
 			time.wait(.5) 
-			game.ReplicatedStorage.API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(
-				k.remote,
-				k
-			)
-			task.wait(0.2)
 		end	
 	end
 end
@@ -1712,17 +1695,13 @@ local function __init()
 		task.defer(init_auto_buy)
 	end
 
-	task.wait(1)
-
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
 
-	task.wait(1)
-
-	-- if _G.InternalConfig.AutoRecyclePet then
-	-- 	task.defer(init_auto_recycle)
-	-- end
+	if _G.InternalConfig.AutoRecyclePet then
+		task.defer(init_auto_recycle)
+	end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
@@ -1747,15 +1726,13 @@ local function __init()
 		end)
 	end
 
-	task.wait(1)
-
 	if _G.InternalConfig.LureboxFarm then
 		task.defer(init_lurebox)
 	end
 
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
-	-- end
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 	task.wait(5)
 
