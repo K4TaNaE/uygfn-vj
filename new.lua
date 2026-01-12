@@ -1589,6 +1589,7 @@ local function init_auto_trade() -- optimized
 						end
 					end
 				end
+				pcall(function()
 				for k,_ in pets_to_send do 
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
@@ -1601,9 +1602,9 @@ local function init_auto_trade() -- optimized
 					API["TradeAPI/ConfirmTrade"]:FireServer()
 					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
+			end)
 			end
 		end
-
 		for k,_ in get_owned_pets() do
 			if pets_to_send[k] then 
 				trade_successed = false
@@ -2157,7 +2158,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
 	to_home()
 	local furniture = {}
 	local filter = {
