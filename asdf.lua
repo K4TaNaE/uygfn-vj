@@ -1629,7 +1629,7 @@ local function init_lurebox() -- optimized
 	while true do
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
-			furn.lurebox.usepart,
+			furn.lurebox.unique,
 			"UseBlock",
 			{
 				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
@@ -1658,14 +1658,16 @@ local function init_lurebox() -- optimized
 
                 local timer = contents:FindFirstChild("Timer")
                 if timer then
-                    timesleep = tonumber(timer.Text)
+					timer = timer.Text:split(":")
+                    timesleep = (tonumber(timer[1]) * 60 * 60) + (tonumber(timer[2]) * 60) + tonumber(timer[3])  
                     break
                 end
             end
 		end
-		timesleep = tonumber(timesleep)
-		colorprint({markup.INFO}, `[Lure]: Timer set: {(timesleep or 3600) + 5}`)
-		task.wait((timesleep or 3600) + 5)
+		local timedelay = (timesleep or 3600) + 5
+		colorprint({markup.INFO}, `[Lure]: Timer set: {string.format("[%02d:%02d:%02d]", math.floor(timedelay / 3600), 
+			math.floor((timedelay % 3600) / 60), timedelay % 60)}`)
+		task.wait(timedelay)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
@@ -2184,7 +2186,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm then return end
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end
 	to_home()
 	local furniture = {}
 	local filter = {
