@@ -29,7 +29,6 @@ local HouseClient = loader("HouseClient")
 local PetActions = loader("PetActions")
 local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
--- local Router = loader("")
 
 local StateDB = {
 	active_ailments = {},
@@ -190,7 +189,6 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				print(name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
 
@@ -206,10 +204,8 @@ Queue.new = function()
 
 				task.wait(.5) 
 			end
-
 			self.running = false
 		end
-
 	}
 end
 local queue = Queue.new()
@@ -787,13 +783,15 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local baby_has_ailment = has_ailment_baby("sick")
 		goto("Hospital", "MainDoor")
-		API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
-			"f-14",
-			"UseBlock",
-			"Yes",
-			LocalPlayer.Character
-		)
-		task.wait(1)
+		repeat 
+			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+				"f-14",
+				"UseBlock",
+				"Yes",
+				LocalPlayer.Character
+			)
+			task.wait(1)
+		until not has_ailment_baby("sick")
 		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("sick") then
 			__baby_callbak(money, "sick")
 		end
@@ -1111,6 +1109,7 @@ baby_ailments = {
 	end,
 	["hungry"] = function() 
 		local money = ClientData.get("money")
+		local deadline = os.clock() + 5
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1131,17 +1130,19 @@ baby_ailments = {
 				)
 			end
 		end
-		while has_ailment_baby("hungry") do
+		repeat 
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "apple"),
 				"END"
 			)
 			task.wait(.5)
-		end
+        until not has_ailment_baby("hungry") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat_baby(money, "hungry")  
 	end,
 	["thirsty"] = function() 
 		local money = ClientData.get("money")
+        local deadline = os.clock() + 5
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1162,25 +1163,28 @@ baby_ailments = {
 				)
 			end
 		end
-		while has_ailment_baby("thirsty") do
+		repeat			
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "water"),
 				"END"
 			)
 			task.wait(.5)
-		end
+		until not has_ailment_baby("thirsty") or os.clock() > deadline  
+		if os.clock() > deadline then error("Out of limits") end
 		enstat_baby(money, "thirsty")  
 	end,
 	["sick"] = function() 
 		local money = ClientData.get("money")
-		goto("Hospital", "MainDoor")
-		API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
-			"f-14",
-			"UseBlock",
-			"Yes",
-			LocalPlayer.Character
-		)
-		task.wait(1)
+		repeat 
+			goto("Hospital", "MainDoor")
+			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+				"f-14",
+				"UseBlock",
+				"Yes",
+				LocalPlayer.Character
+			)
+			task.wait(1)
+		until not has_ailment_baby("sick") 
 		enstat_baby(money, "sick") 
 	end,
 	["bored"] = function() 
@@ -1433,18 +1437,6 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	if not _G.InternalConfig.FarmPriority then
-		local pet = ClientData.get("pet_char_wrappers")[1]
-		if pet then
-			API["ToolAPI/Unequip"]:InvokeServer(
-				pet.pet_unique,
-				{
-					use_sound_delay = true,
-					equip_as_last = false
-				}
-			)
-		end
-	end
 	while true do
 		if ClientData.get("team") == "Parents" then
 			API["TeamAPI/ChooseTeam"]:InvokeServer(
@@ -1455,6 +1447,18 @@ local function init_baby_autofarm() -- optimized
 				}
 			)
 			task.wait(1)
+		end	
+		if not _G.InternalConfig.FarmPriority then
+			local pet = ClientData.get("pet_char_wrappers")[1]
+			if pet then
+				API["ToolAPI/Unequip"]:InvokeServer(
+					pet.pet_unique,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+			end
 		end
 		local active_ailments = get_baby_ailments()
 		for k,_ in active_ailments do
@@ -1660,7 +1664,7 @@ local function init_lurebox() -- optimized
             end
 		end
 		timesleep = tonumber(timesleep)
-		colorprint({markup.INFO}, `[Lure]: Timer set: ,{(timesleep or 3600) + 5}`)
+		colorprint({markup.INFO}, `[Lure]: Timer set: {(timesleep or 3600) + 5}`)
 		task.wait((timesleep or 3600) + 5)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
@@ -2180,7 +2184,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority or not _G.InternalConfig.BabyAutoFarm then return end
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end
 	to_home()
 	local furniture = {}
 	local filter = {
