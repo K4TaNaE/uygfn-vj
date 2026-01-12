@@ -53,6 +53,7 @@ local farmed = {
 	eggs_hatched = 0,
 	lurebox = {}
 }
+local lureboxflag = false
 
 local furn = {}
 _G.InternalConfig = {}
@@ -1592,11 +1593,11 @@ local function init_auto_trade() -- optimized
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
-				while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
-					API["TradeAPI/AcceptNegotiation"]:FireServer()
-					task.wait(5)
-				end
 				repeat 
+					while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
+						API["TradeAPI/AcceptNegotiation"]:FireServer()
+						task.wait(5)
+					end
 					API["TradeAPI/ConfirmTrade"]:FireServer()
 					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
@@ -1636,41 +1637,8 @@ local function init_lurebox() -- optimized
 			},
 			LocalPlayer.Character
 		)
-		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait.")
-		task.wait(2)
-		local timesleep = nil
-		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
-            if v.Name == "Template" then
-                local msg = v:FindFirstChild("Message")
-                if not msg then continue end
-
-                local holder = msg:FindFirstChild("FragmentHolder")
-                if not holder then continue end
-
-                local lure = holder:FindFirstChild("LuresTimerFragment")
-                if not lure then continue end
-
-                local cont = lure:FindFirstChild("Container")
-                if not cont then continue end
-
-                local contents = cont:FindFirstChild("Contents")
-                if not contents then continue end
-
-                local timer = contents:FindFirstChild("Timer")
-                if timer then
-					print(timer)
-					timer = timer.Text:split(":")
-					print(timer[1], timer[2], timer[3])
-                    timesleep = (tonumber(timer[1]) * 60 * 60) + (tonumber(timer[2]) * 60) + tonumber(timer[3]) 
-					print(timesleep) 
-                    break
-                end
-            end
-		end
-		local timedelay = (timesleep or 3600) + 5
-		colorprint({markup.INFO}, `[Lure]: Timer set: {string.format("[%02d:%02d:%02d]", math.floor(timedelay / 3600), 
-			math.floor((timedelay % 3600) / 60), timedelay % 60)}`)
-		task.wait(timedelay)
+		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait. Next check in 1h.")
+		task.wait(3600)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
