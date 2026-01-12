@@ -1354,19 +1354,17 @@ local function init_autofarm() -- optimized
 				end
 			end
 		else
-			print("siuda doslo")
 			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
 					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
-								use_sound_deulay = true,
+								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
 						flag = true
-						print("pet vybran i doslo")
 						break
 					end
 				end
