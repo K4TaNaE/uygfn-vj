@@ -1611,14 +1611,12 @@ local function init_auto_trade() -- optimized
 				break
 			end
 		end
-
 		if not trade_successed then
 			trade_successed = true
 			colorprint({markup.ERROR}, "[-] Trade was canceled.")
 			task.wait(25)
 			continue
 		else
-			print("doslo k trade successed")
 			colorprint({markup.SUCCESS}, "[+] Trade successed.")
 			if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
 				webhook("TradeLog", `Trade with {user} successed.`)
@@ -2033,7 +2031,7 @@ end)
 					end
 					if type(Config.AutoTradeFilter.WebhookEnabled) == "boolean" then
 						if Config.AutoTradeFilter.WebhookEnabled then
-							if _G.DiscordWebhookURL then
+							if _G.InternalConfig.DiscordWebhookURL then
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = true
 							else
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = false
