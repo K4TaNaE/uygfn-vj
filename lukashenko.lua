@@ -29,7 +29,6 @@ local HouseClient = loader("HouseClient")
 local PetActions = loader("PetActions")
 local StateManagerClient = loader("StateManagerClient")
 local API = ReplicatedStorage.API
--- local Router = loader("")
 
 local StateDB = {
 	active_ailments = {},
@@ -54,6 +53,7 @@ local farmed = {
 	eggs_hatched = 0,
 	lurebox = {}
 }
+local lureboxflag = false
 
 local furn = {}
 _G.InternalConfig = {}
@@ -190,7 +190,6 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				print(name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
 
@@ -206,10 +205,8 @@ Queue.new = function()
 
 				task.wait(.5) 
 			end
-
 			self.running = false
 		end
-
 	}
 end
 local queue = Queue.new()
@@ -787,13 +784,15 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local baby_has_ailment = has_ailment_baby("sick")
 		goto("Hospital", "MainDoor")
-		API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
-			"f-14",
-			"UseBlock",
-			"Yes",
-			LocalPlayer.Character
-		)
-		task.wait(1)
+		repeat 
+			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+				"f-14",
+				"UseBlock",
+				"Yes",
+				LocalPlayer.Character
+			)
+			task.wait(1)
+		until not has_ailment_baby("sick")
 		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("sick") then
 			__baby_callbak(money, "sick")
 		end
@@ -1111,6 +1110,7 @@ baby_ailments = {
 	end,
 	["hungry"] = function() 
 		local money = ClientData.get("money")
+		local deadline = os.clock() + 5
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1131,17 +1131,19 @@ baby_ailments = {
 				)
 			end
 		end
-		while has_ailment_baby("hungry") do
+		repeat 
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "apple"),
 				"END"
 			)
 			task.wait(.5)
-		end
+        until not has_ailment_baby("hungry") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
 		enstat_baby(money, "hungry")  
 	end,
 	["thirsty"] = function() 
 		local money = ClientData.get("money")
+        local deadline = os.clock() + 5
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1162,25 +1164,28 @@ baby_ailments = {
 				)
 			end
 		end
-		while has_ailment_baby("thirsty") do
+		repeat			
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "water"),
 				"END"
 			)
 			task.wait(.5)
-		end
+		until not has_ailment_baby("thirsty") or os.clock() > deadline  
+		if os.clock() > deadline then error("Out of limits") end
 		enstat_baby(money, "thirsty")  
 	end,
 	["sick"] = function() 
 		local money = ClientData.get("money")
-		goto("Hospital", "MainDoor")
-		API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
-			"f-14",
-			"UseBlock",
-			"Yes",
-			LocalPlayer.Character
-		)
-		task.wait(1)
+		repeat 
+			goto("Hospital", "MainDoor")
+			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+				"f-14",
+				"UseBlock",
+				"Yes",
+				LocalPlayer.Character
+			)
+			task.wait(1)
+		until not has_ailment_baby("sick") 
 		enstat_baby(money, "sick") 
 	end,
 	["bored"] = function() 
@@ -1584,34 +1589,35 @@ local function init_auto_trade() -- optimized
 						end
 					end
 				end
+				pcall(function()
 				for k,_ in pets_to_send do 
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
-				while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
-					API["TradeAPI/AcceptNegotiation"]:FireServer()
-					task.wait(5)
-				end
 				repeat 
+					while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
+						API["TradeAPI/AcceptNegotiation"]:FireServer()
+						task.wait(5)
+					end
 					API["TradeAPI/ConfirmTrade"]:FireServer()
 					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
+			end)
 			end
 		end
-
 		for k,_ in get_owned_pets() do
 			if pets_to_send[k] then 
 				trade_successed = false
 				break
 			end
 		end
-
 		if not trade_successed then
 			trade_successed = true
 			colorprint({markup.ERROR}, "[-] Trade was canceled.")
 			task.wait(25)
 			continue
 		else
+			colorprint({markup.SUCCESS}, "[+] Trade successed.")
 			if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
 				webhook("TradeLog", `Trade with {user} successed.`)
 			end
@@ -1625,43 +1631,15 @@ local function init_lurebox() -- optimized
 	while true do
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
-			furn.lurebox.usepart,
+			furn.lurebox.unique,
 			"UseBlock",
 			{
 				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
 			},
 			LocalPlayer.Character
 		)
-		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait.")
-		task.wait(2)
-		local timesleep = nil
-		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
-            if v.Name == "Template" then
-                local msg = v:FindFirstChild("Message")
-                if not msg then continue end
-
-                local holder = msg:FindFirstChild("FragmentHolder")
-                if not holder then continue end
-
-                local lure = holder:FindFirstChild("LuresTimerFragment")
-                if not lure then continue end
-
-                local cont = lure:FindFirstChild("Container")
-                if not cont then continue end
-
-                local contents = cont:FindFirstChild("Contents")
-                if not contents then continue end
-
-                local timer = contents:FindFirstChild("Timer")
-                if timer then
-                    timesleep = tonumber(timer.Text)
-                    break
-                end
-            end
-		end
-		timesleep = tonumber(timesleep)
-		colorprint({markup.INFO}, `[Lure]: Timer set: ,{(timesleep or 3600) + 5}`)
-		task.wait((timesleep or 3600) + 5)
+		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait. Next check in 1h.")
+		task.wait(3600)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
@@ -1850,7 +1828,7 @@ end)
 			end
 
 			if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
-				if not (Config.FarmPriority):match("^%s*$") then 
+				if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") then 
 					if check_remote_existance("pets", Config.AutoFarmFilter.EggAutoBuy) then
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 					else
@@ -2053,7 +2031,7 @@ end)
 					end
 					if type(Config.AutoTradeFilter.WebhookEnabled) == "boolean" then
 						if Config.AutoTradeFilter.WebhookEnabled then
-							if _G.DiscordWebhookURL then
+							if _G.InternalConfig.DiscordWebhookURL then
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = true
 							else
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = false
@@ -2180,7 +2158,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority or not _G.InternalConfig.BabyAutoFarm then return end
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
 	to_home()
 	local furniture = {}
 	local filter = {
