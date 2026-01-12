@@ -583,7 +583,20 @@ local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
 		task.wait(1)
-		if actual_pet.unique ~= ClientData.get("pet_char_wrappers")[1].pet_unique then
+		if _G.InternalConfig.AutoFarmFilter.PotionFarm then
+			farmed.eggs_hatched += 1 
+			farmed.money += ClientData.get("money") - money
+			farmed.ailments += 1
+			update_gui("eggs", farmed.eggs_hatched)
+			update_gui("bucks", farmed.money)
+			update_gui("pet_needs", farmed.ailments)
+			local pet = get_equiped_pet()
+			actual_pet.model = pet.model; actual_pet.rarity = pet.rarity; actual_pet.remote = pet.remote; actual_pet.unique = pet.unique; actual_pet.wrapper = pet.wrapper
+			queue:destroy_linked("ailment pet")
+			table.clear(StateDB.active_ailments)
+			return
+		end
+		if actual_pet.unique ~= cur_unique() then
 			farmed.eggs_hatched += 1 
 			actual_pet.unique = nil 
 			queue:destroy_linked("ailment pet")
@@ -1312,26 +1325,27 @@ local function init_autofarm() -- optimized
 		local owned_pets = get_owned_pets()
 		local flag = false
 		if _G.InternalConfig.PotionFarm then
-			for k,v in owned_pets do
-				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
-					API["ToolAPI/Equip"]:InvokeServer(
-						k,
-						{
-							use_sound_deulay = true,
-							equip_as_last = false
-						}
-					)
-					flag = true		
-					break				
-				end
-			end
-			if not flag then
+			if _G.InternalConfig.FarmPriority == "pets" then
 				for k,v in owned_pets do
-					if not (v.name:lower()):find("egg") then
+					if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
-								use_sound_deulay = true,
+								use_sound_delay = true,
+								equip_as_last = false
+							}
+						)
+						flag = true		
+						break				
+					end
+				end
+			else 
+				for k,v in owned_pets do
+					if (v.name:lower()):find("egg") then
+						API["ToolAPI/Equip"]:InvokeServer(
+							k,
+							{
+								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
@@ -1344,7 +1358,7 @@ local function init_autofarm() -- optimized
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
-								use_sound_deulay = true,
+								use_sound_delay = true,
 								equip_as_last = false
 							}
 						)
