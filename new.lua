@@ -1618,6 +1618,8 @@ local function init_auto_trade() -- optimized
 			task.wait(25)
 			continue
 		else
+			print("doslo k trade successed")
+			colorprint({markup.SUCCESS}, "[+] Trade successed.")
 			if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
 				webhook("TradeLog", `Trade with {user} successed.`)
 			end
