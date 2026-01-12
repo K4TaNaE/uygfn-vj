@@ -1354,6 +1354,7 @@ local function init_autofarm() -- optimized
 				end
 			end
 		else
+			print("siuda doslo")
 			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
 					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):find("egg") then
@@ -1365,6 +1366,7 @@ local function init_autofarm() -- optimized
 							}
 						)
 						flag = true
+						print("pet vybran i doslo")
 						break
 					end
 				end
