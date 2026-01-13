@@ -53,6 +53,7 @@ local farmed = {
 	eggs_hatched = 0,
 	lurebox = {}
 }
+local lureboxflag = false
 
 local furn = {}
 _G.InternalConfig = {}
@@ -1339,6 +1340,9 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						if not equiped() then
+							continue
+						end
 						flag = true		
 						break				
 					end
@@ -1353,6 +1357,9 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						if not equiped() then
+							continue
+						end
 						flag = true
 						break
 					end
@@ -1366,6 +1373,9 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						if not equiped() then
+							continue
+						end
 						flag = true
 						break
 					end
@@ -1382,6 +1392,9 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						if not equiped() then
+							continue
+						end
 						flag = true
 						break
 					end
@@ -1396,17 +1409,20 @@ local function init_autofarm() -- optimized
 								equip_as_last = false
 							}
 						)
+						if not equiped() then
+							continue
+						end
 						flag = true
 						break
 					end
 				end
 			end
 		end 
-		if not flag then task.wait(28) continue end
+		if not flag or not equiped() then task.wait(28) continue end
 		task.wait(2)
 		local curpet = get_equiped_pet()
-		actual_pet.remote = curpet.remote
 		actual_pet.unique = curpet.unique
+		actual_pet.remote = curpet.remote
 		actual_pet.model = curpet.model
 		actual_pet.wrapper = curpet.wrapper
 		actual_pet.rarity = curpet.rarity
@@ -1588,34 +1604,35 @@ local function init_auto_trade() -- optimized
 						end
 					end
 				end
+				pcall(function()
 				for k,_ in pets_to_send do 
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
-				while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
-					API["TradeAPI/AcceptNegotiation"]:FireServer()
-					task.wait(5)
-				end
 				repeat 
+					while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
+						API["TradeAPI/AcceptNegotiation"]:FireServer()
+						task.wait(5)
+					end
 					API["TradeAPI/ConfirmTrade"]:FireServer()
 					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
+			end)
 			end
 		end
-
 		for k,_ in get_owned_pets() do
 			if pets_to_send[k] then 
 				trade_successed = false
 				break
 			end
 		end
-
 		if not trade_successed then
 			trade_successed = true
 			colorprint({markup.ERROR}, "[-] Trade was canceled.")
 			task.wait(25)
 			continue
 		else
+			colorprint({markup.SUCCESS}, "[+] Trade successed.")
 			if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
 				webhook("TradeLog", `Trade with {user} successed.`)
 			end
@@ -1629,43 +1646,15 @@ local function init_lurebox() -- optimized
 	while true do
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
-			furn.lurebox.usepart,
+			furn.lurebox.unique,
 			"UseBlock",
 			{
 				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
 			},
 			LocalPlayer.Character
 		)
-		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait.")
-		task.wait(2)
-		local timesleep = nil
-		for _,v in ipairs(LocalPlayer.PlayerGui.InteractionsApp.BasicSelects:GetChildren()) do
-            if v.Name == "Template" then
-                local msg = v:FindFirstChild("Message")
-                if not msg then continue end
-
-                local holder = msg:FindFirstChild("FragmentHolder")
-                if not holder then continue end
-
-                local lure = holder:FindFirstChild("LuresTimerFragment")
-                if not lure then continue end
-
-                local cont = lure:FindFirstChild("Container")
-                if not cont then continue end
-
-                local contents = cont:FindFirstChild("Contents")
-                if not contents then continue end
-
-                local timer = contents:FindFirstChild("Timer")
-                if timer then
-                    timesleep = tonumber(timer.Text)
-                    break
-                end
-            end
-		end
-		timesleep = tonumber(timesleep)
-		colorprint({markup.INFO}, `[Lure]: Timer set: {(timesleep or 3600) + 5}`)
-		task.wait((timesleep or 3600) + 5)
+		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait. Next check in 1h.")
+		task.wait(3600)
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
@@ -1854,7 +1843,7 @@ end)
 			end
 
 			if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
-				if not (Config.FarmPriority):match("^%s*$") then 
+				if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") then 
 					if check_remote_existance("pets", Config.AutoFarmFilter.EggAutoBuy) then
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 					else
@@ -2057,7 +2046,7 @@ end)
 					end
 					if type(Config.AutoTradeFilter.WebhookEnabled) == "boolean" then
 						if Config.AutoTradeFilter.WebhookEnabled then
-							if _G.DiscordWebhookURL then
+							if _G.InternalConfig.DiscordWebhookURL then
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = true
 							else
 								_G.InternalConfig.AutoTradeFilter.WebhookEnabled = false
@@ -2184,7 +2173,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
 	to_home()
 	local furniture = {}
 	local filter = {
@@ -2385,7 +2374,6 @@ end)
 	end
 	HouseClient.lock_door()
 	colorprint({markup.SUCCESS}, "[+] Furniture init done. Door locked.")
-	print(furn.lurebox.unique)
 end)()
 
 task.spawn(function() -- optimized
