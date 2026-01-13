@@ -694,7 +694,7 @@ local pet_ailments = {
 		end
 		enstat(friendship, money, "camping")
 	end,
-	["hungry"] = function() 
+	["hungry"] = function() -- healing_apple в прошлый раз не работало
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
 			queue:destroy_linked("ailment pet")
@@ -705,21 +705,32 @@ local pet_ailments = {
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		if count_of_product("food", "healing_apple") == 0 then
-			API["ShopAPI/BuyItem"]:InvokeServer(
-				"food",
-				"healing_apple",
-				{
-					buy_count = 30
-				}
-			)
+		if count_of_product("food", "apple") == 0 then
+			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food") return end
+			if money > 20 then
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"apple",
+					{
+						buy_count = 20
+					}
+				)
+			else 
+				API["ShopAPI/BuyItem"]:InvokeServer(
+					"food",
+					"apple",
+					{
+						buy_count = money
+					}
+				)
+			end
 		end
 		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
 				pet_unique = pet.unique,
-				unique_id = inv_get_category_unique("food", "healing_apple")
+				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
 		repeat 
