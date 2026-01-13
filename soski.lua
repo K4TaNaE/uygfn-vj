@@ -1403,10 +1403,9 @@ local function init_autofarm() -- optimized
 				end
 			end
 		end 
-		if not flag then task.wait(28) continue end
+		if not flag or not equiped() then task.wait(28) continue end
 		task.wait(2)
 		local curpet = get_equiped_pet()
-		print(curpet)
 		actual_pet.unique = curpet.unique
 		actual_pet.remote = curpet.remote
 		actual_pet.model = curpet.model
