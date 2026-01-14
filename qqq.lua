@@ -191,9 +191,10 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
+				print("running task: ", name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
-
+				print("ended task", name)
 				if not ok then
 					print("Task failed:", err)
 					local spl = name:split(": ")
