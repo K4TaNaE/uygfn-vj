@@ -844,16 +844,16 @@ local pet_ailments = {
 				)
 			end
 		end
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-			"__Enum_PetObjectCreatorType_2",
-			{
-				additional_consume_uniques={},
-				pet_unique = pet.unique,
-				unique_id = inv_get_category_unique("food", "water")
-			}
-		)
 		local deadline = os.clock() + 10
 		repeat 
+			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+				"__Enum_PetObjectCreatorType_2",
+				{
+					additional_consume_uniques={},
+					pet_unique = pet.unique,
+					unique_id = inv_get_category_unique("food", "apple")
+				}
+			)
 			task.wait(1)
         until not has_ailment("hungry") or os.clock() > deadline
         if os.clock() > deadline then error("Out of limits") end
@@ -890,16 +890,16 @@ local pet_ailments = {
 				)
 			end
 		end
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
-			"__Enum_PetObjectCreatorType_2",
-			{
-				additional_consume_uniques={},
-				pet_unique = pet.unique,
-				unique_id = inv_get_category_unique("food", "water")
-			}
-		)
 		local deadline = os.clock() + 10
-        repeat 
+		repeat 
+			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+				"__Enum_PetObjectCreatorType_2",
+				{
+					additional_consume_uniques={},
+					pet_unique = pet.unique,
+					unique_id = inv_get_category_unique("food", "water")
+				}
+			)
             task.wait(1)
         until not has_ailment("thirsty") or os.clock() > deadline
 		if os.clock() > deadline then error("Out of limits") end
@@ -1071,9 +1071,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		while has_ailment("ride") do
-			local root = LocalPlayer.Character.HumanoidRootPart
-			walkTo("ride", root.Position + root.CFrame.LookVector * 50)
-			walkTo("ride", root.Position - root.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()		
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		enstat(friendship, money, "ride") 
@@ -1120,9 +1121,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
 		while has_ailment("walk") do
-			local root = LocalPlayer.Character.HumanoidRootPart
-			walkTo("walk", root.Position + root.CFrame.LookVector * 50)
-			walkTo("walk", root.Position - root.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()		
 		end
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		enstat(friendship, money, "walk") 
