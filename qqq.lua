@@ -852,9 +852,11 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
+		local deadline = os.clock() + 10
 		repeat 
 			task.wait(1)
-        until not has_ailment("hungry") 
+        until not has_ailment("hungry") or os.clock() > deadline
+        if os.clock() > deadline then error("Out of limits") end
         enstat(friendship, money, "hungry")  
 	end,
 	["thirsty"] = function() 
@@ -896,9 +898,11 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
+		local deadline = os.clock() + 10
         repeat 
             task.wait(1)
-        until not has_ailment("thirsty")
+        until not has_ailment("thirsty") or os.clock() > deadline
+		if os.clock() > deadline then error("Out of limits") end
     	enstat(friendship, money, "thirsty")  
 	end,
 	["sick"] = function() 
@@ -1238,7 +1242,6 @@ baby_ailments = {
 	end,
 	["hungry"] = function() 
 		local money = ClientData.get("money")
-		local deadline = os.clock() + 5
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1259,6 +1262,7 @@ baby_ailments = {
 				)
 			end
 		end
+		local deadline = os.clock() + 5
 		repeat 
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "apple"),
@@ -1271,7 +1275,6 @@ baby_ailments = {
 	end,
 	["thirsty"] = function() 
 		local money = ClientData.get("money")
-        local deadline = os.clock() + 5
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
 			if money > 20 then
@@ -1292,6 +1295,7 @@ baby_ailments = {
 				)
 			end
 		end
+        local deadline = os.clock() + 5
 		repeat			
 			API["ToolAPI/ServerUseTool"]:FireServer(
 				inv_get_category_unique("food", "water"),
