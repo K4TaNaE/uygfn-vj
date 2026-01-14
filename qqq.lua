@@ -17,7 +17,7 @@ local NetworkClient = game:GetService("NetworkClient")
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
-
+local PathfindingService = game:GetService("PathfindingService")
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
 local UIManager = loader("UIManager")
@@ -513,6 +513,64 @@ local function count(t)
 	return n
 end
 
+local function walkTo(ailment, targetPos, timeout)
+    timeout = timeout or 5
+
+    local character = LocalPlayer.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    -- создаём путь
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true
+    })
+
+    path:ComputeAsync(character.HumanoidRootPart.Position, targetPos)
+
+    if path.Status ~= Enum.PathStatus.Success then
+        -- fallback: просто MoveTo с таймаутом
+        humanoid:MoveTo(targetPos)
+        local t = 0
+        while t < timeout do
+            task.wait(0.1)
+            t += 0.1
+        end
+        return
+    end
+
+    local waypoints = path:GetWaypoints()
+
+    for _, wp in ipairs(waypoints) do
+        humanoid:MoveTo(wp.Position)
+
+        if wp.Action == Enum.PathWaypointAction.Jump then
+            humanoid.Jump = true
+        end
+
+        local reached = false
+        local conn
+        conn = humanoid.MoveToFinished:Connect(function()
+            reached = true
+            conn:Disconnect()
+        end)
+
+        local t = 0
+        while not reached and t < timeout do
+            task.wait(0.1)
+            t += 0.1
+
+            if not has_ailment(ailment) then
+                if conn then conn:Disconnect() end
+                return
+            end
+        end
+
+        if conn then conn:Disconnect() end
+    end
+end
+
 local function gotovec(x:number, y:number, z:number) -- optimized
 	local pet = actual_pet
 	if pet.unique then
@@ -948,8 +1006,9 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		while has_ailment("ride") do
-			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			local root = LocalPlayer.Character.HumanoidRootPart
+			walkTo("ride", root.Position + root.CFrame.LookVector * 50)
+			walkTo("ride", root.Position - root.CFrame.LookVector * 50)
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		enstat(friendship, money, "ride") 
@@ -995,9 +1054,10 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
 		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
-		while has_ailment("walk") do 
-			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+		while has_ailment("walk") do
+			local root = LocalPlayer.Character.HumanoidRootPart
+			walkTo("walk", root.Position + root.CFrame.LookVector * 50)
+			walkTo("walk", root.Position - root.CFrame.LookVector * 50)
 		end
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		enstat(friendship, money, "walk") 
@@ -2123,6 +2183,9 @@ end)()
 
 -- launch screen
 ;(function() -- optmized
+	repeat 
+		task.wait(1)
+	until not LocalPlayer.PlayerGui.AssetLoadUI.Enabled
 	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
