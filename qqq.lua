@@ -991,7 +991,7 @@ local pet_ailments = {
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		API["ToolAPI/"]:EquipInvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
+		API["ToolAPI/Equip"]:EquipInvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
