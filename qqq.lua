@@ -949,9 +949,7 @@ local pet_ailments = {
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		while has_ailment("ride") do
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		enstat(friendship, money, "ride") 
@@ -999,9 +997,7 @@ local pet_ailments = {
 		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
 		while has_ailment("walk") do 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
-			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 		end
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		enstat(friendship, money, "walk") 
