@@ -28,6 +28,7 @@ local InteriorsM = loader("InteriorsM")
 local HouseClient = loader("HouseClient")
 local PetActions = loader("PetActions")
 local StateManagerClient = loader("StateManagerClient")
+local LureBaitHelper = loader("LureBaitHelper")
 local API = ReplicatedStorage.API
 
 local StateDB = {
@@ -53,7 +54,7 @@ local farmed = {
 	eggs_hatched = 0,
 	lurebox = {}
 }
-local lureboxflag = false
+_G.bait_placed = false
 
 local furn = {}
 _G.InternalConfig = {}
@@ -1710,18 +1711,22 @@ end
 
 -- -- сделать детект предметов которые ты можешшь положить в бокс
 local function init_lurebox() -- optimized
-	while true do
-		API["HousingAPI/ActivateFurniture"]:InvokeServer(
-			LocalPlayer,
-			furn.lurebox.unique,
-			"UseBlock",
-			{
-				bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
-			},
-			LocalPlayer.Character
-		)
-		colorprint({markup.INFO}, "[~Lure~]: Tryied to place bait. Next check in 1h.")
-		task.wait(3600)
+	
+	local function to_home_and_check_bait_placed()
+		to_home()
+		if not debug.getupvalue(LureBaitHelper.run_tutorial, 11)() then
+			API["HousingAPI/ActivateFurniture"]:InvokeServer(
+				LocalPlayer,
+				furn.lurebox.unique,
+				"UseBlock",
+				{
+					bait_unique = inv_get_category_unique("food", "ice_dimension_2025_ice_soup_bait") -- возможно не этот remote
+				},
+				LocalPlayer.Character
+			)
+			colorprint({markup.INFO}, "[Lure] Tried to place bait.")
+		end
+
 		API["HousingAPI/ActivateFurniture"]:InvokeServer(
 			LocalPlayer,
 			furn.lurebox.unique,
@@ -1729,9 +1734,23 @@ local function init_lurebox() -- optimized
 			false,
 			LocalPlayer.Character
 		)
-		colorprint({markup.SUCCESS}, "[Lure] Reward collected")
-		task.wait(2)
-		-- добавить енстат статистики farmed.lurebox
+		task.wait(.5)
+		_G.bait_placed = debug.getupvalue(LureBaitHelper.run_tutorial, 11)() 
+		_G.can_proceed = true 
+	end
+
+	while task.wait(.2) do
+		queue:enqueue{"bait_check", to_home_and_check_bait_placed}
+		repeat 
+			task.wait(1)		
+		until _G.can_proceed
+		_G.can_proceed = false
+		if not _G.bait_placed then
+			colorprint({markup.SUCCESS}, "[Lure] Reward collected")
+		else
+			colorprint({markup.INFO}, "[Lure] Next check in 1h.")
+			task.wait(3600)
+		end
 	end
 end
 
@@ -2183,6 +2202,7 @@ end)()
 
 -- launch screen
 ;(function() -- optmized
+	if LocalPlayer.Character then return end
 	repeat 
 		task.wait(1)
 	until not LocalPlayer.PlayerGui.AssetLoadUI.Enabled
