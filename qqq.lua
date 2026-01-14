@@ -845,6 +845,7 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
+		print(pet.unique)
 		repeat 
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_2",
@@ -890,6 +891,7 @@ local pet_ailments = {
 				)
 			end
 		end
+		print(pet.unique)
 		local deadline = os.clock() + 10
 		repeat 
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
@@ -991,7 +993,7 @@ local pet_ailments = {
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		gotovec(1000,25,1000)
-		API["ToolAPI/Equip"]:EquipInvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
+		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		while has_ailment("play") do
 			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 				"__Enum_PetObjectCreatorType_1",
