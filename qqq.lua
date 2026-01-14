@@ -713,19 +713,78 @@ end
 
 local function __pet_callback(friendship, money, ailment) 
 	if not _G.InternalConfig.FarmPriority then
+		task.wait(.5)
 		farmed.ailments += 1
 		update_gui("pet_needs", farmed.ailments) 
 	else
-		enstat(friendship, money, ailment)
+		task.wait(.5)
+		if _G.InternalConfig.FarmPriority == "eggs" then
+			task.wait(1)
+			if _G.InternalConfig.AutoFarmFilter.PotionFarm then
+				farmed.eggs_hatched += 1 
+				farmed.ailments += 1
+				update_gui("eggs", farmed.eggs_hatched)
+				update_gui("pet_needs", farmed.ailments)
+				local pet = get_equiped_pet()
+				actual_pet.model = pet.model; actual_pet.rarity = pet.rarity; actual_pet.remote = pet.remote; actual_pet.unique = pet.unique; actual_pet.wrapper = pet.wrapper
+				queue:destroy_linked("ailment pet")
+				table.clear(StateDB.active_ailments)
+				return
+			end
+			if actual_pet.unique ~= cur_unique() then
+				farmed.eggs_hatched += 1 
+				actual_pet.unique = nil 
+				queue:destroy_linked("ailment pet")
+				table.clear(StateDB.active_ailments)
+				farmed.ailments += 1
+				update_gui("eggs", farmed.eggs_hatched)
+				update_gui("bucks", farmed.money)
+				return
+			else
+				farmed.ailments += 1
+				update_gui("bucks", farmed.money)
+				StateDB.active_ailments[ailment] = nil
+				return
+			end
+		end
+
+		if _G.InternalConfig.AutoFarmFilter.PotionFarm then
+			if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
+				farmed.friendship_levels += 1
+				farmed.potions += 1
+				table.clear(StateDB.active_ailments)
+				update_gui("friendship", farmed.friendship_levels)
+				update_gui("potions", farmed.potions)
+			else
+				StateDB.active_ailments[ailment] = nil
+			end
+		else 
+			if actual_pet.rarity == 6 then
+				farmed.pets_fullgrown += 1
+				table.insert(total_fullgrowned, actual_pet.unique)
+				update_gui("fullgrown", farmed.pets_fullgrown)
+				actual_pet.unique = nil
+				table.clear(StateDB.active_ailments)
+				queue:destroy_linked("ailment pet")
+			else
+				StateDB.active_ailments[ailment] = nil
+			end
+		end
+		farmed.ailments += 1
+		update_gui("pet_needs", farmed.ailments)
 	end
 end
 
 local function __baby_callbak(ailment, money) 
+		task.wait(.5)
 	if not _G.InternalConfig.BabyAutoFarm then
 		farmed.baby_ailments += 1 
 		update_gui("baby_needs", farmed.baby_ailments)
 	else
-		enstat_baby(money, ailment)
+		task.wait(.5)
+		farmed.baby_ailments += 1
+		StateDB.baby_active_ailments[ailment] = nil
+		update_gui("baby_needs", farmed.baby_ailments)
 	end
 end
 
