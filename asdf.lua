@@ -818,6 +818,7 @@ local pet_ailments = {
 		end
 	end,
 	["hungry"] = function() -- healing_apple в прошлый раз не работало
+		print("hungry rabotaet")
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
 			queue:destroy_linked("ailment pet")
@@ -825,16 +826,19 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
+		print("Pet unique at start: ", pet.unique)
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") == 0 then
 			if money == 0 then 
+				print("No money")
 				colorprint({markup.ERROR}, "[-] No money to buy food") 
 				StateDB.active_ailments.hungry = nil 
 				return
 			end
 			if money > 20 then
+				print("pokupaem apple 20")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -843,6 +847,7 @@ local pet_ailments = {
 					}
 				)
 			else 
+				print("pokupaem apple skolko est deneg")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -853,6 +858,7 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
+				print("nu kormim, i pet:", pet.unique)
 		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 			"__Enum_PetObjectCreatorType_2",
 			{
@@ -861,6 +867,7 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "apple")
 			}
 		)
+		print('pokormili")
 		repeat 
 			task.wait(1)
         until not has_ailment("hungry") or os.clock() > deadline
