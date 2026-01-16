@@ -51,8 +51,7 @@ local farmed = {
 	friendship_levels = 0,
 	event_currency = 0,
 	baby_ailments = 0,
-	eggs_hatched = 0,
-	lurebox = {}
+	eggs_hatched = 0
 }
 _G.bait_placed = false
 
@@ -639,7 +638,6 @@ end
 local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
-		task.wait(1)
 		if _G.InternalConfig.AutoFarmFilter.PotionFarm then
 			farmed.eggs_hatched += 1 
 			farmed.money += ClientData.get("money") - money
@@ -685,7 +683,7 @@ local function enstat(friendship, money, ailment)  -- optimized
 			StateDB.active_ailments[ailment] = nil
 		end
 	else 
-		if actual_pet.rarity == 6 then
+		if actual_pet.age == 6 then
 			farmed.pets_fullgrown += 1
 			table.insert(total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
@@ -703,7 +701,6 @@ local function enstat(friendship, money, ailment)  -- optimized
 end
 
 local function enstat_baby(money, ailment) -- optimized
-	task.wait(.5)
 	farmed.money += ClientData.get("money") - money 
 	farmed.baby_ailments += 1
 	StateDB.baby_active_ailments[ailment] = nil
@@ -713,13 +710,10 @@ end
 
 local function __pet_callback(friendship, money, ailment) 
 	if not _G.InternalConfig.FarmPriority then
-		task.wait(.5)
 		farmed.ailments += 1
 		update_gui("pet_needs", farmed.ailments) 
 	else
-		task.wait(.5)
 		if _G.InternalConfig.FarmPriority == "eggs" then
-			task.wait(1)
 			if _G.InternalConfig.AutoFarmFilter.PotionFarm then
 				farmed.eggs_hatched += 1 
 				farmed.ailments += 1
@@ -776,12 +770,11 @@ local function __pet_callback(friendship, money, ailment)
 end
 
 local function __baby_callbak(ailment, money) 
-		task.wait(.5)
 	if not _G.InternalConfig.BabyAutoFarm then
 		farmed.baby_ailments += 1 
 		update_gui("baby_needs", farmed.baby_ailments)
 	else
-		task.wait(.5)
+		queue:taskdestroy("baby", ailment)
 		farmed.baby_ailments += 1
 		StateDB.baby_active_ailments[ailment] = nil
 		update_gui("baby_needs", farmed.baby_ailments)
@@ -1113,12 +1106,6 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		local function playerMoving()
-			return LocalPlayer.Character.Humanoid.MoveDirection.Magnitude > 0
-		end
-		local function inside(pos) 
-			return math.abs(pos.Z) <= 75 and math.abs(pos.Z) <= 75
-		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
@@ -1126,22 +1113,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		repeat 
-			if playerMoving() then
-				break
-			end
-			local forwardPos = LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(forwardPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(forwardPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
-			end
-			if playerMoving() then
-				break
-			end
-			local backPos = LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(backPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(backPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()	
-    		end		
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()			
 		until not has_ailment("ride") or os.clock() > deadline
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		if os.clock() > deadline then 
@@ -1189,12 +1164,6 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		local function playerMoving()
-			return LocalPlayer.Character.Humanoid.MoveDirection.Magnitude > 0
-		end
-		local function inside(pos) 
-			return math.abs(pos.Z) <= 75 and math.abs(pos.Z) <= 75
-		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
@@ -1202,22 +1171,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
 		repeat
-			if playerMoving() then
-				break
-			end
-			local forwardPos = LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(forwardPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(forwardPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
-			end
-			if playerMoving() then
-				break
-			end
-			local backPos = LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(backPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(backPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()	
-    		end		
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()				
 		until not has_ailment("walk") or os.clock() > deadline
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		if os.clock() > deadline then 
@@ -1299,8 +1256,8 @@ local pet_ailments = {
 				1,
 				k
 			)
+			task.wait(1)
 		end
-		task.wait(1)
 	end,
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -2062,8 +2019,7 @@ local function __init()
 	   				**🧪Potions Farmed :** {farmed.potions}\n\
 	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
 	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}\n\
-	   				**📦Found in LureBox :** {farmed.lurebox}`
+	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
 				)
 			end
 		end)
@@ -2509,7 +2465,6 @@ task.spawn(function() -- optimized
     createLabel("friendship", "🧸Friendship levels farmed", 4)
     createLabel("baby_needs", "👶Baby needs completed", 5)
     createLabel("eggs", "🥚Eggs hatched", 6)
-    createLabel("lurebox", "📦Found in lurebox", 7)
 end) 
 
 
