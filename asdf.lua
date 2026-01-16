@@ -182,6 +182,14 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
+		__asyncrun = function(taskt: table)
+			local name = taskt[1]			
+			local callback = taskt[2]			
+			if name and type(name) == "string" and callback and type(callback) == "function" then 
+				pcall(task.spawn, callback)
+			end
+		end,
+
 		__run = function(self)
 			self.running = true
 
@@ -818,12 +826,10 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		print("pet", pet.unique)
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") == 0 then
-			print("0 apples")
 			if money == 0 then 
 				colorprint({markup.ERROR}, "[-] No money to buy food") 
 				StateDB.active_ailments.hungry = nil 
@@ -831,7 +837,6 @@ local pet_ailments = {
 				return
 			end
 			if money > 20 then
-				print("buying 20 apples")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -840,7 +845,6 @@ local pet_ailments = {
 					}
 				)
 			else 
-				print("buying some apples")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -851,12 +855,11 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
-				print("kormim, i pet", pet.unique)
 		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
-				pet_unique = pet.unique,
+				pet_unique = pet.pet_unique,
 				unique_id = inv_get_category_unique("food", "apple")
 			}
 		)
@@ -910,7 +913,7 @@ local pet_ailments = {
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
-				pet_unique = pet.unique,
+				pet_unique = pet.pet_unique,
 				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
@@ -1256,7 +1259,7 @@ local pet_ailments = {
 				1,
 				k
 			)
-			task.wait(1)
+			task.wait(1.2) -- дело в секлундах
 		end
 	end,
 	["pizza_party"] = function() 
@@ -1721,6 +1724,10 @@ local function init_autofarm() -- optimized
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
+					if k == "mystery" then 
+						queue:__asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						continue 
+					end
 					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
