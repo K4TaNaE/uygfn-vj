@@ -8,7 +8,6 @@ local cloneref =  cloneref -- potassium, seliware, volcano, delta, bunni, crypti
 local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
 
 --[[ Services ]]--
-local GuiService = game:GetService("GuiService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -17,7 +16,8 @@ local NetworkClient = game:GetService("NetworkClient")
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
-local PathfindingService = game:GetService("PathfindingService")
+local Stats = game:GetService("Stats")
+
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
 local UIManager = loader("UIManager")
@@ -292,7 +292,7 @@ local function to_neighborhood() -- optimized
 	temp_platform()
 	InteriorsM.enter("Neighborhood", "MainDoor")
 	while not get_current_location() == "Neighborhood" do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -305,7 +305,7 @@ local function to_home() -- optimized
 	temp_platform()
 	InteriorsM.enter("housing", "MainDoor", { house_owner=LocalPlayer })
 	while not get_current_location() == "housing" do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -323,7 +323,7 @@ local function to_mainmap() -- optimized
 	temp_platform()
 	InteriorsM.enter("MainMap", "Neighborhood/MainDoor")
 	if not get_current_location() == "MainMap" then
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -334,7 +334,7 @@ local function goto(destId, door, ops:table) -- optimized
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
 	while not get_current_location() == destId do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -522,62 +522,18 @@ local function count(t)
 	return n
 end
 
-local function walkTo(ailment, targetPos, timeout)
-    timeout = timeout or 5
-
-    local character = LocalPlayer.Character
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    -- создаём путь
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true
-    })
-
-    path:ComputeAsync(character.HumanoidRootPart.Position, targetPos)
-
-    if path.Status ~= Enum.PathStatus.Success then
-        -- fallback: просто MoveTo с таймаутом
-        humanoid:MoveTo(targetPos)
-        local t = 0
-        while t < timeout do
-            task.wait(0.1)
-            t += 0.1
-        end
-        return
-    end
-
-    local waypoints = path:GetWaypoints()
-
-    for _, wp in ipairs(waypoints) do
-        humanoid:MoveTo(wp.Position)
-
-        if wp.Action == Enum.PathWaypointAction.Jump then
-            humanoid.Jump = true
-        end
-
-        local reached = false
-        local conn
-        conn = humanoid.MoveToFinished:Connect(function()
-            reached = true
-            conn:Disconnect()
-        end)
-
-        local t = 0
-        while not reached and t < timeout do
-            task.wait(0.1)
-            t += 0.1
-
-            if not has_ailment(ailment) then
-                if conn then conn:Disconnect() end
-                return
-            end
-        end
-
-        if conn then conn:Disconnect() end
-    end
+-- unit: b, kb, mb, gb
+local function get_memory(unit: string) 
+	local unit = unit:lower()
+	if unit == "b" then
+		return (Stats:GetTotalMemoryUsageMb() * 1024) * 1024
+	elseif unit == "kb" then
+		return Stats:GetTotalMemoryUsageMb() * 1024
+	elseif unit == "mb" then
+		return Stats:GetTotalMemoryUsageMb()
+	elseif unit == "gb" then
+		return Stats:GetTotalMemoryUsageMb() / 1024
+	end
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
@@ -646,19 +602,6 @@ end
 local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if _G.InternalConfig.FarmPriority == "eggs" then
-		if _G.InternalConfig.AutoFarmFilter.PotionFarm then
-			farmed.eggs_hatched += 1 
-			farmed.money += ClientData.get("money") - money
-			farmed.ailments += 1
-			update_gui("eggs", farmed.eggs_hatched)
-			update_gui("bucks", farmed.money)
-			update_gui("pet_needs", farmed.ailments)
-			local pet = get_equiped_pet()
-			actual_pet.model = pet.model; actual_pet.rarity = pet.rarity; actual_pet.remote = pet.remote; actual_pet.unique = pet.unique; actual_pet.wrapper = pet.wrapper
-			queue:destroy_linked("ailment pet")
-			table.clear(StateDB.active_ailments)
-			return
-		end
 		if actual_pet.unique ~= cur_unique() then
 			farmed.eggs_hatched += 1 
 			actual_pet.unique = nil 
@@ -716,7 +659,7 @@ local function enstat_baby(money, ailment) -- optimized
 	update_gui("baby_needs", farmed.baby_ailments)
 end
 
-local function __pet_callback(friendship, money, ailment) 
+local function __pet_callback(friendship, ailment) 
 	if not _G.InternalConfig.FarmPriority then
 		farmed.ailments += 1
 		update_gui("pet_needs", farmed.ailments) 
@@ -863,7 +806,6 @@ local pet_ailments = {
 				unique_id = inv_get_category_unique("food", "apple")
 			}
 		)
-				print("pokormili")
 		repeat 
 			task.wait(1)
         until not has_ailment("hungry") or os.clock() > deadline
@@ -1259,8 +1201,9 @@ local pet_ailments = {
 				1,
 				k
 			)
-			task.wait(1.2) -- дело в секлундах
+			task.wait(1.2) 
 		end
+		StateDB.active_ailments.mystery = nil
 	end,
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1314,7 +1257,7 @@ baby_ailments = {
 		enstat_baby(money, "camping")
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("camping") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "camping")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "camping")
 		end
 	end,
 	["hungry"] = function() 
@@ -1418,7 +1361,7 @@ baby_ailments = {
 		enstat_baby(money, "sick") 
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("sick") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "sick")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "sick")
 		end
 	end,
 	["bored"] = function() 
@@ -1440,7 +1383,7 @@ baby_ailments = {
 		enstat_baby(money, "bored")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("bored") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "bored")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "bored")
 		end
 	end,
 	["salon"] = function() 
@@ -1461,7 +1404,7 @@ baby_ailments = {
 		enstat_baby(money, "salon")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("salon") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "salon")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "salon")
 		end
 	end,
 	["beach_party"] = function() 
@@ -1533,7 +1476,7 @@ baby_ailments = {
 		enstat_baby(money, "school")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("school") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "school")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "school")
 		end
 	end,
 	["sleepy"] = function() 
@@ -1583,11 +1526,10 @@ baby_ailments = {
 		enstat_baby(money, "pizza_party")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("pizza_party") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "pizza_party")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "pizza_party")
 		end
 	end,
 }
-
 
 local function init_autofarm() -- optimized
 	if count(get_owned_pets()) == 0 then
@@ -1596,7 +1538,7 @@ local function init_autofarm() -- optimized
 		until count(get_owned_pets()) > 0
 	end
 
-	while true do
+	while task.wait(1) do
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if pet then
 			API["ToolAPI/Unequip"]:InvokeServer(
@@ -1707,7 +1649,7 @@ local function init_autofarm() -- optimized
 		actual_pet.wrapper = curpet.wrapper
 		actual_pet.rarity = curpet.rarity
 
-		while true do
+		while task.wait(1) do
 			if actual_pet.unique ~= cur_unique() then
 				actual_pet.unique = nil
 				break
@@ -1737,7 +1679,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	while true do
+	while task.wait(1) do
 		if ClientData.get("team") ~= "Babies" then
 			API["TeamAPI/ChooseTeam"]:InvokeServer(
 				"Babies",
@@ -1775,7 +1717,7 @@ end
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
 	if cost then
-		while true do
+		while task.wait(1) do
 			local farmd = farmed.money
 			API["ShopAPI/BuyItem"]:InvokeServer(
 				"pets",
@@ -1844,7 +1786,7 @@ local function init_auto_trade() -- optimized
 		end
 	end)
 
-	while true do 
+	while task.wait(1) do 
 		while not exist do
 			task.wait(4)
 		end
@@ -1955,7 +1897,7 @@ local function init_lurebox() -- optimized
 		_G.can_proceed = true 
 	end
 
-	while task.wait(.2) do
+	while task.wait(1) do
 		queue:enqueue{"bait_check", to_home_and_check_bait_placed}
 		repeat 
 			task.wait(1)		
@@ -1994,6 +1936,15 @@ local function init_mode()
 end
 
 local function __init() 
+
+	task.defer(function() 
+		-- memory monitor
+		repeat
+			task.wait(60)
+		until false
+	end)
+
+
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
 	end
@@ -2016,7 +1967,7 @@ local function __init()
 
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
-			while true do
+			while task.wait(1) do
 				task.wait(_G.InternalConfig.WebhookSendDelay)
 				webhook(
 					"AutoFarm Log",
@@ -2412,7 +2363,6 @@ end)
 	else
 		error("Wrong datatype of Mode")
 	end
-	task.wait(2)
 end)()
 
 -- launch screen
@@ -2443,7 +2393,7 @@ task.spawn(function() -- optimized
 
     local frame = Instance.new("Frame")
     frame.Name = "StatsFrame"
-    frame.Size = UDim2.new(0, 250, 0, 170)
+    frame.Size = UDim2.new(0, 250, 0, 150)
     frame.Position = UDim2.new(0, 5, 0, 5)
     frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     frame.BackgroundTransparency = 0.3
