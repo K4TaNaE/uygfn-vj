@@ -341,12 +341,12 @@ local function goto(destId, door, ops:table) -- optimized
 end
 
 local function get_equiped_pet() -- not optimzed
-	local remote, unique, model, age, rarity, friendship, xp
+	local model, age, friendship, xp
 	local data = {}
 	local wrapper = ClientData.get("pet_char_wrappers")[1]
 	if not wrapper then return nil end
-	remote = wrapper["pet_id"] 
-	unique = wrapper["pet_unique"]
+	local remote = wrapper["pet_id"] 
+	local unique = wrapper["pet_unique"]
 	local cdata = ClientData.get("inventory").pets[unique]
 	if cdata then
 		age = cdata.properties.age
@@ -359,12 +359,13 @@ local function get_equiped_pet() -- not optimzed
 			local session = entity.session_memory
 			if session.meta.owned_by_local_player then
 				model = v
-				rarity = entity.base.entry.rarity
 			end				
 		end
 	end
+	local rarity = InventoryDB.pets[remote].rarity
+	local name = InventoryDB.pets[remote].name
 	data.remote = remote; data.unique = unique; data.model = model or {}; data.wrapper = wrapper; 
-	data.age = age; data.rarity = rarity; data.friendship = friendship; data.xp = xp
+	data.age = age; data.rarity = rarity; data.friendship = friendship; data.xp = xp; data.name = name;
  	return data
 end
 
@@ -601,7 +602,7 @@ end
 
 local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
-	if _G.InternalConfig.FarmPriority == "eggs" then
+	if actual_pet.is_egg then
 		if actual_pet.unique ~= cur_unique() then
 			farmed.eggs_hatched += 1 
 			actual_pet.unique = nil 
@@ -779,7 +780,6 @@ local pet_ailments = {
 			if money == 0 then 
 				colorprint({markup.ERROR}, "[-] No money to buy food") 
 				StateDB.active_ailments.hungry = nil 
-				print("no money to buy")
 				return
 			end
 			if money > 20 then
@@ -1190,6 +1190,7 @@ local pet_ailments = {
 		enstat(friendship, money, "sleepy")  
 	end,
 	["mystery"] = function() 
+		print("Mystery started")
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("mystery") then
 			queue:destroy_linked("ailment pet")
@@ -1204,7 +1205,7 @@ local pet_ailments = {
 				1,
 				k
 			)
-			task.wait(1.2) 
+			-- task.wait(1.2) 
 		end
 		StateDB.active_ailments.mystery = nil
 	end,
@@ -1609,7 +1610,7 @@ local function init_autofarm() -- optimized
 		else
 			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in owned_pets do
-					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):find("egg") then
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1626,7 +1627,7 @@ local function init_autofarm() -- optimized
 				end
 			else 
 				for k,v in owned_pets do
-					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
+					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1642,6 +1643,22 @@ local function init_autofarm() -- optimized
 					end
 				end
 			end
+			if not flag then
+				for k, _ in owned_pets do
+					API["ToolAPI/Equip"]:InvokeServer(
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
+					end
+					flag = true
+					break
+				end
+			end
 		end 
 		if not flag or not equiped() then task.wait(28) continue end
 		task.wait(2)
@@ -1651,6 +1668,7 @@ local function init_autofarm() -- optimized
 		actual_pet.model = curpet.model
 		actual_pet.wrapper = curpet.wrapper
 		actual_pet.rarity = curpet.rarity
+		actual_pet.is_egg = (curpet.name:lower()):match("egg")
 
 		while task.wait(1) do
 			if actual_pet.unique ~= cur_unique() then
@@ -1811,6 +1829,13 @@ local function init_auto_trade() -- optimized
 						end
 					end
 				end
+				if _G.InternalConfig.AutoTradeFilter.ExcludeEggs then
+					for k,v in owned_pets do
+						if (v.name:lower()):find("egg") then 
+							exclude[k] = true
+						end
+					end
+				end
 				if _G.InternalConfig.AutoTradeFilter.SendAllFarmed then
 					for _,v in total_fullgrowned do
 						if owned_pets[v] and not exclude[v] then
@@ -1929,10 +1954,94 @@ local function init_gift_autoopen() -- чета тут не так
 	end	
 end
 
+local function init_auto_give_potion()
+	
+	local function get_potions() 
+	local potions = {}
+		for k,v in get_owned_category("food") do
+			if (v.id:lower()):match("potion") then
+				table.insert(potions, k)
+			end 
+		end
+		if #potions > 0 then return potions else return nil end
+	end
+
+	while task.wait(1) do
+		local pets_to_grow = {}
+		local owned_pets = get_owned_pets()
+		if _G.InternalConfig.AutoGivePotion ~= "any" then
+			for k,_ in _G.InternalConfig.AutoGivePotion do
+				local pet = inv_get_category_unique("pets", k)
+				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
+					pets_to_grow[pet] = true
+				end
+			end
+		else
+			for k,v in owned_pets do
+				if v.age < 6 and not (v.name:lower()):match("egg") then
+					pets_to_grow[k] = true
+				end
+			end
+		end
+		local equiped_pet
+		for k,_ in pets_to_grow do
+			local potions = get_potions()
+			if not potions then task.wait(300) break end	
+			
+			equiped_pet = ClientData.get("pet_char_wrappers")[1]
+			if equiped_pet then
+				API["ToolAPI/Unequip"]:InvokeServer(
+					equiped_pet.pet_unique,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+				task.wait(1)
+				API["ToolAPI/Equip"]:InvokeServer(
+					k,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+			end
+			task.wait(1)
+			for a,_ in ipairs(potions) do
+				local others = {}
+				for i, _ in ipairs(potions) do
+					for j, p in ipairs(potions) do
+						if j ~= i then table.insert(others, p) end
+					end
+				end
+				API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+					"__Enum_PetObjectCreatorType_2",
+					{
+						additional_consume_uniques = {
+							table.unpack(others)
+						},
+						pet_unique = k,
+						unique_id = a
+					}
+				)
+				task.wait(1)
+			end
+		end
+		task.wait(1)
+		API["ToolAPI/Equip"]:InvokeServer(
+			equiped_pet.pet_unique or actual_pet.unique or "",
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+		task.wait(299)
+	end
+end
+
 local function init_mode() 
 	if _G.InternalConfig.Mode == "bot" then
 		RunService:Set3dRenderingEnabled(false)
-		setfpscap(1)
 	else
 		-- playable optmization
 	end
@@ -1940,12 +2049,12 @@ end
 
 local function __init() 
 
-	task.defer(function() 
-		-- memory monitor
-		repeat
-			task.wait(60)
-		until false
-	end)
+	-- task.defer(function() 
+	-- 	-- memory monitor
+	-- 	repeat
+	-- 		task.wait(60)
+	-- 	until false
+	-- end)
 
 
 	if _G.InternalConfig.FarmPriority then
@@ -1962,6 +2071,10 @@ local function __init()
 
 	if _G.InternalConfig.AutoRecyclePet then
 		task.defer(init_auto_recycle)
+	end
+
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
 	end
 
 	if _G.InternalConfig.PetAutoTrade then
@@ -2065,12 +2178,13 @@ end)
 							if check_remote_existance("pets", v) then
 								list[v] = true
 							else
-								colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+								colorprint({markup.ERROR}, `[AutoFarmFilter.PetsToExclude] Wrong [{v}] remote name.`)
 							end
 						end
 						if count(list) > 0 then
 							_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 						else
+							colorprint({markup.WARNING}, "[AutoFarmFilter.PetsToExclude] No valid remote names. Option is disabled.")
 							_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 						end
 					else
@@ -2080,7 +2194,7 @@ end)
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 				end
 			else
-				error("Wrong datatype of PetsToExclude!")
+				error("[AutoFarmFilter.PetsToExclude] Wrong datatype. Exiting.")
 			end			
 
 			if type(Config.AutoFarmFilter.PotionFarm) == "boolean" then -- AutoFarmFilter / PotionFarm
@@ -2094,7 +2208,7 @@ end)
 					_G.InternalConfig.AutoFarmFilter.PotionFarm = false
 				end
 			else 
-				error("Wrong datatype of PotionFarm!")
+				error("[AutoFarmFilter.PotionFarm] Wrong datatype. Exiting.")
 			end
 
 			if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
@@ -2103,13 +2217,13 @@ end)
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 					else
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false
-						colorprint({markup.ERROR}, `[-] Wrong "{Config.AutoFarmFilter.EggAutoBuy}" remote name `)
+						colorprint({markup.ERROR}, `[AutoFarmFilter.EggAutoBuy] Wrong [{Config.AutoFarmFilter.EggAutoBuy}] remote name. Option is disabled.`)
 					end
 				else
 					_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false
 				end
 			else
-				error("Wrong datatype of EggAutoBuy!")
+				error("[AutoFarmFilter.EggAutoBuy] Wrong datatype. Exiting.")
 			end
 			
 		elseif (Config.FarmPriority):match("^%s*$") then 
@@ -2119,28 +2233,57 @@ end)
 			_G.InternalConfig.AutoFarmFilter.PetsToExclude = {} 
 			
 		else 
-			error("Wrong FarmPriority value!")
+			error("[FarmPriority] Wrong value. Exiting.")
 		end
 	else  
-		error("Wrong datatype of FarmPriority!")
+		error("[FarmPriority] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.BabyAutoFarm) == "boolean" then -- babyAutoFarm
 		_G.InternalConfig.BabyAutoFarm = Config.BabyAutoFarm
 	else
-		error("Wrong datatype of BabyAutoFarm!")
+		error("[BabyAutoFarm] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.LureboxFarm) == "boolean" then
 		_G.InternalConfig.LureboxFarm = Config.LureboxFarm
 	else
-		error("Wrong datatype of LureboxFarm")
+		error("[LureboxFarm] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.GiftsAutoOpen) == "boolean" then
 		_G.InternalConfig.GiftsAutoOpen = Config.GiftsAutoOpen
 	else
-		error("Wrong datatype of GiftsAutoOpen")
+		error("[GiftsAutoOpen] Wrong datatype. Exiting.")
+	end
+
+	if type(Config.AutoGivePotion) == "string" then
+		if not (Config.AutoGivePotion):match("^%s*$") then 
+			_G.InternalConfig.AutoGivePotion = {}
+			if Config.AutoGivePotion == "any" or Config.AutoGivePotion:match(";") then
+				if Config.AutoGivePotion == "any" then
+					_G.InternalConfig.AutoGivePotion = "any"
+				else
+					for v in Config.AutoGivePotion:gmatch("([^;]+)") do
+						if InventoryDB.pets[v] then
+							_G.InternalConfig.AutoGivePotion[v] = true 
+						else
+							colorprint({markup.ERROR}, `[AutoGivePotion] Wrong [{v}] remote name.`)
+						end
+					end
+					if count(_G.InternalConfig.AutoGivePotion) == 0 then
+						colorprint({markup.WARNING}, "[AutoGivePotion] No valid remote names. Option is disabled.")
+						_G.InternalConfig.AutoGivePotion = false
+					end
+				end
+			else
+				error("[AutoGivePotion] Wrong value. Exiting.")
+			end
+		else
+			_G.InternalConfig.AutoGivePotion = false
+		end
+	else
+		error("[AutoGivePotion] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.AutoRecyclePet) == "boolean" then -- CrystalEggFarm
@@ -2178,7 +2321,6 @@ end)
 					_G.InternalConfig.AutoFarmFilter.PotionFarm = true
 				end
 
-
 				if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
 					if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") then 
 						if check_remote_existance("pets", Config.AutoFarmFilter.EggAutoBuy) then
@@ -2206,7 +2348,7 @@ end)
 					_G.InternalConfig.PetExchangeRarity = false
 				end
 			else
-				error("Wrong datatype of PetExchangeRarity!")
+				error("[PetExchangeRarity] Wrong datatype. Exiting")
 			end
 
 			local possible = {
@@ -2229,14 +2371,14 @@ end)
 					_G.InternalConfig.PetExchangeAge = 6
 				end
 			else
-				error("Wrong datatype of PetExchangeAge")
+				error("[PetExchangeAge] Wrong datatype. Exiting.")
 			end
 		else 
 			_G.InternalConfig.AutoRecyclePet = false
 			_G.InternalConfig.PetExchangeAge = false
 		end
 	else
-		error("Wrong datatype of AutoRecyclePet")
+		error("[AutoRecyclePet] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.DiscordWebhookURL) == "string" then -- DiscordWebhookURL
@@ -2255,7 +2397,7 @@ end)
 			_G.InternalConfig.DiscordWebhookURL = false
 		end
 	else
-		error("Wrong datatype of DiscordWebhookURL")
+		error("[DiscordWebhookURL] Wrong datatype. Exiting.")
 	end
 
 
@@ -2287,17 +2429,22 @@ end)
 							end
 						end
 					else
-						error("Wrong datatype of SendAllType")
+						error("[AutoTradeFilter.SendAllType] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.SendAllFarmed) == "boolean" then
 						_G.InternalConfig.AutoTradeFilter.SendAllFarmed = Config.AutoTradeFilter.SendAllFarmed
 					else
-						error("Wrong datatype of SendAllFarmed")
+						error("[AutoTradeFilter.SendAllFarmed] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.ExcludeFriendly) == "boolean" then
 						_G.InternalConfig.AutoTradeFilter.ExcludeFriendly = Config.AutoTradeFilter.ExcludeFriendly
 					else
-						error("Wrong datatype of ExcludeFriendy")
+						error("[AutoTradeFilter.ExcludeFriendy] Wrong datatype. Exiting.")
+					end
+					if type(Config.AutoTradeFilter.ExcludeEggs) == "boolean" then
+						_G.InternalConfig.AutoTradeFilter.ExcludeEggs = Config.AutoTradeFilter.ExcludeEggs
+					else
+						error("[AutoTradeFilter.ExcludeEggs] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.WebhookEnabled) == "boolean" then
 						if Config.AutoTradeFilter.WebhookEnabled then
@@ -2310,20 +2457,20 @@ end)
 							_G.InternalConfig.AutoTradeFilter.WebhookEnabled = false
 						end
 					else
-						error("Wrong datatype of WebhookEnabled")
+						error("[WebhookEnabled] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.TradeDelay) == "number" then
 						if Config.AutoTradeFilter.TradeDelay >= 1 then
 							_G.InternalConfig.AutoTradeFilter.TradeDelay = Config.AutoTradeFilter.TradeDelay
 						else
 							_G.InternalConfig.AutoTradeFilter.TradeDelay = 40 
-							colorprint({markup.WARNING}, "[!] Value of TradeDelay can't be lower than 1. Reseting to 40.")
+							colorprint({markup.WARNING}, "[AutoTradeFilter.TradeDelay] Value of TradeDelay can't be lower than 1. Reseting to 40.")
 						end
 					else 
-						error("Wrong datatype TradeDelay")
+						error("[AutoTradeFilter.TradeDelay] Wrong datatype. Exiting.")
 					end
 				else 
-					colorprint({markup.WARNING}, "[!] PlayerTradeWith not specified. PetAutoTrade won't work.")
+					colorprint({markup.WARNING}, "[!] AutoTradeFilter.PlayerTradeWith is not specified. PetAutoTrade won't work.")
 					_G.InternalConfig.PetAutoTrade = false
 					_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = false
 					_G.InternalConfig.AutoTradeFilter.SendAllType = false
@@ -2333,7 +2480,7 @@ end)
 					_G.InternalConfig.AutoTradeFilter.TradeDelay = false
 				end
 			else
-				error("Wrong datatype of PlayerTradeWith")
+				error("[AutoTradeFilter.PlayerTradeWith] Wrong datatype. Exiting.")
 			end
 		else
 			_G.InternalConfig.PetAutoTrade = false
@@ -2345,7 +2492,7 @@ end)
 			_G.InternalConfig.AutoTradeFilter.TradeDelay = false
 		end
 	else
-		error("Wrong datatype of PetAutoTrade")
+		error("[PetAutoTrade] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.WebhookSendDelay) == "number" then
@@ -2356,7 +2503,7 @@ end)
 			colorprint({markup.WARNING}, "[!] Value of WebhookSendDelay can't be lower than 1. Reseting to 3600.")
 		end
 	else
-		error("Wrong datatype of WebhookSendDelay")
+		error("[WebhookSendDelay] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.Mode) == "string" then
@@ -2364,7 +2511,7 @@ end)
 			_G.InternalConfig.Mode = Config.Mode
 		end
 	else
-		error("Wrong datatype of Mode")
+		error("[Mode] Wrong datatype. Exiting.")
 	end
 end)()
 
