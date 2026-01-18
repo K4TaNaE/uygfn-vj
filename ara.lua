@@ -778,7 +778,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") == 0 then
 			if money == 0 then 
-				colorprint({markup.ERROR}, "[-] No money to buy food") 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
 				StateDB.active_ailments.hungry = nil 
 				return
 			end
@@ -831,7 +831,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				colorprint({markup.ERROR}, "[-] No money to buy food") 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
 				StateDB.active_ailments.thirsty = nil 
 				return
 			end
@@ -1272,7 +1272,7 @@ baby_ailments = {
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
 				StateDB.active_ailments_baby.hungry = nil 
-				colorprint({markup.ERROR}, "[-] No money to buy food.") 
+				colorprint({markup.WARNING}, "[-] No money to buy food.") 
 				return 
 			end
 			if money > 20 then
@@ -1313,7 +1313,11 @@ baby_ailments = {
 		end
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
+			if money == 0 then 
+				StateDB.active_ailments_baby.thirsty = nil 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
+				return 
+			end			
 			if money > 20 then
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
@@ -1815,7 +1819,7 @@ local function init_auto_trade() -- optimized
 		local pets_to_send = {}
 		local r = send_trade_request(user)
 		if r == "No response" then
-			colorprint({markup.ERROR}, "[-] No response")
+			colorprint({markup.WARNING}, "[!] No response.")
 			task.wait(_G.InternalConfig.AutoTradeFilter.TradeDelay)
 			continue
 		else
@@ -1932,7 +1936,7 @@ local function init_lurebox() -- optimized
 		until _G.can_proceed
 		_G.can_proceed = false
 		if not _G.bait_placed then
-			colorprint({markup.SUCCESS}, "[Lure] Reward collected")
+			colorprint({markup.SUCCESS}, "[Lure] Reward collected.")
 		else
 			colorprint({markup.INFO}, "[Lure] Next check in 1h.")
 			task.wait(3600)
@@ -1954,90 +1958,90 @@ local function init_gift_autoopen() -- чета тут не так
 	end	
 end
 
--- local function init_auto_give_potion()
+local function init_auto_give_potion()
 	
--- 	local function get_potions() 
--- 	local potions = {}
--- 		for k,v in get_owned_category("food") do
--- 			if (v.id:lower()):match("potion") then
--- 				table.insert(potions, k)
--- 			end 
--- 		end
--- 		if #potions > 0 then return potions else return nil end
--- 	end
+	local function get_potions() 
+	local potions = {}
+		for k,v in get_owned_category("food") do
+			if (v.id:lower()):match("potion") then
+				table.insert(potions, k)
+			end 
+		end
+		if #potions > 0 then return potions else return nil end
+	end
 
--- 	while task.wait(1) do
--- 		local pets_to_grow = {}
--- 		local owned_pets = get_owned_pets()
--- 		if _G.InternalConfig.AutoGivePotion ~= "any" then
--- 			for k,_ in _G.InternalConfig.AutoGivePotion do
--- 				local pet = inv_get_category_unique("pets", k)
--- 				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
--- 					pets_to_grow[pet] = true
--- 				end
--- 			end
--- 		else
--- 			for k,v in owned_pets do
--- 				if v.age < 6 and not (v.name:lower()):match("egg") then
--- 					pets_to_grow[k] = true
--- 				end
--- 			end
--- 		end
--- 		local equiped_pet
--- 		for k,_ in pets_to_grow do
--- 			local potions = get_potions()
--- 			if not potions then task.wait(300) break end	
+	while task.wait(1) do
+		local pets_to_grow = {}
+		local owned_pets = get_owned_pets()
+		if _G.InternalConfig.AutoGivePotion ~= "any" then
+			for k,_ in _G.InternalConfig.AutoGivePotion do
+				local pet = inv_get_category_unique("pets", k)
+				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
+					pets_to_grow[pet] = true
+				end
+			end
+		else
+			for k,v in owned_pets do
+				if v.age < 6 and not (v.name:lower()):match("egg") then
+					pets_to_grow[k] = true
+				end
+			end
+		end
+		local equiped_pet
+		for k,_ in pets_to_grow do
+			local potions = get_potions()
+			if not potions then task.wait(300) break end	
 			
--- 			equiped_pet = ClientData.get("pet_char_wrappers")[1]
--- 			if equiped_pet then
--- 				API["ToolAPI/Unequip"]:InvokeServer(
--- 					equiped_pet.pet_unique,
--- 					{
--- 						use_sound_delay = true,
--- 						equip_as_last = false
--- 					}
--- 				)
--- 				task.wait(1)
--- 				API["ToolAPI/Equip"]:InvokeServer(
--- 					k,
--- 					{
--- 						use_sound_delay = true,
--- 						equip_as_last = false
--- 					}
--- 				)
--- 			end
--- 			task.wait(1)
--- 			for a,_ in ipairs(potions) do
--- 				local others = {}
--- 				for i, _ in ipairs(potions) do
--- 					for j, p in ipairs(potions) do
--- 						if j ~= i then table.insert(others, p) end
--- 					end
--- 				end
--- 				API["PetObjectAPI/CreatePetObject"]:InvokeServer(
--- 					"__Enum_PetObjectCreatorType_2",
--- 					{
--- 						additional_consume_uniques = {
--- 							table.unpack(others)
--- 						},
--- 						pet_unique = k,
--- 						unique_id = a
--- 					}
--- 				)
--- 				task.wait(1)
--- 			end
--- 		end
--- 		task.wait(1)
--- 		API["ToolAPI/Equip"]:InvokeServer(
--- 			equiped_pet.pet_unique or actual_pet.unique or "",
--- 			{
--- 				use_sound_delay = true,
--- 				equip_as_last = false
--- 			}
--- 		)
--- 		task.wait(299)
--- 	end
--- end
+			equiped_pet = ClientData.get("pet_char_wrappers")[1]
+			if equiped_pet then
+				API["ToolAPI/Unequip"]:InvokeServer(
+					equiped_pet.pet_unique,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+				task.wait(1)
+				API["ToolAPI/Equip"]:InvokeServer(
+					k,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+			end
+			task.wait(1)
+			for a,_ in ipairs(potions) do
+				local others = {}
+				for i, _ in ipairs(potions) do
+					for j, p in ipairs(potions) do
+						if j ~= i then table.insert(others, p) end
+					end
+				end
+				API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+					"__Enum_PetObjectCreatorType_2",
+					{
+						additional_consume_uniques = {
+							table.unpack(others)
+						},
+						pet_unique = k,
+						unique_id = a
+					}
+				)
+				task.wait(1)
+			end
+		end
+		task.wait(1)
+		API["ToolAPI/Equip"]:InvokeServer(
+			equiped_pet.pet_unique or actual_pet.unique or "",
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+		task.wait(299)
+	end
+end
 
 local function init_mode() 
 	if _G.InternalConfig.Mode == "bot" then
@@ -2073,9 +2077,9 @@ local function __init()
 		task.defer(init_auto_recycle)
 	end
 
-	-- if _G.InternalConfig.AutoGivePotion then
-	-- 	task.defer(init_auto_give_potion)
-	-- end
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
+	end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
