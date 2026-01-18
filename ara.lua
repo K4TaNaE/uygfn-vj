@@ -33,7 +33,8 @@ local API = ReplicatedStorage.API
 
 local StateDB = {
 	active_ailments = {},
-	baby_active_ailments = {}
+	baby_active_ailments = {},
+	total_fullgrowned = {}
 }
 local actual_pet = {
 	unique = nil,
@@ -42,7 +43,6 @@ local actual_pet = {
 	wrapper = nil,
 	rarity = nil
 }
-local total_fullgrowned = {}
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -158,7 +158,7 @@ Queue.new = function()
 
 		destroy_linked = function(self, taskname) 
 			if not self:empty() then
-				for k,v in self._data do
+				for k,v in ipairs(self._data) do
 					if v[1]:match(taskname) then
 						table.remove(self._data, k)
 						self.__tail -= 1
@@ -169,7 +169,7 @@ Queue.new = function()
 
 		taskdestroy = function(self, pattern1, pattern2) 
 			if not self:empty() then 
-				for k,v in self._data do
+				for k,v in ipairs(self._data) do
 					if v[1]:match(pattern1) and v[1]:match(pattern2) then
 						table.remove(self._data, k)
 						self.__tail -= 1
@@ -198,10 +198,8 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				print("running task: ", name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
-				print("ended task", name)
 				if not ok then
 					print("Task failed:", err)
 					local spl = name:split(": ")
@@ -382,7 +380,7 @@ end
 
 local function get_owned_pets() -- optimized
 	local data = {}
-	for _,v in ClientData.get("inventory").pets do
+	for _,v in pairs(ClientData.get("inventory").pets) do
 		if v.id == "practice_dog" then continue end
 		local remote = v.id
 		local unique = v.unique
@@ -402,7 +400,7 @@ end
 
 local function get_owned_category(category) -- optimized
 	local returned = {}; local remote, unique
-	for _,v in ClientData.get("inventory")[category] do
+	for _,v in pairs(ClientData.get("inventory")[category]) do
 		remote = v.id
 		unique = v.unique
 		returned[unique] = {
@@ -418,7 +416,7 @@ local function get_equiped_pet_ailments() -- optimized
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
 		if not path then return nil end
-		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
+		for k,_ in pairs(ClientData.get("ailments_manager")["ailments"][pet.pet_unique]) do
 			ailments[k] = true
 		end
 	end
@@ -437,7 +435,7 @@ end
 
 local function get_baby_ailments() -- optimized
 	local ailments = {}
-	for k, _ in ClientData.get("ailments_manager")["baby_ailments"] do
+	for k, _ in pairs(ClientData.get("ailments_manager")["baby_ailments"]) do
 		ailments[k] = true
 	end 
 	return ailments 
@@ -445,20 +443,20 @@ end
 
 
 local function inv_get_category_remote(category, unique) -- optimized
-	for k, v in ClientData.get("inventory")[category] do
+	for k, v in pairs(ClientData.get("inventory")[category]) do
 		if k==unique then return v.id end
 	end
 end
  
 local function inv_get_category_unique(category, remote) -- optimzied
-	for k, v in ClientData.get("inventory")[category] do
+	for k, v in pairs(ClientData.get("inventory")[category]) do
 		if v.id==remote then return k end
 	end
 end
 
 local function inv_get_pets_with_rarity(rarity) -- optimized
 	local list = {}	
-	for _,v in get_owned_pets() do 
+	for _,v in pairs(get_owned_pets()) do 
 		if v.rarity == rarity then 
 			list[v.unique] = {remote=v.remote, unique=v.unique}
 		end
@@ -468,7 +466,7 @@ end
 
 local function inv_get_pets_with_age(age) -- optimized
 	local list = {}	
-	for _,v in get_owned_pets() do 
+	for _,v in pairs(get_owned_pets()) do 
 		if v.age == age then 
 			list[v.unique] = {remote=v.remote, unique=v.unique}
 		end
@@ -477,7 +475,7 @@ local function inv_get_pets_with_age(age) -- optimized
 end
 
 local function check_pet_owned(remote) -- optimized
-	for _, v in get_owned_category("pets") do
+	for _, v in pairs(get_owned_category("pets")) do
         if v.remote == remote then 
             return true
         end
@@ -500,7 +498,7 @@ end
 
 local function count_of_product(category, remote) -- works
 	local count = 0
-	for _,v in ClientData.get("inventory")[category] do
+	for _,v in pairs(ClientData.get("inventory")[category]) do
 		if v.id == remote then
 			count+=1
 		end
@@ -637,7 +635,7 @@ local function enstat(friendship, money, ailment)  -- optimized
 	else 
 		if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
 			farmed.pets_fullgrown += 1
-			table.insert(total_fullgrowned, actual_pet.unique)
+			table.insert(StateDB.total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
@@ -709,7 +707,7 @@ local function __pet_callback(friendship, ailment)
 		else 
 			if actual_pet.rarity == 6 then
 				farmed.pets_fullgrown += 1
-				table.insert(total_fullgrowned, actual_pet.unique)
+				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
 				update_gui("fullgrown", farmed.pets_fullgrown)
 				actual_pet.unique = nil
 				table.clear(StateDB.active_ailments)
@@ -1198,7 +1196,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		for k,_ in loader("new:AilmentsDB") do
+		for k,_ in pairs(loader("new:AilmentsDB")) do
 			API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
 				actual_pet.unique,
 				"mystery",
@@ -1561,7 +1559,7 @@ local function init_autofarm() -- optimized
 		local flag = false
 		if _G.InternalConfig.PotionFarm then
 			if _G.InternalConfig.FarmPriority == "pets" then
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1578,7 +1576,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else 
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1595,7 +1593,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 				if not flag then
-					for k, _ in owned_pets do
+					for k, _ in pairs(owned_pets) do
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1613,7 +1611,7 @@ local function init_autofarm() -- optimized
 			end
 		else
 			if _G.InternalConfig.FarmPriority == "pets" then			
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1630,7 +1628,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else 
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1648,7 +1646,7 @@ local function init_autofarm() -- optimized
 				end
 			end
 			if not flag then
-				for k, _ in owned_pets do
+				for k, _ in pairs(owned_pets) do
 					API["ToolAPI/Equip"]:InvokeServer(
 						k,
 						{
@@ -1687,7 +1685,7 @@ local function init_autofarm() -- optimized
 				task.wait(10)
 				continue
 			end
-			for k,_ in eqpetailms do 
+			for k,_ in pairs(eqpetailms) do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
@@ -1728,7 +1726,7 @@ local function init_baby_autofarm() -- optimized
 			end
 		end
 		local active_ailments = get_baby_ailments()
-		for k,_ in active_ailments do
+		for k,_ in pairs(active_ailments) do
 			if StateDB.baby_active_ailments[k] then continue end
 			if baby_ailments[k] then
 				StateDB.baby_active_ailments[k] = true
@@ -1764,13 +1762,13 @@ local function init_auto_recycle()
 	local owned_pets = get_owned_pets()
 	
 	if not _G.InternalConfig.PetExchangeRarity then
-		for k,v in owned_pets do
+		for k,v in pairs(owned_pets) do
 			if v.age == _G.InternalConfig.PetExchangeAge then
 				pet_to_exchange[k] = true
 			end
 		end
 	else
-		for k,v in owned_pets do
+		for k,v in pairs(owned_pets) do
 			if v.age == _G.InternalConfig.PetExchangeAge then
 				if v.rarity == _G.InternalConfig.PetExchangeRarity then
 					pet_to_exchange[k] = true
@@ -1827,21 +1825,21 @@ local function init_auto_trade() -- optimized
 			while UIManager.is_visible("TradeApp") do
 				local exclude = {}
 				if _G.InternalConfig.AutoTradeFilter.ExcludeFriendly then
-					for k,v in owned_pets do
+					for k,v in pairs(owned_pets) do
 						if v.friendship > 0 then
 							exclude[k] = true
 						end
 					end
 				end
 				if _G.InternalConfig.AutoTradeFilter.ExcludeEggs then
-					for k,v in owned_pets do
+					for k,v in pairs(owned_pets) do
 						if (v.name:lower()):find("egg") then 
 							exclude[k] = true
 						end
 					end
 				end
 				if _G.InternalConfig.AutoTradeFilter.SendAllFarmed then
-					for _,v in total_fullgrowned do
+					for _,v in ipairs(StateDB.total_fullgrowned) do
 						if owned_pets[v] and not exclude[v] then
 							pets_to_send[v] = true
 						end
@@ -1849,13 +1847,13 @@ local function init_auto_trade() -- optimized
 				end
 				if _G.InternalConfig.AutoTradeFilter.SendAllType then
 					if type(_G.InternalConfig.AutoTradeFilter.SendAllType) == "number" then
-						for k,_ in inv_get_pets_with_age(_G.InternalConfig.AutoTradeFilter.SendAllType) do
+						for k,_ in pairs(inv_get_pets_with_age(_G.InternalConfig.AutoTradeFilter.SendAllType)) do
 							if not pets_to_send[k] and not exclude[k] then
 								pets_to_send[k] = true
 							end
 						end
 					else
- 						for k,v in inv_get_pets_with_rarity(_G.InternalConfig.AutoTradeFilter.SendAllType) do
+ 						for k,_ in pairs(inv_get_pets_with_rarity(_G.InternalConfig.AutoTradeFilter.SendAllType)) do
 							if not pets_to_send[k] and not exclude[k] then
 								pets_to_send[k] = true
 							end
@@ -1863,7 +1861,7 @@ local function init_auto_trade() -- optimized
 					end
 				end
 				pcall(function()
-				for k,_ in pets_to_send do 
+				for k,_ in pairs(pets_to_send) do 
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
@@ -1878,7 +1876,7 @@ local function init_auto_trade() -- optimized
 			end)
 			end
 		end
-		for k,_ in get_owned_pets() do
+		for k,_ in pairs(get_owned_pets()) do
 			if pets_to_send[k] then 
 				trade_successed = false
 				break
@@ -1948,7 +1946,7 @@ local function init_gift_autoopen() -- чета тут не так
 	while count(get_owned_category("gifts")) < 1 do
 		task.wait(300) 
 	end
-	for k,_ in get_owned_category("gifts") do
+	for k,_ in pairs(get_owned_category("gifts")) do
 		if k.remote:lower():match("box") or k.remote:lower():match("chest") then
 			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
 		else
@@ -1962,7 +1960,7 @@ local function init_auto_give_potion()
 	
 	local function get_potions() 
 	local potions = {}
-		for k,v in get_owned_category("food") do
+		for k,v in pairs(get_owned_category("food")) do
 			if (v.id:lower()):match("potion") then
 				table.insert(potions, k)
 			end 
@@ -1974,21 +1972,21 @@ local function init_auto_give_potion()
 		local pets_to_grow = {}
 		local owned_pets = get_owned_pets()
 		if _G.InternalConfig.AutoGivePotion ~= "any" then
-			for k,_ in _G.InternalConfig.AutoGivePotion do
+			for k,_ in ipairs(_G.InternalConfig.AutoGivePotion) do
 				local pet = inv_get_category_unique("pets", k)
 				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
 					pets_to_grow[pet] = true
 				end
 			end
 		else
-			for k,v in owned_pets do
+			for k,v in pairs(owned_pets) do
 				if v.age < 6 and not (v.name:lower()):match("egg") then
 					pets_to_grow[k] = true
 				end
 			end
 		end
 		local equiped_pet
-		for k,_ in pets_to_grow do
+		for k,_ in pairs(pets_to_grow) do
 			local potions = get_potions()
 			if not potions then task.wait(300) break end	
 			
@@ -2129,7 +2127,7 @@ local function license() -- optimized
 		API["SettingsAPI/SetBooleanFlag"]:FireServer("has_talked_to_trade_quest_npc", true)
 		API["TradeAPI/BeginQuiz"]:FireServer()
 		task.wait(.2)
-		for _,v in ClientData.get("trade_license_quiz_manager").quiz do
+		for _,v in pairs(ClientData.get("trade_license_quiz_manager").quiz) do
 			API["TradeAPI/AnswerQuizQuestion"]:FireServer(v.answer)
 		end
 		colorprint({markup.SUCCESS}, "[+] Successed.")
@@ -2178,7 +2176,7 @@ end)
 				if not #Config.AutoFarmFilter.PetsToExclude == 0 then
 					if Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$") then
 						local list = {}
-						for _,v in Config.AutoFarmFilter.PetsToExclude do
+						for _,v in ipairs(Config.AutoFarmFilter.PetsToExclude) do
 							if check_remote_existance("pets", v) then
 								list[v] = true
 							else
@@ -2297,7 +2295,7 @@ end)
 				_G.InternalConfig.FarmPriority = "pets"				
 				if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
 					local list = {}
-					for _,v in Config.AutoFarmFilter.PetsToExclude do
+					for _,v in ipairs(Config.AutoFarmFilter.PetsToExclude) do
 						if check_remote_existance("pets", v) then
 							list[v] = true
 						end
@@ -2366,7 +2364,7 @@ end)
 			if type(Config.PetExchangeAge) == "string" then -- PetExchangeAge
 				if not (Config.PetExchangeAge):match("^%s*$") then 
 					_G.InternalConfig.PetExchangeAge = 6
-					for k,v in possible do
+					for k,v in pairs(possible) do
 						if k == Config.PetExchangeAge then
 							_G.InternalConfig.PetExchangeAge = v
 						end
@@ -2427,7 +2425,7 @@ end)
 					}
 					if type(Config.AutoTradeFilter.SendAllType) == "string" then
 						_G.InternalConfig.AutoTradeFilter.SendAllType = false
-						for k,v in possible do
+						for k,v in pairs(possible) do
 							if k == Config.AutoTradeFilter.SendAllType then
 								_G.InternalConfig.AutoTradeFilter.SendAllType = v
 							end
@@ -2610,7 +2608,7 @@ end)
 			end
 		end
 	end
-	for k,v in ClientData.get("house_interior")['furniture'] do
+	for k,v in pairs(ClientData.get("house_interior")['furniture']) do
 		local id = v.id:lower():gsub("_", "")
 		local part = furniture[id]
 		if part then
