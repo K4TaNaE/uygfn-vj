@@ -13,13 +13,13 @@ local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
 local HttpService = game:GetService("HttpService")
 local NetworkClient = game:GetService("NetworkClient")
-local loader = require(ReplicatedStorage.Fsys).load
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
 
 --[[ Adopt stuff ]]--
+local loader = require(ReplicatedStorage.Fsys).load
 local UIManager = loader("UIManager")
 local ClientData = loader("ClientData")
 local InventoryDB = loader("InventoryDB")
@@ -183,10 +183,14 @@ Queue.new = function()
 		end,
 
 		__asyncrun = function(taskt: table)
-			local name = taskt[1]			
 			local callback = taskt[2]			
-			if name and type(name) == "string" and callback and type(callback) == "function" then 
-				pcall(task.spawn, callback)
+			if type(callback) == "function" then 
+				task.spawn(function()
+					local ok, err = pcall(callback)
+					if not ok then
+						warn("Async error:", err)
+					end
+				end)
 			end
 		end,
 
@@ -1203,7 +1207,7 @@ local pet_ailments = {
 				1,
 				k
 			)
-			task.wait(2) 
+			task.wait(1.5) 
 		end
 		StateDB.active_ailments.mystery = nil
 	end,
@@ -1943,17 +1947,19 @@ local function init_lurebox() -- optimized
 end
 
 local function init_gift_autoopen() -- чета тут не так
-	while count(get_owned_category("gifts")) < 1 do
-		task.wait(300) 
-	end
-	for k,_ in pairs(get_owned_category("gifts")) do
-		if k.remote:lower():match("box") or k.remote:lower():match("chest") then
-			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
-		else
-			API["ShopAPI/OpenGift"]:InvokeServer(k)
+	while task.wait(1) do
+		while count(get_owned_category("gifts")) < 1 do
+			task.wait(300) 
 		end
-		task.wait(.5) 
-	end	
+		for k,_ in pairs(get_owned_category("gifts")) do
+			if k.remote:lower():match("box") or k.remote:lower():match("chest") then
+				API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
+			else
+				API["ShopAPI/OpenGift"]:InvokeServer(k)
+			end
+			task.wait(.5) 
+		end	
+	end
 end
 
 local function init_auto_give_potion()
