@@ -13,13 +13,13 @@ local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
 local HttpService = game:GetService("HttpService")
 local NetworkClient = game:GetService("NetworkClient")
+local loader = require(ReplicatedStorage.Fsys).load
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
 
 --[[ Adopt stuff ]]--
-local loader = require(ReplicatedStorage.Fsys).load
 local UIManager = loader("UIManager")
 local ClientData = loader("ClientData")
 local InventoryDB = loader("InventoryDB")
@@ -2101,13 +2101,13 @@ local function __init()
 		end)
 	end
 
-	if _G.InternalConfig.LureboxFarm then
-		task.defer(init_lurebox)
-	end
-
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.defer(init_lurebox)
 	-- end
+
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 	-- task.wait(5)
 
