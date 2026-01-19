@@ -2059,47 +2059,47 @@ local function __init()
 	-- end)
 
 
-	if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
-	end
+	-- if _G.InternalConfig.FarmPriority then
+	-- 	task.defer(init_autofarm)
+	-- end
 	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		task.defer(init_auto_buy)
-	end
+	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+	-- 	task.defer(init_auto_buy)
+	-- end
 
-	if _G.InternalConfig.BabyAutoFarm then
-		task.defer(init_baby_autofarm)
-	end
+	-- if _G.InternalConfig.BabyAutoFarm then
+	-- 	task.defer(init_baby_autofarm)
+	-- end
 
-	if _G.InternalConfig.AutoRecyclePet then
-		task.defer(init_auto_recycle)
-	end
+	-- if _G.InternalConfig.AutoRecyclePet then
+	-- 	task.defer(init_auto_recycle)
+	-- end
 
-	if _G.InternalConfig.AutoGivePotion then
-		task.defer(init_auto_give_potion)
-	end
+	-- if _G.InternalConfig.AutoGivePotion then
+	-- 	task.defer(init_auto_give_potion)
+	-- end
 
-	if _G.InternalConfig.PetAutoTrade then
-		task.defer(init_auto_trade)
-	end
+	-- if _G.InternalConfig.PetAutoTrade then
+	-- 	task.defer(init_auto_trade)
+	-- end
 
-	if _G.InternalConfig.DiscordWebhookURL then
-		task.defer(function()
-			while task.wait(1) do
-				task.wait(_G.InternalConfig.WebhookSendDelay)
-				webhook(
-					"AutoFarm Log",
-					`**💸Money Earned :** {farmed.money}\n\
-	   				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	   				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	   				**🧪Potions Farmed :** {farmed.potions}\n\
-	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
-				)
-			end
-		end)
-	end
+	-- if _G.InternalConfig.DiscordWebhookURL then
+	-- 	task.defer(function()
+	-- 		while task.wait(1) do
+	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
+	-- 			webhook(
+	-- 				"AutoFarm Log",
+	-- 				`**💸Money Earned :** {farmed.money}\n\
+	--    				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	--    				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	--    				**🧪Potions Farmed :** {farmed.potions}\n\
+	--    				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	--    				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	--    				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
+	-- 			)
+	-- 		end
+	-- 	end)
+	-- end
 
 	if _G.InternalConfig.LureboxFarm then
 		task.defer(init_lurebox)
