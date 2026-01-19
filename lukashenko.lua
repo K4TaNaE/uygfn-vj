@@ -2105,9 +2105,9 @@ local function __init()
 		task.defer(init_lurebox)
 	end
 
-	if _G.InternalConfig.GiftsAutoOpen then
-		task.defer(init_gift_autoopen)
-	end
+	-- if _G.InternalConfig.GiftsAutoOpen then
+	-- 	task.defer(init_gift_autoopen)
+	-- end
 
 	-- task.wait(5)
 
