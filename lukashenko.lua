@@ -8,7 +8,6 @@ local cloneref =  cloneref -- potassium, seliware, volcano, delta, bunni, crypti
 local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
 
 --[[ Services ]]--
-local GuiService = game:GetService("GuiService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -17,7 +16,8 @@ local NetworkClient = game:GetService("NetworkClient")
 local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
-local PathfindingService = game:GetService("PathfindingService")
+local Stats = game:GetService("Stats")
+
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
 local UIManager = loader("UIManager")
@@ -33,7 +33,8 @@ local API = ReplicatedStorage.API
 
 local StateDB = {
 	active_ailments = {},
-	baby_active_ailments = {}
+	baby_active_ailments = {},
+	total_fullgrowned = {}
 }
 local actual_pet = {
 	unique = nil,
@@ -42,7 +43,6 @@ local actual_pet = {
 	wrapper = nil,
 	rarity = nil
 }
-local total_fullgrowned = {}
 local farmed = {
 	money = 0,
 	pets_fullgrown = 0,
@@ -51,8 +51,7 @@ local farmed = {
 	friendship_levels = 0,
 	event_currency = 0,
 	baby_ailments = 0,
-	eggs_hatched = 0,
-	lurebox = {}
+	eggs_hatched = 0
 }
 _G.bait_placed = false
 
@@ -159,7 +158,7 @@ Queue.new = function()
 
 		destroy_linked = function(self, taskname) 
 			if not self:empty() then
-				for k,v in self._data do
+				for k,v in ipairs(self._data) do
 					if v[1]:match(taskname) then
 						table.remove(self._data, k)
 						self.__tail -= 1
@@ -170,7 +169,7 @@ Queue.new = function()
 
 		taskdestroy = function(self, pattern1, pattern2) 
 			if not self:empty() then 
-				for k,v in self._data do
+				for k,v in ipairs(self._data) do
 					if v[1]:match(pattern1) and v[1]:match(pattern2) then
 						table.remove(self._data, k)
 						self.__tail -= 1
@@ -183,6 +182,14 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
+		__asyncrun = function(taskt: table)
+			local name = taskt[1]			
+			local callback = taskt[2]			
+			if name and type(name) == "string" and callback and type(callback) == "function" then 
+				pcall(task.spawn, callback)
+			end
+		end,
+
 		__run = function(self)
 			self.running = true
 
@@ -191,10 +198,8 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				print("running task: ", name)
 				local ok, err = xpcall(callback, debug.traceback)
 				self:dequeue(true)
-				print("ended task", name)
 				if not ok then
 					print("Task failed:", err)
 					local spl = name:split(": ")
@@ -285,7 +290,7 @@ local function to_neighborhood() -- optimized
 	temp_platform()
 	InteriorsM.enter("Neighborhood", "MainDoor")
 	while not get_current_location() == "Neighborhood" do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -298,7 +303,7 @@ local function to_home() -- optimized
 	temp_platform()
 	InteriorsM.enter("housing", "MainDoor", { house_owner=LocalPlayer })
 	while not get_current_location() == "housing" do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -316,7 +321,7 @@ local function to_mainmap() -- optimized
 	temp_platform()
 	InteriorsM.enter("MainMap", "Neighborhood/MainDoor")
 	if not get_current_location() == "MainMap" then
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
@@ -327,19 +332,19 @@ local function goto(destId, door, ops:table) -- optimized
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
 	while not get_current_location() == destId do
-		task.wait()
+		task.wait(.1)
 	end
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
 end
 
 local function get_equiped_pet() -- not optimzed
-	local remote, unique, model, age, rarity, friendship, xp
+	local model, age, friendship, xp
 	local data = {}
 	local wrapper = ClientData.get("pet_char_wrappers")[1]
 	if not wrapper then return nil end
-	remote = wrapper["pet_id"] 
-	unique = wrapper["pet_unique"]
+	local remote = wrapper["pet_id"] 
+	local unique = wrapper["pet_unique"]
 	local cdata = ClientData.get("inventory").pets[unique]
 	if cdata then
 		age = cdata.properties.age
@@ -352,12 +357,13 @@ local function get_equiped_pet() -- not optimzed
 			local session = entity.session_memory
 			if session.meta.owned_by_local_player then
 				model = v
-				rarity = entity.base.entry.rarity
 			end				
 		end
 	end
+	local rarity = InventoryDB.pets[remote].rarity
+	local name = InventoryDB.pets[remote].name
 	data.remote = remote; data.unique = unique; data.model = model or {}; data.wrapper = wrapper; 
-	data.age = age; data.rarity = rarity; data.friendship = friendship; data.xp = xp
+	data.age = age; data.rarity = rarity; data.friendship = friendship; data.xp = xp; data.name = name;
  	return data
 end
 
@@ -374,7 +380,7 @@ end
 
 local function get_owned_pets() -- optimized
 	local data = {}
-	for _,v in ClientData.get("inventory").pets do
+	for _,v in pairs(ClientData.get("inventory").pets) do
 		if v.id == "practice_dog" then continue end
 		local remote = v.id
 		local unique = v.unique
@@ -394,7 +400,7 @@ end
 
 local function get_owned_category(category) -- optimized
 	local returned = {}; local remote, unique
-	for _,v in ClientData.get("inventory")[category] do
+	for _,v in pairs(ClientData.get("inventory")[category]) do
 		remote = v.id
 		unique = v.unique
 		returned[unique] = {
@@ -410,7 +416,7 @@ local function get_equiped_pet_ailments() -- optimized
 	if pet then
 		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
 		if not path then return nil end
-		for k,_ in ClientData.get("ailments_manager")["ailments"][pet.pet_unique] do
+		for k,_ in pairs(ClientData.get("ailments_manager")["ailments"][pet.pet_unique]) do
 			ailments[k] = true
 		end
 	end
@@ -429,7 +435,7 @@ end
 
 local function get_baby_ailments() -- optimized
 	local ailments = {}
-	for k, _ in ClientData.get("ailments_manager")["baby_ailments"] do
+	for k, _ in pairs(ClientData.get("ailments_manager")["baby_ailments"]) do
 		ailments[k] = true
 	end 
 	return ailments 
@@ -437,20 +443,20 @@ end
 
 
 local function inv_get_category_remote(category, unique) -- optimized
-	for k, v in ClientData.get("inventory")[category] do
+	for k, v in pairs(ClientData.get("inventory")[category]) do
 		if k==unique then return v.id end
 	end
 end
  
 local function inv_get_category_unique(category, remote) -- optimzied
-	for k, v in ClientData.get("inventory")[category] do
+	for k, v in pairs(ClientData.get("inventory")[category]) do
 		if v.id==remote then return k end
 	end
 end
 
 local function inv_get_pets_with_rarity(rarity) -- optimized
 	local list = {}	
-	for _,v in get_owned_pets() do 
+	for _,v in pairs(get_owned_pets()) do 
 		if v.rarity == rarity then 
 			list[v.unique] = {remote=v.remote, unique=v.unique}
 		end
@@ -460,7 +466,7 @@ end
 
 local function inv_get_pets_with_age(age) -- optimized
 	local list = {}	
-	for _,v in get_owned_pets() do 
+	for _,v in pairs(get_owned_pets()) do 
 		if v.age == age then 
 			list[v.unique] = {remote=v.remote, unique=v.unique}
 		end
@@ -469,7 +475,7 @@ local function inv_get_pets_with_age(age) -- optimized
 end
 
 local function check_pet_owned(remote) -- optimized
-	for _, v in get_owned_category("pets") do
+	for _, v in pairs(get_owned_category("pets")) do
         if v.remote == remote then 
             return true
         end
@@ -492,7 +498,7 @@ end
 
 local function count_of_product(category, remote) -- works
 	local count = 0
-	for _,v in ClientData.get("inventory")[category] do
+	for _,v in pairs(ClientData.get("inventory")[category]) do
 		if v.id == remote then
 			count+=1
 		end
@@ -515,62 +521,18 @@ local function count(t)
 	return n
 end
 
-local function walkTo(ailment, targetPos, timeout)
-    timeout = timeout or 5
-
-    local character = LocalPlayer.Character
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    -- создаём путь
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true
-    })
-
-    path:ComputeAsync(character.HumanoidRootPart.Position, targetPos)
-
-    if path.Status ~= Enum.PathStatus.Success then
-        -- fallback: просто MoveTo с таймаутом
-        humanoid:MoveTo(targetPos)
-        local t = 0
-        while t < timeout do
-            task.wait(0.1)
-            t += 0.1
-        end
-        return
-    end
-
-    local waypoints = path:GetWaypoints()
-
-    for _, wp in ipairs(waypoints) do
-        humanoid:MoveTo(wp.Position)
-
-        if wp.Action == Enum.PathWaypointAction.Jump then
-            humanoid.Jump = true
-        end
-
-        local reached = false
-        local conn
-        conn = humanoid.MoveToFinished:Connect(function()
-            reached = true
-            conn:Disconnect()
-        end)
-
-        local t = 0
-        while not reached and t < timeout do
-            task.wait(0.1)
-            t += 0.1
-
-            if not has_ailment(ailment) then
-                if conn then conn:Disconnect() end
-                return
-            end
-        end
-
-        if conn then conn:Disconnect() end
-    end
+-- unit: b, kb, mb, gb
+local function get_memory(unit: string) 
+	local unit = unit:lower()
+	if unit == "b" then
+		return (Stats:GetTotalMemoryUsageMb() * 1024) * 1024
+	elseif unit == "kb" then
+		return Stats:GetTotalMemoryUsageMb() * 1024
+	elseif unit == "mb" then
+		return Stats:GetTotalMemoryUsageMb()
+	elseif unit == "gb" then
+		return Stats:GetTotalMemoryUsageMb() / 1024
+	end
 end
 
 local function gotovec(x:number, y:number, z:number) -- optimized
@@ -638,21 +600,7 @@ end
 
 local function enstat(friendship, money, ailment)  -- optimized
 	task.wait(.5)
-	if _G.InternalConfig.FarmPriority == "eggs" then
-		task.wait(1)
-		if _G.InternalConfig.AutoFarmFilter.PotionFarm then
-			farmed.eggs_hatched += 1 
-			farmed.money += ClientData.get("money") - money
-			farmed.ailments += 1
-			update_gui("eggs", farmed.eggs_hatched)
-			update_gui("bucks", farmed.money)
-			update_gui("pet_needs", farmed.ailments)
-			local pet = get_equiped_pet()
-			actual_pet.model = pet.model; actual_pet.rarity = pet.rarity; actual_pet.remote = pet.remote; actual_pet.unique = pet.unique; actual_pet.wrapper = pet.wrapper
-			queue:destroy_linked("ailment pet")
-			table.clear(StateDB.active_ailments)
-			return
-		end
+	if actual_pet.is_egg then
 		if actual_pet.unique ~= cur_unique() then
 			farmed.eggs_hatched += 1 
 			actual_pet.unique = nil 
@@ -685,9 +633,9 @@ local function enstat(friendship, money, ailment)  -- optimized
 			StateDB.active_ailments[ailment] = nil
 		end
 	else 
-		if actual_pet.rarity == 6 then
+		if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
 			farmed.pets_fullgrown += 1
-			table.insert(total_fullgrowned, actual_pet.unique)
+			table.insert(StateDB.total_fullgrowned, actual_pet.unique)
 			update_gui("fullgrown", farmed.pets_fullgrown)
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
@@ -711,15 +659,13 @@ local function enstat_baby(money, ailment) -- optimized
 	update_gui("baby_needs", farmed.baby_ailments)
 end
 
-local function __pet_callback(friendship, money, ailment) 
+local function __pet_callback(friendship, ailment) 
+	task.wait(.5)
 	if not _G.InternalConfig.FarmPriority then
-		task.wait(.5)
 		farmed.ailments += 1
 		update_gui("pet_needs", farmed.ailments) 
 	else
-		task.wait(.5)
 		if _G.InternalConfig.FarmPriority == "eggs" then
-			task.wait(1)
 			if _G.InternalConfig.AutoFarmFilter.PotionFarm then
 				farmed.eggs_hatched += 1 
 				farmed.ailments += 1
@@ -761,7 +707,7 @@ local function __pet_callback(friendship, money, ailment)
 		else 
 			if actual_pet.rarity == 6 then
 				farmed.pets_fullgrown += 1
-				table.insert(total_fullgrowned, actual_pet.unique)
+				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
 				update_gui("fullgrown", farmed.pets_fullgrown)
 				actual_pet.unique = nil
 				table.clear(StateDB.active_ailments)
@@ -776,12 +722,12 @@ local function __pet_callback(friendship, money, ailment)
 end
 
 local function __baby_callbak(ailment, money) 
-		task.wait(.5)
+	task.wait(.5)
 	if not _G.InternalConfig.BabyAutoFarm then
 		farmed.baby_ailments += 1 
 		update_gui("baby_needs", farmed.baby_ailments)
 	else
-		task.wait(.5)
+		queue:taskdestroy("baby", ailment)
 		farmed.baby_ailments += 1
 		StateDB.baby_active_ailments[ailment] = nil
 		update_gui("baby_needs", farmed.baby_ailments)
@@ -825,20 +771,16 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		print("pet", pet.unique)
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") == 0 then
-			print("0 apples")
 			if money == 0 then 
-				colorprint({markup.ERROR}, "[-] No money to buy food") 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
 				StateDB.active_ailments.hungry = nil 
-				print("no money to buy")
 				return
 			end
 			if money > 20 then
-				print("buying 20 apples")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -847,7 +789,6 @@ local pet_ailments = {
 					}
 				)
 			else 
-				print("buying some apples")
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
 					"apple",
@@ -858,16 +799,14 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
-				print("kormim, i pet", pet.unique)
 		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
-				pet_unique = pet.unique,
+				pet_unique = pet.pet_unique,
 				unique_id = inv_get_category_unique("food", "apple")
 			}
 		)
-				print("pokormili")
 		repeat 
 			task.wait(1)
         until not has_ailment("hungry") or os.clock() > deadline
@@ -890,7 +829,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				colorprint({markup.ERROR}, "[-] No money to buy food") 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
 				StateDB.active_ailments.thirsty = nil 
 				return
 			end
@@ -917,7 +856,7 @@ local pet_ailments = {
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
-				pet_unique = pet.unique,
+				pet_unique = pet.pet_unique,
 				unique_id = inv_get_category_unique("food", "water")
 			}
 		)
@@ -1113,12 +1052,6 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		local function playerMoving()
-			return LocalPlayer.Character.Humanoid.MoveDirection.Magnitude > 0
-		end
-		local function inside(pos) 
-			return math.abs(pos.Z) <= 75 and math.abs(pos.Z) <= 75
-		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
@@ -1126,22 +1059,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		repeat 
-			if playerMoving() then
-				break
-			end
-			local forwardPos = LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(forwardPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(forwardPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
-			end
-			if playerMoving() then
-				break
-			end
-			local backPos = LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(backPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(backPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()	
-    		end		
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()			
 		until not has_ailment("ride") or os.clock() > deadline
 		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
 		if os.clock() > deadline then 
@@ -1189,12 +1110,6 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		local function playerMoving()
-			return LocalPlayer.Character.Humanoid.MoveDirection.Magnitude > 0
-		end
-		local function inside(pos) 
-			return math.abs(pos.Z) <= 75 and math.abs(pos.Z) <= 75
-		end
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
@@ -1202,22 +1117,10 @@ local pet_ailments = {
 		gotovec(1000,25,1000)
 		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
 		repeat
-			if playerMoving() then
-				break
-			end
-			local forwardPos = LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(forwardPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(forwardPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
-			end
-			if playerMoving() then
-				break
-			end
-			local backPos = LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50
-			if inside(backPos) then
-				LocalPlayer.Character.Humanoid:MoveTo(backPos)
-				LocalPlayer.Character.Humanoid.MoveToFinished:Wait()	
-    		end		
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()				
 		until not has_ailment("walk") or os.clock() > deadline
 		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
 		if os.clock() > deadline then 
@@ -1285,6 +1188,7 @@ local pet_ailments = {
 		enstat(friendship, money, "sleepy")  
 	end,
 	["mystery"] = function() 
+		print("Mystery started")
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("mystery") then
 			queue:destroy_linked("ailment pet")
@@ -1292,15 +1196,16 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		for k,_ in loader("new:AilmentsDB") do
+		for k,_ in pairs(loader("new:AilmentsDB")) do
 			API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
 				actual_pet.unique,
 				"mystery",
 				1,
 				k
 			)
+			task.wait(2) 
 		end
-		task.wait(1)
+		StateDB.active_ailments.mystery = nil
 	end,
 	["pizza_party"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1354,7 +1259,7 @@ baby_ailments = {
 		enstat_baby(money, "camping")
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("camping") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "camping")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "camping")
 		end
 	end,
 	["hungry"] = function() 
@@ -1365,7 +1270,7 @@ baby_ailments = {
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
 				StateDB.active_ailments_baby.hungry = nil 
-				colorprint({markup.ERROR}, "[-] No money to buy food.") 
+				colorprint({markup.WARNING}, "[-] No money to buy food.") 
 				return 
 			end
 			if money > 20 then
@@ -1406,7 +1311,11 @@ baby_ailments = {
 		end
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
-			if money == 0 then colorprint({markup.ERROR}, "[-] No money to buy food.") return end
+			if money == 0 then 
+				StateDB.active_ailments_baby.thirsty = nil 
+				colorprint({markup.WARNING}, "[!] No money to buy food.") 
+				return 
+			end			
 			if money > 20 then
 				API["ShopAPI/BuyItem"]:InvokeServer(
 					"food",
@@ -1458,7 +1367,7 @@ baby_ailments = {
 		enstat_baby(money, "sick") 
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("sick") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "sick")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "sick")
 		end
 	end,
 	["bored"] = function() 
@@ -1480,7 +1389,7 @@ baby_ailments = {
 		enstat_baby(money, "bored")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("bored") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "bored")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "bored")
 		end
 	end,
 	["salon"] = function() 
@@ -1501,7 +1410,7 @@ baby_ailments = {
 		enstat_baby(money, "salon")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("salon") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "salon")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "salon")
 		end
 	end,
 	["beach_party"] = function() 
@@ -1573,7 +1482,7 @@ baby_ailments = {
 		enstat_baby(money, "school")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("school") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "school")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "school")
 		end
 	end,
 	["sleepy"] = function() 
@@ -1623,11 +1532,10 @@ baby_ailments = {
 		enstat_baby(money, "pizza_party")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("pizza_party") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "pizza_party")
+			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "pizza_party")
 		end
 	end,
 }
-
 
 local function init_autofarm() -- optimized
 	if count(get_owned_pets()) == 0 then
@@ -1636,7 +1544,7 @@ local function init_autofarm() -- optimized
 		until count(get_owned_pets()) > 0
 	end
 
-	while true do
+	while task.wait(1) do
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if pet then
 			API["ToolAPI/Unequip"]:InvokeServer(
@@ -1651,7 +1559,7 @@ local function init_autofarm() -- optimized
 		local flag = false
 		if _G.InternalConfig.PotionFarm then
 			if _G.InternalConfig.FarmPriority == "pets" then
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1668,7 +1576,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else 
-				for k,v in owned_pets do
+				for k,v in pairs(owned_pets) do
 					if (v.name:lower()):find("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
@@ -1685,7 +1593,7 @@ local function init_autofarm() -- optimized
 					end
 				end
 				if not flag then
-					for k, _ in owned_pets do
+					for k, _ in pairs(owned_pets) do
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1703,8 +1611,8 @@ local function init_autofarm() -- optimized
 			end
 		else
 			if _G.InternalConfig.FarmPriority == "pets" then			
-				for k,v in owned_pets do
-					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):find("egg") then
+				for k,v in pairs(owned_pets) do
+					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1720,8 +1628,8 @@ local function init_autofarm() -- optimized
 					end
 				end
 			else 
-				for k,v in owned_pets do
-					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):find("egg") then
+				for k,v in pairs(owned_pets) do
+					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
 						API["ToolAPI/Equip"]:InvokeServer(
 							k,
 							{
@@ -1737,6 +1645,22 @@ local function init_autofarm() -- optimized
 					end
 				end
 			end
+			if not flag then
+				for k, _ in pairs(owned_pets) do
+					API["ToolAPI/Equip"]:InvokeServer(
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
+					end
+					flag = true
+					break
+				end
+			end
 		end 
 		if not flag or not equiped() then task.wait(28) continue end
 		task.wait(2)
@@ -1746,8 +1670,9 @@ local function init_autofarm() -- optimized
 		actual_pet.model = curpet.model
 		actual_pet.wrapper = curpet.wrapper
 		actual_pet.rarity = curpet.rarity
+		actual_pet.is_egg = (curpet.name:lower()):match("egg")
 
-		while true do
+		while task.wait(1) do
 			if actual_pet.unique ~= cur_unique() then
 				actual_pet.unique = nil
 				break
@@ -1760,10 +1685,14 @@ local function init_autofarm() -- optimized
 				task.wait(10)
 				continue
 			end
-			for k,_ in eqpetailms do 
+			for k,_ in pairs(eqpetailms) do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
+					if k == "mystery" then 
+						queue:__asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						continue 
+					end
 					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
@@ -1773,7 +1702,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	while true do
+	while task.wait(1) do
 		if ClientData.get("team") ~= "Babies" then
 			API["TeamAPI/ChooseTeam"]:InvokeServer(
 				"Babies",
@@ -1797,7 +1726,7 @@ local function init_baby_autofarm() -- optimized
 			end
 		end
 		local active_ailments = get_baby_ailments()
-		for k,_ in active_ailments do
+		for k,_ in pairs(active_ailments) do
 			if StateDB.baby_active_ailments[k] then continue end
 			if baby_ailments[k] then
 				StateDB.baby_active_ailments[k] = true
@@ -1811,7 +1740,7 @@ end
 local function init_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
 	if cost then
-		while true do
+		while task.wait(1) do
 			local farmd = farmed.money
 			API["ShopAPI/BuyItem"]:InvokeServer(
 				"pets",
@@ -1833,13 +1762,13 @@ local function init_auto_recycle()
 	local owned_pets = get_owned_pets()
 	
 	if not _G.InternalConfig.PetExchangeRarity then
-		for k,v in owned_pets do
+		for k,v in pairs(owned_pets) do
 			if v.age == _G.InternalConfig.PetExchangeAge then
 				pet_to_exchange[k] = true
 			end
 		end
 	else
-		for k,v in owned_pets do
+		for k,v in pairs(owned_pets) do
 			if v.age == _G.InternalConfig.PetExchangeAge then
 				if v.rarity == _G.InternalConfig.PetExchangeRarity then
 					pet_to_exchange[k] = true
@@ -1880,7 +1809,7 @@ local function init_auto_trade() -- optimized
 		end
 	end)
 
-	while true do 
+	while task.wait(1) do 
 		while not exist do
 			task.wait(4)
 		end
@@ -1888,7 +1817,7 @@ local function init_auto_trade() -- optimized
 		local pets_to_send = {}
 		local r = send_trade_request(user)
 		if r == "No response" then
-			colorprint({markup.ERROR}, "[-] No response")
+			colorprint({markup.WARNING}, "[!] No response.")
 			task.wait(_G.InternalConfig.AutoTradeFilter.TradeDelay)
 			continue
 		else
@@ -1896,14 +1825,21 @@ local function init_auto_trade() -- optimized
 			while UIManager.is_visible("TradeApp") do
 				local exclude = {}
 				if _G.InternalConfig.AutoTradeFilter.ExcludeFriendly then
-					for k,v in owned_pets do
+					for k,v in pairs(owned_pets) do
 						if v.friendship > 0 then
 							exclude[k] = true
 						end
 					end
 				end
+				if _G.InternalConfig.AutoTradeFilter.ExcludeEggs then
+					for k,v in pairs(owned_pets) do
+						if (v.name:lower()):find("egg") then 
+							exclude[k] = true
+						end
+					end
+				end
 				if _G.InternalConfig.AutoTradeFilter.SendAllFarmed then
-					for _,v in total_fullgrowned do
+					for _,v in ipairs(StateDB.total_fullgrowned) do
 						if owned_pets[v] and not exclude[v] then
 							pets_to_send[v] = true
 						end
@@ -1911,13 +1847,13 @@ local function init_auto_trade() -- optimized
 				end
 				if _G.InternalConfig.AutoTradeFilter.SendAllType then
 					if type(_G.InternalConfig.AutoTradeFilter.SendAllType) == "number" then
-						for k,_ in inv_get_pets_with_age(_G.InternalConfig.AutoTradeFilter.SendAllType) do
+						for k,_ in pairs(inv_get_pets_with_age(_G.InternalConfig.AutoTradeFilter.SendAllType)) do
 							if not pets_to_send[k] and not exclude[k] then
 								pets_to_send[k] = true
 							end
 						end
 					else
- 						for k,v in inv_get_pets_with_rarity(_G.InternalConfig.AutoTradeFilter.SendAllType) do
+ 						for k,_ in pairs(inv_get_pets_with_rarity(_G.InternalConfig.AutoTradeFilter.SendAllType)) do
 							if not pets_to_send[k] and not exclude[k] then
 								pets_to_send[k] = true
 							end
@@ -1925,7 +1861,7 @@ local function init_auto_trade() -- optimized
 					end
 				end
 				pcall(function()
-				for k,_ in pets_to_send do 
+				for k,_ in pairs(pets_to_send) do 
 					API["TradeAPI/AddItemToOffer"]:FireServer(k)
 					task.wait(.2)
 				end
@@ -1940,7 +1876,7 @@ local function init_auto_trade() -- optimized
 			end)
 			end
 		end
-		for k,_ in get_owned_pets() do
+		for k,_ in pairs(get_owned_pets()) do
 			if pets_to_send[k] then 
 				trade_successed = false
 				break
@@ -1991,14 +1927,14 @@ local function init_lurebox() -- optimized
 		_G.can_proceed = true 
 	end
 
-	while task.wait(.2) do
+	while task.wait(1) do
 		queue:enqueue{"bait_check", to_home_and_check_bait_placed}
 		repeat 
 			task.wait(1)		
 		until _G.can_proceed
 		_G.can_proceed = false
 		if not _G.bait_placed then
-			colorprint({markup.SUCCESS}, "[Lure] Reward collected")
+			colorprint({markup.SUCCESS}, "[Lure] Reward collected.")
 		else
 			colorprint({markup.INFO}, "[Lure] Next check in 1h.")
 			task.wait(3600)
@@ -2010,7 +1946,7 @@ local function init_gift_autoopen() -- чета тут не так
 	while count(get_owned_category("gifts")) < 1 do
 		task.wait(300) 
 	end
-	for k,_ in get_owned_category("gifts") do
+	for k,_ in pairs(get_owned_category("gifts")) do
 		if k.remote:lower():match("box") or k.remote:lower():match("chest") then
 			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
 		else
@@ -2020,16 +1956,109 @@ local function init_gift_autoopen() -- чета тут не так
 	end	
 end
 
+local function init_auto_give_potion()
+	
+	local function get_potions() 
+	local potions = {}
+		for k,v in pairs(get_owned_category("food")) do
+			if (v.id:lower()):match("potion") then
+				table.insert(potions, k)
+			end 
+		end
+		if #potions > 0 then return potions else return nil end
+	end
+
+	while task.wait(1) do
+		local pets_to_grow = {}
+		local owned_pets = get_owned_pets()
+		if _G.InternalConfig.AutoGivePotion ~= "any" then
+			for k,_ in ipairs(_G.InternalConfig.AutoGivePotion) do
+				local pet = inv_get_category_unique("pets", k)
+				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
+					pets_to_grow[pet] = true
+				end
+			end
+		else
+			for k,v in pairs(owned_pets) do
+				if v.age < 6 and not (v.name:lower()):match("egg") then
+					pets_to_grow[k] = true
+				end
+			end
+		end
+		local equiped_pet
+		for k,_ in pairs(pets_to_grow) do
+			local potions = get_potions()
+			if not potions then task.wait(300) break end	
+			
+			equiped_pet = ClientData.get("pet_char_wrappers")[1]
+			if equiped_pet then
+				API["ToolAPI/Unequip"]:InvokeServer(
+					equiped_pet.pet_unique,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+				task.wait(1)
+				API["ToolAPI/Equip"]:InvokeServer(
+					k,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+			end
+			task.wait(1)
+			for a,_ in ipairs(potions) do
+				local others = {}
+				for i, _ in ipairs(potions) do
+					for j, p in ipairs(potions) do
+						if j ~= i then table.insert(others, p) end
+					end
+				end
+				API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+					"__Enum_PetObjectCreatorType_2",
+					{
+						additional_consume_uniques = {
+							table.unpack(others)
+						},
+						pet_unique = k,
+						unique_id = a
+					}
+				)
+				task.wait(1)
+			end
+		end
+		task.wait(1)
+		API["ToolAPI/Equip"]:InvokeServer(
+			equiped_pet.pet_unique or actual_pet.unique or "",
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+		task.wait(299)
+	end
+end
+
 local function init_mode() 
 	if _G.InternalConfig.Mode == "bot" then
 		RunService:Set3dRenderingEnabled(false)
-		setfpscap(1)
 	else
 		-- playable optmization
 	end
 end
 
 local function __init() 
+
+	-- task.defer(function() 
+	-- 	-- memory monitor
+	-- 	repeat
+	-- 		task.wait(60)
+	-- 	until false
+	-- end)
+
+
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
 	end
@@ -2046,13 +2075,17 @@ local function __init()
 		task.defer(init_auto_recycle)
 	end
 
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
+	end
+
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
 	end
 
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
-			while true do
+			while task.wait(1) do
 				task.wait(_G.InternalConfig.WebhookSendDelay)
 				webhook(
 					"AutoFarm Log",
@@ -2062,8 +2095,7 @@ local function __init()
 	   				**🧪Potions Farmed :** {farmed.potions}\n\
 	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
 	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}\n\
-	   				**📦Found in LureBox :** {farmed.lurebox}`
+	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
 				)
 			end
 		end)
@@ -2077,11 +2109,11 @@ local function __init()
 		task.defer(init_gift_autoopen)
 	end
 
-	task.wait(5)
+	-- task.wait(5)
 
-	if _G.InternalConfig.Mode then
-		task.defer(init_mode)
-	end
+	-- if _G.InternalConfig.Mode then
+	-- 	task.defer(init_mode)
+	-- end
 
 end
 
@@ -2095,7 +2127,7 @@ local function license() -- optimized
 		API["SettingsAPI/SetBooleanFlag"]:FireServer("has_talked_to_trade_quest_npc", true)
 		API["TradeAPI/BeginQuiz"]:FireServer()
 		task.wait(.2)
-		for _,v in ClientData.get("trade_license_quiz_manager").quiz do
+		for _,v in pairs(ClientData.get("trade_license_quiz_manager").quiz) do
 			API["TradeAPI/AnswerQuizQuestion"]:FireServer(v.answer)
 		end
 		colorprint({markup.SUCCESS}, "[+] Successed.")
@@ -2144,16 +2176,17 @@ end)
 				if not #Config.AutoFarmFilter.PetsToExclude == 0 then
 					if Config.AutoFarmFilter.PetsToExclude[1]:match("^%s*$") then
 						local list = {}
-						for _,v in Config.AutoFarmFilter.PetsToExclude do
+						for _,v in ipairs(Config.AutoFarmFilter.PetsToExclude) do
 							if check_remote_existance("pets", v) then
 								list[v] = true
 							else
-								colorprint({markup.ERROR}, `[-] Wrong "{v}" remote name `)
+								colorprint({markup.ERROR}, `[AutoFarmFilter.PetsToExclude] Wrong [{v}] remote name.`)
 							end
 						end
 						if count(list) > 0 then
 							_G.InternalConfig.AutoFarmFilter.PetsToExclude = list
 						else
+							colorprint({markup.WARNING}, "[AutoFarmFilter.PetsToExclude] No valid remote names. Option is disabled.")
 							_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 						end
 					else
@@ -2163,7 +2196,7 @@ end)
 					_G.InternalConfig.AutoFarmFilter.PetsToExclude = {}
 				end
 			else
-				error("Wrong datatype of PetsToExclude!")
+				error("[AutoFarmFilter.PetsToExclude] Wrong datatype. Exiting.")
 			end			
 
 			if type(Config.AutoFarmFilter.PotionFarm) == "boolean" then -- AutoFarmFilter / PotionFarm
@@ -2177,7 +2210,7 @@ end)
 					_G.InternalConfig.AutoFarmFilter.PotionFarm = false
 				end
 			else 
-				error("Wrong datatype of PotionFarm!")
+				error("[AutoFarmFilter.PotionFarm] Wrong datatype. Exiting.")
 			end
 
 			if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
@@ -2186,13 +2219,13 @@ end)
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = Config.AutoFarmFilter.EggAutoBuy
 					else
 						_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false
-						colorprint({markup.ERROR}, `[-] Wrong "{Config.AutoFarmFilter.EggAutoBuy}" remote name `)
+						colorprint({markup.ERROR}, `[AutoFarmFilter.EggAutoBuy] Wrong [{Config.AutoFarmFilter.EggAutoBuy}] remote name. Option is disabled.`)
 					end
 				else
 					_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false
 				end
 			else
-				error("Wrong datatype of EggAutoBuy!")
+				error("[AutoFarmFilter.EggAutoBuy] Wrong datatype. Exiting.")
 			end
 			
 		elseif (Config.FarmPriority):match("^%s*$") then 
@@ -2202,28 +2235,57 @@ end)
 			_G.InternalConfig.AutoFarmFilter.PetsToExclude = {} 
 			
 		else 
-			error("Wrong FarmPriority value!")
+			error("[FarmPriority] Wrong value. Exiting.")
 		end
 	else  
-		error("Wrong datatype of FarmPriority!")
+		error("[FarmPriority] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.BabyAutoFarm) == "boolean" then -- babyAutoFarm
 		_G.InternalConfig.BabyAutoFarm = Config.BabyAutoFarm
 	else
-		error("Wrong datatype of BabyAutoFarm!")
+		error("[BabyAutoFarm] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.LureboxFarm) == "boolean" then
 		_G.InternalConfig.LureboxFarm = Config.LureboxFarm
 	else
-		error("Wrong datatype of LureboxFarm")
+		error("[LureboxFarm] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.GiftsAutoOpen) == "boolean" then
 		_G.InternalConfig.GiftsAutoOpen = Config.GiftsAutoOpen
 	else
-		error("Wrong datatype of GiftsAutoOpen")
+		error("[GiftsAutoOpen] Wrong datatype. Exiting.")
+	end
+
+	if type(Config.AutoGivePotion) == "string" then
+		if not (Config.AutoGivePotion):match("^%s*$") then 
+			_G.InternalConfig.AutoGivePotion = {}
+			if Config.AutoGivePotion == "any" or Config.AutoGivePotion:match(";") then
+				if Config.AutoGivePotion == "any" then
+					_G.InternalConfig.AutoGivePotion = "any"
+				else
+					for v in Config.AutoGivePotion:gmatch("([^;]+)") do
+						if InventoryDB.pets[v] then
+							_G.InternalConfig.AutoGivePotion[v] = true 
+						else
+							colorprint({markup.ERROR}, `[AutoGivePotion] Wrong [{v}] remote name.`)
+						end
+					end
+					if count(_G.InternalConfig.AutoGivePotion) == 0 then
+						colorprint({markup.WARNING}, "[AutoGivePotion] No valid remote names. Option is disabled.")
+						_G.InternalConfig.AutoGivePotion = false
+					end
+				end
+			else
+				error("[AutoGivePotion] Wrong value. Exiting.")
+			end
+		else
+			_G.InternalConfig.AutoGivePotion = false
+		end
+	else
+		error("[AutoGivePotion] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.AutoRecyclePet) == "boolean" then -- CrystalEggFarm
@@ -2233,7 +2295,7 @@ end)
 				_G.InternalConfig.FarmPriority = "pets"				
 				if type(Config.AutoFarmFilter.PetsToExclude) == "table" then -- AutoFarmFilter / PetsToExclude
 					local list = {}
-					for _,v in Config.AutoFarmFilter.PetsToExclude do
+					for _,v in ipairs(Config.AutoFarmFilter.PetsToExclude) do
 						if check_remote_existance("pets", v) then
 							list[v] = true
 						end
@@ -2260,7 +2322,6 @@ end)
 				else 
 					_G.InternalConfig.AutoFarmFilter.PotionFarm = true
 				end
-
 
 				if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
 					if not (Config.AutoFarmFilter.EggAutoBuy):match("^%s*$") then 
@@ -2289,7 +2350,7 @@ end)
 					_G.InternalConfig.PetExchangeRarity = false
 				end
 			else
-				error("Wrong datatype of PetExchangeRarity!")
+				error("[PetExchangeRarity] Wrong datatype. Exiting")
 			end
 
 			local possible = {
@@ -2303,7 +2364,7 @@ end)
 			if type(Config.PetExchangeAge) == "string" then -- PetExchangeAge
 				if not (Config.PetExchangeAge):match("^%s*$") then 
 					_G.InternalConfig.PetExchangeAge = 6
-					for k,v in possible do
+					for k,v in pairs(possible) do
 						if k == Config.PetExchangeAge then
 							_G.InternalConfig.PetExchangeAge = v
 						end
@@ -2312,14 +2373,14 @@ end)
 					_G.InternalConfig.PetExchangeAge = 6
 				end
 			else
-				error("Wrong datatype of PetExchangeAge")
+				error("[PetExchangeAge] Wrong datatype. Exiting.")
 			end
 		else 
 			_G.InternalConfig.AutoRecyclePet = false
 			_G.InternalConfig.PetExchangeAge = false
 		end
 	else
-		error("Wrong datatype of AutoRecyclePet")
+		error("[AutoRecyclePet] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.DiscordWebhookURL) == "string" then -- DiscordWebhookURL
@@ -2338,7 +2399,7 @@ end)
 			_G.InternalConfig.DiscordWebhookURL = false
 		end
 	else
-		error("Wrong datatype of DiscordWebhookURL")
+		error("[DiscordWebhookURL] Wrong datatype. Exiting.")
 	end
 
 
@@ -2364,23 +2425,28 @@ end)
 					}
 					if type(Config.AutoTradeFilter.SendAllType) == "string" then
 						_G.InternalConfig.AutoTradeFilter.SendAllType = false
-						for k,v in possible do
+						for k,v in pairs(possible) do
 							if k == Config.AutoTradeFilter.SendAllType then
 								_G.InternalConfig.AutoTradeFilter.SendAllType = v
 							end
 						end
 					else
-						error("Wrong datatype of SendAllType")
+						error("[AutoTradeFilter.SendAllType] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.SendAllFarmed) == "boolean" then
 						_G.InternalConfig.AutoTradeFilter.SendAllFarmed = Config.AutoTradeFilter.SendAllFarmed
 					else
-						error("Wrong datatype of SendAllFarmed")
+						error("[AutoTradeFilter.SendAllFarmed] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.ExcludeFriendly) == "boolean" then
 						_G.InternalConfig.AutoTradeFilter.ExcludeFriendly = Config.AutoTradeFilter.ExcludeFriendly
 					else
-						error("Wrong datatype of ExcludeFriendy")
+						error("[AutoTradeFilter.ExcludeFriendy] Wrong datatype. Exiting.")
+					end
+					if type(Config.AutoTradeFilter.ExcludeEggs) == "boolean" then
+						_G.InternalConfig.AutoTradeFilter.ExcludeEggs = Config.AutoTradeFilter.ExcludeEggs
+					else
+						error("[AutoTradeFilter.ExcludeEggs] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.WebhookEnabled) == "boolean" then
 						if Config.AutoTradeFilter.WebhookEnabled then
@@ -2393,20 +2459,20 @@ end)
 							_G.InternalConfig.AutoTradeFilter.WebhookEnabled = false
 						end
 					else
-						error("Wrong datatype of WebhookEnabled")
+						error("[WebhookEnabled] Wrong datatype. Exiting.")
 					end
 					if type(Config.AutoTradeFilter.TradeDelay) == "number" then
 						if Config.AutoTradeFilter.TradeDelay >= 1 then
 							_G.InternalConfig.AutoTradeFilter.TradeDelay = Config.AutoTradeFilter.TradeDelay
 						else
 							_G.InternalConfig.AutoTradeFilter.TradeDelay = 40 
-							colorprint({markup.WARNING}, "[!] Value of TradeDelay can't be lower than 1. Reseting to 40.")
+							colorprint({markup.WARNING}, "[AutoTradeFilter.TradeDelay] Value of TradeDelay can't be lower than 1. Reseting to 40.")
 						end
 					else 
-						error("Wrong datatype TradeDelay")
+						error("[AutoTradeFilter.TradeDelay] Wrong datatype. Exiting.")
 					end
 				else 
-					colorprint({markup.WARNING}, "[!] PlayerTradeWith not specified. PetAutoTrade won't work.")
+					colorprint({markup.WARNING}, "[!] AutoTradeFilter.PlayerTradeWith is not specified. PetAutoTrade won't work.")
 					_G.InternalConfig.PetAutoTrade = false
 					_G.InternalConfig.AutoTradeFilter.PlayerTradeWith = false
 					_G.InternalConfig.AutoTradeFilter.SendAllType = false
@@ -2416,7 +2482,7 @@ end)
 					_G.InternalConfig.AutoTradeFilter.TradeDelay = false
 				end
 			else
-				error("Wrong datatype of PlayerTradeWith")
+				error("[AutoTradeFilter.PlayerTradeWith] Wrong datatype. Exiting.")
 			end
 		else
 			_G.InternalConfig.PetAutoTrade = false
@@ -2428,7 +2494,7 @@ end)
 			_G.InternalConfig.AutoTradeFilter.TradeDelay = false
 		end
 	else
-		error("Wrong datatype of PetAutoTrade")
+		error("[PetAutoTrade] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.WebhookSendDelay) == "number" then
@@ -2439,7 +2505,7 @@ end)
 			colorprint({markup.WARNING}, "[!] Value of WebhookSendDelay can't be lower than 1. Reseting to 3600.")
 		end
 	else
-		error("Wrong datatype of WebhookSendDelay")
+		error("[WebhookSendDelay] Wrong datatype. Exiting.")
 	end
 
 	if type(Config.Mode) == "string" then
@@ -2447,9 +2513,8 @@ end)
 			_G.InternalConfig.Mode = Config.Mode
 		end
 	else
-		error("Wrong datatype of Mode")
+		error("[Mode] Wrong datatype. Exiting.")
 	end
-	task.wait(2)
 end)()
 
 -- launch screen
@@ -2480,7 +2545,7 @@ task.spawn(function() -- optimized
 
     local frame = Instance.new("Frame")
     frame.Name = "StatsFrame"
-    frame.Size = UDim2.new(0, 250, 0, 170)
+    frame.Size = UDim2.new(0, 250, 0, 150)
     frame.Position = UDim2.new(0, 5, 0, 5)
     frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     frame.BackgroundTransparency = 0.3
@@ -2509,7 +2574,6 @@ task.spawn(function() -- optimized
     createLabel("friendship", "🧸Friendship levels farmed", 4)
     createLabel("baby_needs", "👶Baby needs completed", 5)
     createLabel("eggs", "🥚Eggs hatched", 6)
-    createLabel("lurebox", "📦Found in lurebox", 7)
 end) 
 
 
@@ -2544,7 +2608,7 @@ end)
 			end
 		end
 	end
-	for k,v in ClientData.get("house_interior")['furniture'] do
+	for k,v in pairs(ClientData.get("house_interior")['furniture']) do
 		local id = v.id:lower():gsub("_", "")
 		local part = furniture[id]
 		if part then
