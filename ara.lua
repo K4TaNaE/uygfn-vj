@@ -1203,7 +1203,7 @@ local pet_ailments = {
 				1,
 				k
 			)
-			-- task.wait(1.2) 
+			task.wait(2) 
 		end
 		StateDB.active_ailments.mystery = nil
 	end,
@@ -2063,25 +2063,25 @@ local function __init()
 		task.defer(init_autofarm)
 	end
 	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
-	-- end
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
 
-	-- if _G.InternalConfig.BabyAutoFarm then
-	-- 	task.defer(init_baby_autofarm)
-	-- end
+	if _G.InternalConfig.BabyAutoFarm then
+		task.defer(init_baby_autofarm)
+	end
 
-	-- if _G.InternalConfig.AutoRecyclePet then
-	-- 	task.defer(init_auto_recycle)
-	-- end
+	if _G.InternalConfig.AutoRecyclePet then
+		task.defer(init_auto_recycle)
+	end
 
-	-- if _G.InternalConfig.AutoGivePotion then
-	-- 	task.defer(init_auto_give_potion)
-	-- end
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
+	end
 
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
+	end
 
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
