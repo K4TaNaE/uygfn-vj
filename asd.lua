@@ -57,6 +57,7 @@ _G.bait_placed = false
 
 local furn = {}
 _G.InternalConfig = {}
+_G.flag_if_no_one_to_farm = false
 
 local markup = {
 	["INFO"] = "80, 200, 255",
@@ -638,12 +639,16 @@ local function enstat(friendship, money, ailment)  -- optimized
 		end
 	else 
 		if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
-			farmed.pets_fullgrown += 1
-			table.insert(StateDB.total_fullgrowned, actual_pet.unique)
-			update_gui("fullgrown", farmed.pets_fullgrown)
-			actual_pet.unique = nil
-			table.clear(StateDB.active_ailments)
-			queue:destroy_linked("ailment pet")
+			if not _G.flag_if_no_one_to_farm then
+				farmed.pets_fullgrown += 1
+				update_gui("fullgrown", farmed.pets_fullgrown)
+				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
+				actual_pet.unique = nil
+				table.clear(StateDB.active_ailments)
+				queue:destroy_linked("ailment pet")
+			else
+				StateDB.active_ailments[ailment] = nil
+			end
 		else
 			StateDB.active_ailments[ailment] = nil
 		end
@@ -709,13 +714,17 @@ local function __pet_callback(friendship, ailment)
 				StateDB.active_ailments[ailment] = nil
 			end
 		else 
-			if actual_pet.rarity == 6 then
-				farmed.pets_fullgrown += 1
-				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
-				update_gui("fullgrown", farmed.pets_fullgrown)
-				actual_pet.unique = nil
-				table.clear(StateDB.active_ailments)
-				queue:destroy_linked("ailment pet")
+			if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
+				if not _G.flag_if_no_one_to_farm then
+					farmed.pets_fullgrown += 1
+					update_gui("fullgrown", farmed.pets_fullgrown)
+					table.insert(StateDB.total_fullgrowned, actual_pet.unique)
+					actual_pet.unique = nil
+					table.clear(StateDB.active_ailments)
+					queue:destroy_linked("ailment pet")
+				else
+					StateDB.active_ailments[ailment] = nil
+				end
 			else
 				StateDB.active_ailments[ailment] = nil
 			end
@@ -1576,6 +1585,7 @@ local function init_autofarm() -- optimized
 							continue
 						end
 						flag = true		
+						_G.flag_if_no_one_to_farm = false
 						break				
 					end
 				end
@@ -1593,6 +1603,7 @@ local function init_autofarm() -- optimized
 							continue
 						end
 						flag = true
+						_G.flag_if_no_one_to_farm = false
 						break
 					end
 				end
@@ -1609,6 +1620,7 @@ local function init_autofarm() -- optimized
 							continue
 						end
 						flag = true
+						_G.flag_if_no_one_to_farm = false
 						break
 					end
 				end
@@ -1628,6 +1640,7 @@ local function init_autofarm() -- optimized
 							continue
 						end
 						flag = true
+						_G.flag_if_no_one_to_farm = false
 						break
 					end
 				end
@@ -1645,24 +1658,28 @@ local function init_autofarm() -- optimized
 							continue
 						end
 						flag = true
+						_G.flag_if_no_one_to_farm = false
 						break
 					end
 				end
 			end
 			if not flag then
-				for k, _ in pairs(owned_pets) do
-					API["ToolAPI/Equip"]:InvokeServer(
-						k,
-						{
-							use_sound_delay = true,
-							equip_as_last = false
-						}
-					)
-					if not equiped() then
-						continue
+				if not _G.flag_if_no_one_to_farm then  
+					for k, _ in pairs(owned_pets) do
+						API["ToolAPI/Equip"]:InvokeServer(
+							k,
+							{
+								use_sound_delay = true,
+								equip_as_last = false
+							}
+						)
+						if not equiped() then
+							continue
+						end
+						flag = true
+						_G.flag_if_no_one_to_farm = true
+						break
 					end
-					flag = true
-					break
 				end
 			end
 		end 
@@ -2073,17 +2090,17 @@ local function __init()
 		task.defer(init_auto_buy)
 	end
 
-	-- if _G.InternalConfig.BabyAutoFarm then
-	-- 	task.defer(init_baby_autofarm)
-	-- end
+	if _G.InternalConfig.BabyAutoFarm then
+		task.defer(init_baby_autofarm)
+	end
 
-	-- if _G.InternalConfig.AutoRecyclePet then
-	-- 	task.defer(init_auto_recycle)
-	-- end
+	if _G.InternalConfig.AutoRecyclePet then
+		task.defer(init_auto_recycle)
+	end
 
-	-- if _G.InternalConfig.AutoGivePotion then
-	-- 	task.defer(init_auto_give_potion)
-	-- end
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
+	end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
@@ -2115,11 +2132,11 @@ local function __init()
 		task.defer(init_gift_autoopen)
 	end
 
-	-- task.wait(5)
+	task.wait(5)
 
--- 	if _G.InternalConfig.Mode then
--- 		task.defer(init_mode)
--- 	end
+	if _G.InternalConfig.Mode then
+		task.defer(init_mode)
+	end
 
 end
 
