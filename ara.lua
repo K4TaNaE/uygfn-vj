@@ -2073,17 +2073,17 @@ local function __init()
 		task.defer(init_auto_buy)
 	end
 
-	if _G.InternalConfig.BabyAutoFarm then
-		task.defer(init_baby_autofarm)
-	end
+	-- if _G.InternalConfig.BabyAutoFarm then
+	-- 	task.defer(init_baby_autofarm)
+	-- end
 
-	if _G.InternalConfig.AutoRecyclePet then
-		task.defer(init_auto_recycle)
-	end
+	-- if _G.InternalConfig.AutoRecyclePet then
+	-- 	task.defer(init_auto_recycle)
+	-- end
 
-	if _G.InternalConfig.AutoGivePotion then
-		task.defer(init_auto_give_potion)
-	end
+	-- if _G.InternalConfig.AutoGivePotion then
+	-- 	task.defer(init_auto_give_potion)
+	-- end
 
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
@@ -2117,9 +2117,9 @@ local function __init()
 
 	-- task.wait(5)
 
-	-- if _G.InternalConfig.Mode then
-	-- 	task.defer(init_mode)
-	-- end
+	if _G.InternalConfig.Mode then
+		task.defer(init_mode)
+	end
 
 end
 
