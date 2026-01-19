@@ -183,10 +183,14 @@ Queue.new = function()
 		end,
 
 		__asyncrun = function(taskt: table)
-			local name = taskt[1]			
 			local callback = taskt[2]			
-			if name and type(name) == "string" and callback and type(callback) == "function" then 
-				pcall(task.spawn, callback)
+			if type(callback) == "function" then 
+				task.spawn(function()
+					local ok, err = pcall(callback)
+					if not ok then
+						warn("Async error:", err)
+					end
+				end)
 			end
 		end,
 
@@ -762,9 +766,9 @@ local pet_ailments = {
 		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("camping") then
 			__baby_callbak(money, "camping")
 		end
-	end,Cli
+	end,
 	["hungry"] = function() -- healing_apple в прошлый раз не работало
-		local pet = entData.get("pet_char_wrappers")[1]
+		local pet = ClientData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
@@ -1203,7 +1207,7 @@ local pet_ailments = {
 				1,
 				k
 			)
-			task.wait(2) 
+			task.wait(1.5) 
 		end
 		StateDB.active_ailments.mystery = nil
 	end,
@@ -1943,17 +1947,19 @@ local function init_lurebox() -- optimized
 end
 
 local function init_gift_autoopen() -- чета тут не так
-	while count(get_owned_category("gifts")) < 1 do
-		task.wait(300) 
-	end
-	for k,_ in pairs(get_owned_category("gifts")) do
-		if k.remote:lower():match("box") or k.remote:lower():match("chest") then
-			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
-		else
-			API["ShopAPI/OpenGift"]:InvokeServer(k)
+	while task.wait(1) do
+		while count(get_owned_category("gifts")) < 1 do
+			task.wait(300) 
 		end
-		task.wait(.5) 
-	end	
+		for k,_ in pairs(get_owned_category("gifts")) do
+			if k.remote:lower():match("box") or k.remote:lower():match("chest") then
+				API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
+			else
+				API["ShopAPI/OpenGift"]:InvokeServer(k)
+			end
+			task.wait(.5) 
+		end	
+	end
 end
 
 local function init_auto_give_potion()
@@ -2059,51 +2065,51 @@ local function __init()
 	-- end)
 
 
-	-- if _G.InternalConfig.FarmPriority then
-	-- 	task.defer(init_autofarm)
-	-- end
-	
-	-- if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-	-- 	task.defer(init_auto_buy)
-	-- end
-
-	-- if _G.InternalConfig.BabyAutoFarm then
-	-- 	task.defer(init_baby_autofarm)
-	-- end
-
-	-- if _G.InternalConfig.AutoRecyclePet then
-	-- 	task.defer(init_auto_recycle)
-	-- end
-
-	-- if _G.InternalConfig.AutoGivePotion then
-	-- 	task.defer(init_auto_give_potion)
-	-- end
-
-	-- if _G.InternalConfig.PetAutoTrade then
-	-- 	task.defer(init_auto_trade)
-	-- end
-
-	-- if _G.InternalConfig.DiscordWebhookURL then
-	-- 	task.defer(function()
-	-- 		while task.wait(1) do
-	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
-	-- 			webhook(
-	-- 				"AutoFarm Log",
-	-- 				`**💸Money Earned :** {farmed.money}\n\
-	--    				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	--    				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	--    				**🧪Potions Farmed :** {farmed.potions}\n\
-	--    				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	--    				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	--    				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
-	-- 			)
-	-- 		end
-	-- 	end)
-	-- end
-
-	if _G.InternalConfig.LureboxFarm then
-		task.defer(init_lurebox)
+	if _G.InternalConfig.FarmPriority then
+		task.defer(init_autofarm)
 	end
+	
+	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
+		task.defer(init_auto_buy)
+	end
+
+	if _G.InternalConfig.BabyAutoFarm then
+		task.defer(init_baby_autofarm)
+	end
+
+	if _G.InternalConfig.AutoRecyclePet then
+		task.defer(init_auto_recycle)
+	end
+
+	if _G.InternalConfig.AutoGivePotion then
+		task.defer(init_auto_give_potion)
+	end
+
+	if _G.InternalConfig.PetAutoTrade then
+		task.defer(init_auto_trade)
+	end
+
+	if _G.InternalConfig.DiscordWebhookURL then
+		task.defer(function()
+			while task.wait(1) do
+				task.wait(_G.InternalConfig.WebhookSendDelay)
+				webhook(
+					"AutoFarm Log",
+					`**💸Money Earned :** {farmed.money}\n\
+	   				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	   				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	   				**🧪Potions Farmed :** {farmed.potions}\n\
+	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
+				)
+			end
+		end)
+	end
+
+	-- if _G.InternalConfig.LureboxFarm then
+	-- 	task.defer(init_lurebox)
+	-- end
 
 	if _G.InternalConfig.GiftsAutoOpen then
 		task.defer(init_gift_autoopen)
