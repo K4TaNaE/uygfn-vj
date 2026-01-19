@@ -762,9 +762,9 @@ local pet_ailments = {
 		if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby("camping") then
 			__baby_callbak(money, "camping")
 		end
-	end,
+	end,Cli
 	["hungry"] = function() -- healing_apple в прошлый раз не работало
-		local pet = ClientData.get("pet_char_wrappers")[1]
+		local pet = entData.get("pet_char_wrappers")[1]
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("hungry") then
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
@@ -2101,13 +2101,13 @@ local function __init()
 		end)
 	end
 
-	-- if _G.InternalConfig.LureboxFarm then
-	-- 	task.defer(init_lurebox)
-	-- end
+	if _G.InternalConfig.LureboxFarm then
+		task.defer(init_lurebox)
+	end
 
-	-- if _G.InternalConfig.GiftsAutoOpen then
-	-- 	task.defer(init_gift_autoopen)
-	-- end
+	if _G.InternalConfig.GiftsAutoOpen then
+		task.defer(init_gift_autoopen)
+	end
 
 	-- task.wait(5)
 
