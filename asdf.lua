@@ -1568,8 +1568,11 @@ local function init_autofarm() -- optimized
 	end
 
 	while task.wait(1) do
+		local owned_pets = get_owned_pets()
+		local flag = false
+		
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if pet then
+		if pet and not _G.flag_if_no_one_to_farm then
 			API["ToolAPI/Unequip"]:InvokeServer(
 				pet.pet_unique,
 				{
@@ -1578,8 +1581,19 @@ local function init_autofarm() -- optimized
 				}
 			)
 		end
-		local owned_pets = get_owned_pets()
-		local flag = false
+		
+		local d2kitty = inv_get_category_unique("pets", "2d_kitty")
+		if owned_pets[d2kitty] then
+			API["ToolAPI/Equip"]:InvokeServer(
+				d2kitty,
+				{
+					use_sound_delay = true,
+					equip_as_last = false
+				}
+			)
+			flag = true
+			_G.flag_if_no_one_to_farm = false
+		end
 		if _G.InternalConfig.PotionFarm then
 			if _G.InternalConfig.FarmPriority == "pets" then
 				for k,v in pairs(owned_pets) do
@@ -2088,7 +2102,7 @@ local function init_mode()
 end
 
 local function internal_countdown() 
-	while true do
+	while task.wait(1) do
 		Cooldown.AutoBuyEgg -= 1
 		Cooldown.GiftsAutoOpen -= 1
 		Cooldown.AutoGivePotion -= 1
@@ -2122,29 +2136,24 @@ local function optimized_waiting_coroutine()
 end
 
 local function __init() 
-	task.defer(internal_countdown)
+	task.spawn(internal_countdown)
 	task.wait(.1)
-	print("internal countdown")
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
 	end
 	task.wait(.1)
-	print("farmpriority")
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
 	task.wait(.1)
-	print("baby auto")
 	if _G.InternalConfig.AutoRecyclePet then
 		task.defer(init_auto_recycle)
 	end
 	task.wait(.1)
-	print("autorecycle")
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
 	end
 	task.wait(.1)
-	print("autotrade")
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
 			while task.wait(1) do
@@ -2163,13 +2172,11 @@ local function __init()
 		end)
 	end
 	task.wait(.1)
-	print("webhook")
 	task.defer(optimized_waiting_coroutine)
-	print("optimized waiting coroutiune")
 	task.wait(4)
-	if _G.InternalConfig.Mode then
-		task.defer(init_mode)
-	end
+	-- if _G.InternalConfig.Mode then
+	-- 	task.defer(init_mode)
+	-- end
 
 end
 
