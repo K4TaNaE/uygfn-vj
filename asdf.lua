@@ -639,7 +639,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				queue:destroy_linked("ailment pet")
 				table.clear(StateDB.active_ailments)
 			else
-				safe_destroyer(StateDB.active_ailments, ailment)
+				StateDB.active_ailments[ailment] = nil
 			end
 			return
 		else
@@ -647,7 +647,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 			farmed.ailments += 1
 			update_gui("bucks", farmed.money)
 			update_gui("pet_needs", farmed.ailments)
-			safe_destroyer(StateDB.active_ailments, ailment)
+			StateDB.active_ailments[ailment] = nil
 			return
 		end
 	end
@@ -664,14 +664,14 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 			update_gui("friendship", farmed.friendship_levels)
 			update_gui("potions", farmed.potions)
 		end
-		safe_destroyer(StateDB.active_ailments, ailment)
+		StateDB.active_ailments[ailment] = nil
 	else 
 		if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
 			if age < 6 and ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
 				farmed.pets_fullgrown += 1
 				update_gui("fullgrown", farmed.pets_fullgrown)
 				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
-				safe_destroyer(StateDB.active_ailments, ailment)
+				StateDB.active_ailments[ailment] = nil
 				if not _G.flag_if_no_one_to_farm then
 					actual_pet.unique = nil
 					queue:destroy_linked("ailment pet")
@@ -685,7 +685,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				farmed.potions += 1
 				update_gui("fullgrown", farmed.pets_fullgrown)
 				update_gui("potions", farmed.potions)
-				safe_destroyer(StateDB.active_ailments, ailment)
+				StateDB.active_ailments[ailment] = nil
 			end
 		end
 	end
@@ -699,7 +699,7 @@ local function enstat_baby(money, ailment) -- optimized
 	task.wait(.5)
 	farmed.money += ClientData.get("money") - money 
 	farmed.baby_ailments += 1
-	safe_destroyer(StateDB.baby_active_ailments, ailment)
+	StateDB.baby_active_ailments[ailment] = nil
 	update_gui("bucks", farmed.money)
 	update_gui("baby_needs", farmed.baby_ailments)
 end
@@ -721,13 +721,13 @@ local function __pet_callback(age, friendship, ailment)
 					queue:destroy_linked("ailment pet")
 					table.clear(StateDB.active_ailments)
 				else
-					safe_destroyer(StateDB.active_ailments, ailment)
+					StateDB.active_ailments[ailment] = nil
 				end
 				return
 			else
 				farmed.ailments += 1
 				update_gui("pet_needs", farmed.ailments)
-				safe_destroyer(StateDB.active_ailments, ailment)
+				StateDB.active_ailments[ailment] = nil
 				return
 			end
 		end
@@ -744,7 +744,7 @@ local function __pet_callback(age, friendship, ailment)
 				update_gui("friendship", farmed.friendship_levels)
 				update_gui("potions", farmed.potions)
 			end
-			safe_destroyer(StateDB.active_ailments, ailment)
+			StateDB.active_ailments[ailment] = nil
 		else 
 			if ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
 				if age < 6 and ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
@@ -765,7 +765,7 @@ local function __pet_callback(age, friendship, ailment)
 					farmed.potions += 1
 					update_gui("fullgrown", farmed.pets_fullgrown)
 					update_gui("potions", farmed.potions)
-					safe_destroyer(StateDB.active_ailments, ailment)
+					StateDB.active_ailments[ailment] = nil
 				end
 			end
 		end
@@ -782,7 +782,7 @@ local function __baby_callbak(ailment, money)
 	else
 		queue:taskdestroy("baby", ailment)
 		farmed.baby_ailments += 1
-		safe_destroyer(StateDB.baby_active_ailments, ailment)
+		StateDB.baby_active_ailments[ailment] = nil
 		update_gui("baby_needs", farmed.baby_ailments)
 	end
 end
