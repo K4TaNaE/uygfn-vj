@@ -217,10 +217,9 @@ Queue.new = function()
 					if spl[1]:match("ailment pet") then
 						StateDB.active_ailments[spl[2]] = nil
 					elseif spl[1]:match("ailment baby") then
-						StateDB.active_ailments_baby[spl[2]] = nil
+						StateDB.baby_active_ailments[spl[2]] = nil
 					end
 				end
-
 				task.wait(.5) 
 			end
 			self.running = false
@@ -1315,7 +1314,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("camping") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.camping = nil
+			StateDB.baby_active_ailments.camping = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "camping")
@@ -1331,7 +1330,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
-				StateDB.active_ailments_baby.hungry = nil 
+				StateDB.baby_active_ailments.hungry = nil 
 				colorprint({markup.WARNING}, "[-] No money to buy food.") 
 				return 
 			end
@@ -1362,7 +1361,7 @@ baby_ailments = {
 			task.wait(.5)
         until not has_ailment_baby("hungry") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.hungry = nil
+			StateDB.baby_active_ailments.hungry = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "hungry")  
@@ -1374,7 +1373,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				StateDB.active_ailments_baby.thirsty = nil 
+				StateDB.baby_active_ailments.thirsty = nil 
 				colorprint({markup.WARNING}, "[!] No money to buy food.") 
 				return 
 			end			
@@ -1405,7 +1404,7 @@ baby_ailments = {
 			task.wait(.5)
 		until not has_ailment_baby("thirsty") or os.clock() > deadline  
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.thirsty = nil
+			StateDB.baby_active_ailments.thirsty = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "thirsty")  
@@ -1455,7 +1454,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("bored") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.broed = nil
+			StateDB.baby_active_ailments.broed = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "bored")  
@@ -1481,7 +1480,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("salon") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.salon = nil
+			StateDB.baby_active_ailments.salon = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "salon")  
@@ -1508,7 +1507,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("beach_party") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.beach_party = nil
+			StateDB.baby_active_ailments.beach_party = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "beach_party")  
@@ -1541,7 +1540,7 @@ baby_ailments = {
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.dirty = nil
+			StateDB.baby_active_ailments.dirty = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "dirty")  
@@ -1563,7 +1562,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("school") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.school = nil
+			StateDB.baby_active_ailments.school = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "school")  
@@ -1596,7 +1595,7 @@ baby_ailments = {
 		task.wait(.3)
 		StateManagerClient.exit_seat_states()
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.sleepy = nil
+			StateDB.baby_active_ailments.sleepy = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "sleepy")  
@@ -1618,7 +1617,7 @@ baby_ailments = {
             task.wait(1)
         until not has_ailment_baby("pizza_party") or os.clock() > deadline
         if os.clock() > deadline then 
-			StateDB.active_ailments_baby.pizza_party = nil
+			StateDB.baby_active_ailments.pizza_party = nil
 			error("Out of limits") 
 		end		
 		enstat_baby(money, "pizza_party")  
