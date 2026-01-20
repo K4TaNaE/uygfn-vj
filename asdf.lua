@@ -2124,21 +2124,27 @@ end
 local function __init() 
 	task.defer(internal_countdown)
 	task.wait(.1)
+	print("internal countdown")
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
 	end
 	task.wait(.1)
+	print("farmpriority")
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
 	task.wait(.1)
+	print("baby auto")
 	if _G.InternalConfig.AutoRecyclePet then
 		task.defer(init_auto_recycle)
 	end
 	task.wait(.1)
+	print("autorecycle")
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
 	end
+	task.wait(.1)
+	print("autotrade")
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
 			while task.wait(1) do
@@ -2157,7 +2163,9 @@ local function __init()
 		end)
 	end
 	task.wait(.1)
+	print("webhook")
 	task.defer(optimized_waiting_coroutine)
+	print("optimized waiting coroutiune")
 	task.wait(4)
 	if _G.InternalConfig.Mode then
 		task.defer(init_mode)
