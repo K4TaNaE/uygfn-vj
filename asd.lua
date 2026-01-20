@@ -54,6 +54,12 @@ local farmed = {
 	eggs_hatched = 0
 }
 _G.bait_placed = false
+local Cooldown = {
+	AutoBuyEgg = 0,
+	GiftsAutoOpen = 0,
+	AutoGivePotion = 0,
+	LureboxFarm = 0
+}
 
 local furn = {}
 _G.InternalConfig = {}
@@ -648,6 +654,10 @@ local function enstat(friendship, money, ailment)  -- optimized
 				queue:destroy_linked("ailment pet")
 			else
 				StateDB.active_ailments[ailment] = nil
+				if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
+					farmed.potions += 1
+					update_gui("potions", farmed.potions)
+				end
 			end
 		else
 			StateDB.active_ailments[ailment] = nil
@@ -1758,23 +1768,21 @@ local function init_baby_autofarm() -- optimized
 	end
 end
 
-local function init_auto_buy() -- optimized
+local function async_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
 	if cost then
-		while task.wait(1) do
-			local farmd = farmed.money
-			API["ShopAPI/BuyItem"]:InvokeServer(
-				"pets",
-				_G.InternalConfig.AutoFarmFilter.EggAutoBuy,
-				{
-					buy_count = ClientData.get("money") / cost
-				}
-			)
-			farmed.money = farmd
-			task.wait(300)
-		end
+		local farmd = farmed.money
+		API["ShopAPI/BuyItem"]:InvokeServer(
+			"pets",
+			_G.InternalConfig.AutoFarmFilter.EggAutoBuy,
+			{
+				buy_count = ClientData.get("money") / cost
+			}
+		)
+		farmed.money = farmd
+		Cooldown.AutoBuyEgg = 3600		
 	else 
-		return
+		Cooldown.AutoBuyEgg = math.huge()
 	end
 end
 
@@ -1854,7 +1862,7 @@ local function init_auto_trade() -- optimized
 				end
 				if _G.InternalConfig.AutoTradeFilter.ExcludeEggs then
 					for k,v in pairs(owned_pets) do
-						if (v.name:lower()):find("egg") then 
+						if (v.name:lower()):match("egg") then 
 							exclude[k] = true
 						end
 					end
@@ -1880,6 +1888,11 @@ local function init_auto_trade() -- optimized
 							end
 						end
 					end
+				end
+				if count(pets_to_send) == 0 then
+					colorprint({markup.WARNING}, "[TradeLog] Internal pet list is empty. Timeout: [3600]s.")
+					task.wait(3600)
+					continue
 				end
 				pcall(function()
 				for k,_ in pairs(pets_to_send) do 
@@ -1918,9 +1931,8 @@ local function init_auto_trade() -- optimized
 	end
 end
 
--- -- сделать детект предметов которые ты можешшь положить в бокс
-local function init_lurebox() -- optimized
-	
+local function async_lurebox_farm() 
+
 	local function to_home_and_check_bait_placed()
 		to_home()
 		if not debug.getupvalue(LureBaitHelper.run_tutorial, 11)() then
@@ -1948,38 +1960,36 @@ local function init_lurebox() -- optimized
 		_G.can_proceed = true 
 	end
 
-	while task.wait(1) do
-		queue:enqueue{"bait_check", to_home_and_check_bait_placed}
-		repeat 
-			task.wait(1)		
-		until _G.can_proceed
-		_G.can_proceed = false
-		if not _G.bait_placed then
-			colorprint({markup.SUCCESS}, "[Lure] Reward collected.")
+	queue:enqueue{"bait_check", to_home_and_check_bait_placed}
+	repeat 
+		task.wait(1)		
+	until _G.can_proceed
+	_G.can_proceed = false
+	if not _G.bait_placed then
+		colorprint({markup.SUCCESS}, "[Lure] Reward collected.")
+	else
+		colorprint({markup.INFO}, "[Lure] Next check in [3600]s.")
+		Cooldown.LureboxFarm = 3600
+	end
+end
+
+local function async_gift_autoopen() -- чета тут не так
+	if count(get_owned_category("gifts")) < 1 then
+		Cooldown.GiftsAutoOpen = 3600
+		return
+	end
+	for k,_ in pairs(get_owned_category("gifts")) do
+		if k.remote:lower():match("box") or k.remote:lower():match("chest") then
+			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
 		else
-			colorprint({markup.INFO}, "[Lure] Next check in 1h.")
-			task.wait(3600)
+			API["ShopAPI/OpenGift"]:InvokeServer(k)
 		end
+		task.wait(.5) 
 	end
+	Cooldown.GiftsAutoOpen = 3600 
 end
 
-local function init_gift_autoopen() -- чета тут не так
-	while task.wait(1) do
-		while count(get_owned_category("gifts")) < 1 do
-			task.wait(300) 
-		end
-		for k,_ in pairs(get_owned_category("gifts")) do
-			if k.remote:lower():match("box") or k.remote:lower():match("chest") then
-				API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
-			else
-				API["ShopAPI/OpenGift"]:InvokeServer(k)
-			end
-			task.wait(.5) 
-		end	
-	end
-end
-
-local function init_auto_give_potion()
+local function async_auto_give_potion()
 	
 	local function get_potions() 
 	local potions = {}
@@ -1991,28 +2001,33 @@ local function init_auto_give_potion()
 		if #potions > 0 then return potions else return nil end
 	end
 
-	while task.wait(1) do
-		local pets_to_grow = {}
-		local owned_pets = get_owned_pets()
-		if _G.InternalConfig.AutoGivePotion ~= "any" then
-			for k,_ in ipairs(_G.InternalConfig.AutoGivePotion) do
-				local pet = inv_get_category_unique("pets", k)
-				if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
-					pets_to_grow[pet] = true
-				end
-			end
-		else
-			for k,v in pairs(owned_pets) do
-				if v.age < 6 and not (v.name:lower()):match("egg") then
-					pets_to_grow[k] = true
-				end
+	local pets_to_grow = {}
+	local owned_pets = get_owned_pets()
+	if _G.InternalConfig.AutoGivePotion ~= "any" then
+		for k,_ in ipairs(_G.InternalConfig.AutoGivePotion) do
+			local pet = inv_get_category_unique("pets", k)
+			if owned_pets[pet] and owned_pets[pet].age < 6 and not (owned_pets[pet].name:lower()):match("egg") then
+				pets_to_grow[pet] = true
 			end
 		end
-		local equiped_pet
-		for k,_ in pairs(pets_to_grow) do
-			local potions = get_potions()
-			if not potions then task.wait(300) break end	
-			
+	else
+		for k,v in pairs(owned_pets) do
+			if v.age < 6 and not (v.name:lower()):match("egg") then
+				pets_to_grow[k] = true
+			end
+		end
+	end
+	local equiped_pet
+	local potions = get_potions()
+	if not potions then 
+		Cooldown.AutoGivePotion = 900
+		return
+	end	
+	local first_equiped_pet = ClientData.get("pet_char_wrappers")[1]
+	for k,_ in pairs(pets_to_grow) do
+		local count_of_potions = #potions
+		
+		if count_of_potions > 0 then
 			equiped_pet = ClientData.get("pet_char_wrappers")[1]
 			if equiped_pet then
 				API["ToolAPI/Unequip"]:InvokeServer(
@@ -2052,16 +2067,16 @@ local function init_auto_give_potion()
 				task.wait(1)
 			end
 		end
-		task.wait(1)
-		API["ToolAPI/Equip"]:InvokeServer(
-			equiped_pet.pet_unique or actual_pet.unique or "",
-			{
-				use_sound_delay = true,
-				equip_as_last = false
-			}
-		)
-		task.wait(299)
 	end
+	task.wait(1)
+	API["ToolAPI/Equip"]:InvokeServer(
+		first_equiped_pet.pet_unique or actual_pet.unique or "",
+		{
+			use_sound_delay = true,
+			equip_as_last = false
+		}
+	)
+	Cooldown.AutoGivePotion = 900
 end
 
 local function init_mode() 
@@ -2072,40 +2087,58 @@ local function init_mode()
 	end
 end
 
+local function internal_countdown() 
+	while true do
+		Cooldown.AutoBuyEgg -= 1
+		Cooldown.GiftsAutoOpen -= 1
+		Cooldown.AutoGivePotion -= 1
+		Cooldown.LureboxFarm -= 1
+	end
+end
+
+local function optimized_waiting_coroutine() 
+	while task.wait(10) do
+		if _G.InternalConfig.GiftsAutoOpen then
+			if Cooldown.GiftsAutoOpen <= 0 then
+				async_gift_autoopen()
+			end
+		end	
+		if _G.InternalConfig.EggAutoBuy then
+			if Cooldown.AutoBuyEgg <= 0 then
+				async_auto_buy()
+			end
+		end
+		if _G.InternalConfig.LureboxFarm then
+			if Cooldown.LureboxFarm <= 0 then 
+				async_lurebox_farm()
+			end
+		end
+		if _G.InternalConfig.AutoGivePotion then
+			if Cooldown.AutoGivePotion <= 0 then
+				async_auto_give_potion()
+			end
+		end
+	end
+end
+
 local function __init() 
-
-	-- task.defer(function() 
-	-- 	-- memory monitor
-	-- 	repeat
-	-- 		task.wait(60)
-	-- 	until false
-	-- end)
-
-
+	task.defer(internal_countdown)
+	task.wait(.1)
 	if _G.InternalConfig.FarmPriority then
 		task.defer(init_autofarm)
 	end
-	
-	if _G.InternalConfig.AutoFarmFilter.EggAutoBuy then
-		task.defer(init_auto_buy)
-	end
-
+	task.wait(.1)
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
 	end
-
+	task.wait(.1)
 	if _G.InternalConfig.AutoRecyclePet then
 		task.defer(init_auto_recycle)
 	end
-
-	if _G.InternalConfig.AutoGivePotion then
-		task.defer(init_auto_give_potion)
-	end
-
+	task.wait(.1)
 	if _G.InternalConfig.PetAutoTrade then
 		task.defer(init_auto_trade)
 	end
-
 	if _G.InternalConfig.DiscordWebhookURL then
 		task.defer(function()
 			while task.wait(1) do
@@ -2123,19 +2156,11 @@ local function __init()
 			end
 		end)
 	end
-
-	if _G.InternalConfig.LureboxFarm then
-		task.defer(init_lurebox)
-	end
-
-	if _G.InternalConfig.GiftsAutoOpen then
-		task.defer(init_gift_autoopen)
-	end
-
-	task.wait(5)
-
+	task.wait(.1)
+	task.defer(optimized_waiting_coroutine)
+	task.wait(4)
 	if _G.InternalConfig.Mode then
-		task.defer(init_mode)
+		init_mode()
 	end
 
 end
@@ -2817,5 +2842,5 @@ task.spawn(function() -- optimized
 end)
 
 license()
-task.spawn(__init)
+__init()
 
