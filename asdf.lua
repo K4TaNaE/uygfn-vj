@@ -1302,11 +1302,15 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		to_mainmap()
 		gotovec(-23, 37, -1063)
         local deadline = os.clock() + 60
 		local pet_has_ailment = has_ailment("camping")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
         repeat 
             task.wait(1)
         until not has_ailment_baby("camping") or os.clock() > deadline
@@ -1317,7 +1321,7 @@ baby_ailments = {
 		enstat_baby(money, "camping")
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("camping") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "camping")
+			__pet_callback(age, friendship, "camping")
 		end
 	end,
 	["hungry"] = function() 
@@ -1412,6 +1416,11 @@ baby_ailments = {
 		end
 		local money = ClientData.get("money")
 		local pet_has_ailment = has_ailment("sick")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		repeat 
 			goto("Hospital", "MainDoor")
 			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
@@ -1425,7 +1434,7 @@ baby_ailments = {
 		enstat_baby(money, "sick") 
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("sick") then
-			__pet_callback(ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "sick")
+			__pet_callback(age, friendship, "sick")
 		end
 	end,
 	["bored"] = function() 
@@ -1433,8 +1442,12 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local pet_has_ailment = has_ailment("bored")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		to_mainmap()
 		gotovec(-365, 30, -1749)
         local deadline = os.clock() + 60
@@ -1448,7 +1461,7 @@ baby_ailments = {
 		enstat_baby(money, "bored")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("bored") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "bored")
+			__pet_callback(age, friendship, "bored")
 		end
 	end,
 	["salon"] = function() 
@@ -1456,8 +1469,12 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local pet_has_ailment = has_ailment("salon")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		goto("Salon", "MainDoor")
         local deadline = os.clock() + 60
         repeat 
@@ -1470,7 +1487,7 @@ baby_ailments = {
 		enstat_baby(money, "salon")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("salon") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "salon")
+			__pet_callback(age, friendship, "salon")
 		end
 	end,
 	["beach_party"] = function() 
@@ -1478,8 +1495,12 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local pet_has_ailment = has_ailment("beach_party")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		to_mainmap()
 		gotovec(-596, 27, -1473)
         local deadline = os.clock() + 60
@@ -1493,7 +1514,7 @@ baby_ailments = {
 		enstat_baby(money, "beach_party")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("beach_party") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, money, "beach_party")
+			__pet_callback(age, friendship, "beach_party")
 		end
 	end,
 	["dirty"] = function() 
@@ -1530,8 +1551,12 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local pet_has_ailment = has_ailment("school")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		goto("School", "MainDoor")
         local deadline = os.clock() + 60
         repeat 
@@ -1544,7 +1569,7 @@ baby_ailments = {
 		enstat_baby(money, "school")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("school") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "school")
+			__pet_callback(age, friendship, "school")
 		end
 	end,
 	["sleepy"] = function() 
@@ -1581,8 +1606,12 @@ baby_ailments = {
 			return 
 		end
 		local money = ClientData.get("money")
-		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local pet_has_ailment = has_ailment("pizza_party")
+		local age, friendship
+		if pet_has_ailment then
+			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		end
 		goto("PizzaShop", "MainDoor")
         local deadline = os.clock() + 60
         repeat 
@@ -1595,7 +1624,7 @@ baby_ailments = {
 		enstat_baby(money, "pizza_party")  
 		task.wait(.8)
 		if pet_has_ailment and equiped() and not has_ailment("pizza_party") then
-			__pet_callback(age, ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level, "pizza_party")
+			__pet_callback(age, friendship, "pizza_party")
 		end
 	end,
 }
