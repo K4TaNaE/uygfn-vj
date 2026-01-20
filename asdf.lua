@@ -71,7 +71,21 @@ local markup = {
 	["SUCCESS"] = "80, 255, 120",
 	["WARNING"] = "255, 200, 0"
 }
-
+local rarity_list = {
+	"common",
+	"uncommon",
+	"rare",
+	"ultra_rare",
+	"legendary"
+}
+local age_list = {
+	"newborn",
+	"junior",
+	"pre_teen",
+	"teen",
+	"post_teen",
+	"fullgrown",
+}
 local xp_thresholds = {
     common = {
         newborn = 0,
@@ -189,16 +203,14 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
-		__asyncrun = function(taskt: table)
-			local callback = taskt[2]			
-			if type(callback) == "function" then 
-				task.spawn(function()
-					local ok, err = pcall(callback)
-					if not ok then
-						warn("Async error:", err)
-					end
-				end)
-			end
+		asyncrun = function(taskt: table)
+			print("asyncrun")
+			task.spawn(function()
+				local ok, err = pcall(taskt[2])
+				if not ok then
+					warn("Async error:", err)
+				end
+			end)
 		end,
 
 		__run = function(self)
@@ -1808,7 +1820,7 @@ local function init_autofarm() -- optimized
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
 					if k == "mystery" then 
-						queue:__asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
 						continue 
 					end
 					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
