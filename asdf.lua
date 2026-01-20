@@ -706,7 +706,7 @@ local function __pet_callback(age, friendship, ailment)
 					queue:destroy_linked("ailment pet")
 					table.clear(StateDB.active_ailments)
 				else
-					StateDB.active_ailments[ailment] = mil
+					StateDB.active_ailments[ailment] = nil
 				end
 				return
 			else
