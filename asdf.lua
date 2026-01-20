@@ -203,8 +203,7 @@ Queue.new = function()
 			return self.__head > self.__tail
 		end,
 
-		asyncrun = function(taskt: table)
-			print("asyncrun")
+		asyncrun = function(self, taskt: table)
 			task.spawn(function()
 				local ok, err = pcall(taskt[2])
 				if not ok then
@@ -1263,7 +1262,7 @@ local pet_ailments = {
 			table.clear(StateDB.active_ailments)
 			return 
 		end
-		for k,_ in pairs(loader("new:AilmentsDB")) do
+		for k,_ in loader("new:AilmentsDB") do
 			API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
 				actual_pet.unique,
 				"mystery",
