@@ -690,7 +690,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				end
 			end
 		end
-		StateDB.active_ailments[ailment] = nil
+		pcall(function() StateDB.active_ailments[ailment] = nil end)
 		if _G.flag_if_no_one_to_farm then
 			if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
 				farmed.pets_fullgrown += 1
