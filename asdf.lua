@@ -762,7 +762,7 @@ local function __pet_callback(age, friendship, ailment)
 				if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
 					farmed.pets_fullgrown += 1
 					farmed.potions += 1
-					update_gui("fullgrown", farmed.pets_fullgrown)
+					update_gui("friendship", farmed.friendship_levels)
 					update_gui("potions", farmed.potions)
 					StateDB.active_ailments[ailment] = nil
 				end
@@ -1763,6 +1763,28 @@ local function init_autofarm() -- optimized
 						flag = true
 						_G.flag_if_no_one_to_farm = false
 						break
+					end
+				end
+			end
+			if not flag then
+				if not _G.flag_if_no_one_to_farm then  
+					for k, v in pairs(owned_pets) do
+						if v.rarity == "legendary" then
+							API["ToolAPI/Equip"]:InvokeServer(
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = true
+							_G.random_farm = true
+							break
+						end
 					end
 				end
 			end
