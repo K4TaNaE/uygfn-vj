@@ -683,7 +683,6 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				farmed.pets_fullgrown += 1
 				update_gui("fullgrown", farmed.pets_fullgrown)
 				table.insert(StateDB.total_fullgrowned, actual_pet.unique)
-				StateDB.active_ailments[ailment] = nil
 				if not _G.flag_if_no_one_to_farm then
 					actual_pet.unique = nil
 					queue:destroy_linked("ailment pet")
@@ -691,6 +690,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				end
 			end
 		end
+		StateDB.active_ailments[ailment] = nil
 		if _G.flag_if_no_one_to_farm then
 			if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
 				farmed.pets_fullgrown += 1
