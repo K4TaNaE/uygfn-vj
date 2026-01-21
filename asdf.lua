@@ -682,7 +682,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 			if friendship < ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level then
 				farmed.pets_fullgrown += 1
 				farmed.potions += 1
-				update_gui("fullgrown", farmed.pets_fullgrown)
+				update_gui("friendship", farmed.friendship_levels)
 				update_gui("potions", farmed.potions)
 				StateDB.active_ailments[ailment] = nil
 			end
