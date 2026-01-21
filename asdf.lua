@@ -31,7 +31,12 @@ local StateManagerClient = loader("StateManagerClient")
 local LureBaitHelper = loader("LureBaitHelper")
 local API = ReplicatedStorage.API
 
-local StateDB = {
+-- local StateDB = {
+-- 	active_ailments = {},
+-- 	baby_active_ailments = {},
+-- 	total_fullgrowned = {}
+-- }
+getgenv().StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {},
 	total_fullgrowned = {}
@@ -619,13 +624,20 @@ local function update_gui(label, val: number) -- optimized
     end
 end
 
-local function safe_destroyer(t, ailment)
-	pcall(function() t[ailment] = nil end)
+local function pet_update()
+	local pet = get_equiped_pet()
+	actual_pet.unique = pet.unique
+	actual_pet.remote = pet.remote
+	actual_pet.model = pet.model
+	actual_pet.wrapper = pet.wrapper
+	actual_pet.rarity = pet.rarity
+	actual_pet.is_egg = (pet.name:lower()):match("egg")
 end
 
 local function enstat(age, friendship, money, ailment)  -- optimized
 	task.wait(.5)
 	if actual_pet.is_egg then
+		task.wait(.5)
 		if actual_pet.unique ~= cur_unique() then
 			farmed.eggs_hatched += 1 
 			farmed.money += ClientData.get("money") - money
@@ -639,6 +651,7 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 				table.clear(StateDB.active_ailments)
 			else
 				StateDB.active_ailments[ailment] = nil
+				pet_update()
 			end
 			return
 		else
@@ -1767,23 +1780,26 @@ local function init_autofarm() -- optimized
 				end
 			end
 			if not flag then
-				if not _G.flag_if_no_one_to_farm then  
-					for k, v in pairs(owned_pets) do
-						if v.rarity == "legendary" then
-							API["ToolAPI/Equip"]:InvokeServer(
-								k,
-								{
-									use_sound_delay = true,
-									equip_as_last = false
-								}
-							)
-							if not equiped() then
-								continue
+				if _G.InternalConfig.OppositeFarmEnabled then
+					colorprint({markup.INFO}, "No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+					if not _G.flag_if_no_one_to_farm then  
+						for k, v in pairs(owned_pets) do
+							if v.rarity == "legendary" then
+								API["ToolAPI/Equip"]:InvokeServer(
+									k,
+									{
+										use_sound_delay = true,
+										equip_as_last = false
+									}
+								)
+								if not equiped() then
+									continue
+								end
+								flag = true
+								_G.flag_if_no_one_to_farm = true
+								_G.random_farm = true
+								break
 							end
-							flag = true
-							_G.flag_if_no_one_to_farm = true
-							_G.random_farm = true
-							break
 						end
 					end
 				end
@@ -1811,19 +1827,13 @@ local function init_autofarm() -- optimized
 		end 
 		if not _G.flag_if_no_one_to_farm and _G.random_farm then
 			table.clear(StateDB.active_ailments)
+			queue:destroy_linked("ailment pet")
 			_G.random_farm = false
 		end
 		if not flag or not equiped() then task.wait(28) continue end
 		task.wait(2)
-		local curpet = get_equiped_pet()
-		actual_pet.unique = curpet.unique
-		actual_pet.remote = curpet.remote
-		actual_pet.model = curpet.model
-		actual_pet.wrapper = curpet.wrapper
-		actual_pet.rarity = curpet.rarity
-		actual_pet.is_egg = (curpet.name:lower()):match("egg")
-
-		while task.wait(1) do
+		pet_update()
+		while task.wait(1) do	
 			if actual_pet.unique ~= cur_unique() then
 				actual_pet.unique = nil
 				break
@@ -1848,6 +1858,9 @@ local function init_autofarm() -- optimized
 				end
 			end
 			task.wait(20)
+			if _G.flag_if_no_one_to_farm then
+				break
+			end
 		end
 	end
 end
@@ -2397,12 +2410,22 @@ end)
 				error("[AutoFarmFilter.EggAutoBuy] Wrong datatype. Exiting.")
 			end
 			
+			if type(Config.AutoFarmFilter.OppositeFarmEnabled) == "boolean" then
+				if _G.InternalConfig.FarmPriority then
+					_G.InternalConfig.OppositeFarmEnabled = Config.AutoFarmFilter.OppositeFarmEnabled
+				else	
+					_G.InternalConfig.OppositeFarmEnabled = false
+				end
+			else
+				error("[AutoFarmFilter.OppositeFarmEnabled] Wrong datatype. Exiting.")
+			end
+
 		elseif (Config.FarmPriority):match("^%s*$") then 
 			_G.InternalConfig.FarmPriority = false
 			_G.InternalConfig.AutoFarmFilter.EggAutoBuy = false 
 			_G.InternalConfig.AutoFarmFilter.PotionFarm = false 
 			_G.InternalConfig.AutoFarmFilter.PetsToExclude = {} 
-			
+			_G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled = false
 		else 
 			error("[FarmPriority] Wrong value. Exiting.")
 		end
@@ -2490,6 +2513,12 @@ end)
 					end
 				else 
 					_G.InternalConfig.AutoFarmFilter.PotionFarm = true
+				end
+			
+				if type(Config.AutoFarmFilter.OppositeFarmEnabled) == "boolean" then
+					_G.InternalConfig.OppositeFarmEnabled = Config.AutoFarmFilter.OppositeFarmEnabled
+				else
+					_G.InternalConfig.OppositeFarmEnabled = false
 				end
 
 				if type(Config.AutoFarmFilter.EggAutoBuy) == "string" then -- AutoFarmFilter / EggAutoBuy
@@ -2964,4 +2993,3 @@ end)
 
 license()
 __init()
-
