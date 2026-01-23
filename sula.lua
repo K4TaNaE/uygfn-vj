@@ -119,10 +119,12 @@ local xp_thresholds = {
 }
 
 --[[ Lua Stuff ]]
-
-local Scheduler = { tasks = {} }
+local Scheduler = {
+    tasks = {}
+}
 
 function Scheduler.add(name, interval, fn, opts)
+    -- opts: {immediate = false, once = false}
     opts = opts or {}
     Scheduler.tasks[name] = {
         interval = interval,
@@ -231,28 +233,20 @@ SelfWorker.new = function()
         end
     end
 
-    function self:asyncrun(taskt)
-        if type(taskt) ~= "table" or type(taskt[2]) ~= "function" then return end
-        local name = "async_" .. tostring(math.random())
-        Scheduler.add(name, 0, function()
-            local ok, err = xpcall(taskt[2], debug.traceback)
-            if not ok then warn("Async task error:", err) end
-            Scheduler.cancel(name)
-        end, { once = true, immediate = true })
-    end
+	function self:asyncrun(taskt)
+		if type(taskt) ~= "table" or type(taskt[2]) ~= "function" then return end
+		local name = "async_" .. tostring(math.random())
+		Scheduler.add(name, 0, function()
+			local ok, err = xpcall(taskt[2], debug.traceback)
+			if not ok then warn("Async task error:", err) end
+			Scheduler.cancel(name)
+		end, { once = true, immediate = true })
+	end
+
 
     return self
 end
-
 local queue = SelfWorker.new()
-
-task.spawn(function()
-    while _G.__RUNNING do
-        local now = os.clock()
-        Scheduler.tick(now)
-        task.wait(.1)
-    end
-end)
 
 local function wait_for(condition_fn, timeout, on_success, on_timeout)
     local start = os.clock()
@@ -271,7 +265,6 @@ local function wait_for(condition_fn, timeout, on_success, on_timeout)
         end
     end)
 end
-
 local MAX_PARALLEL = 3
 local active_parallel = 0
 local function run_parallel(fn)
@@ -289,11 +282,14 @@ local function run_parallel(fn)
     end)
 end
 
+--[[ Helpers ]]-- 
 local function temp_platform()
     local old = workspace:FindFirstChild("TempPart")
     if old then old:Destroy() end
+
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not root then return end
+
     local part = Instance.new("Part")
     part.Size = Vector3.new(50, 1, 50)
     part.Position = root.Position - Vector3.new(0, 5, 0)
@@ -302,14 +298,15 @@ local function temp_platform()
     part.Parent = workspace
 end
 
-local function get_current_location()
-    return InteriorsM.get_current_location()["destination_id"]
-end
+local function get_current_location() -- optimized
+	return InteriorsM.get_current_location()["destination_id"]
+end 
 
 local function goto(destId, door, ops)
     if get_current_location() == destId then return end
     temp_platform()
     InteriorsM.enter(destId, door, ops or {})
+
     wait_for(
         function() return get_current_location() == destId end,
         10,
@@ -336,7 +333,7 @@ local function to_neighborhood()
     goto("Neighborhood", "MainDoor")
 end
 
-local function get_equiped_pet()
+local function get_equiped_pet() 
     local wrapper = ClientData.get("pet_char_wrappers")[1]
     if not wrapper then return nil end
     local unique = wrapper.pet_unique
@@ -376,8 +373,8 @@ local function cur_unique()
     return w and w.pet_unique
 end
 
-local function equiped()
-    return ClientData.get("pet_char_wrappers")[1]
+local function equiped() 
+	return ClientData.get("pet_char_wrappers")[1]
 end
 
 local function get_owned_pets()
@@ -406,21 +403,13 @@ local function get_owned_pets()
     return result
 end
 
-local function safeInvoke(apiPath, ...)
-    local api = API[apiPath]
-    if not api then
-        return false, nil
-    end
-    local ok, res = pcall(function() return api:InvokeServer(...) end)
+local function safeInvoke(api, ...)
+    local ok, res = pcall(function() return API[api]:InvokeServer(...) end)
     return ok, res
 end
 
-local function safeFire(apiPath, ...)
-    local api = API[apiPath]
-    if not api then
-        return false
-    end
-    local ok = pcall(function() api:FireServer(...) end)
+local function safeFire(api, ...)
+    local ok = pcall(function() API[api]:FireServer(...) end)
     return ok
 end
 
@@ -439,30 +428,34 @@ local function get_equiped_pet_ailments()
     local wrapper = ClientData.get("pet_char_wrappers")[1]
     if not wrapper then return {} end
     local ailments = wrapper.pet_ailments
-    if type(ailments) ~= "table" then return {} end
+    if type(ailments) ~= "table" then
+        return {}
+    end
     local result = {}
     for name, active in pairs(ailments) do
-        if active then result[name] = true end
+        if active then
+            result[name] = true
+        end
     end
     return result
 end
 
-local function has_ailment(ailment)
+local function has_ailment(ailment) 
     local ail = ClientData.get("ailments_manager")["ailments"][actual_pet.unique]
     return ail and ail[ailment] ~= nil
 end
 
-local function has_ailment_baby(ailment)
-    local ail = ClientData.get("ailments_manager")["baby_ailments"]
-    return ail and ail[ailment] ~= nil
-end
+local function has_ailment_baby(ailment) 
+	local ail = ClientData.get("ailments_manager")["baby_ailments"]
+	return ail and ail[ailment] ~= nil
+end	
 
-local function get_baby_ailments()
-    local ailments = {}
-    for k, _ in pairs(ClientData.get("ailments_manager")["baby_ailments"]) do
-        ailments[k] = true
-    end
-    return ailments
+local function get_baby_ailments() -- optimized
+	local ailments = {}
+	for k, _ in pairs(ClientData.get("ailments_manager")["baby_ailments"]) do
+		ailments[k] = true
+	end 
+	return ailments 
 end
 
 local function inv_get_category_remote(category, unique)
@@ -478,7 +471,9 @@ local function inv_get_category_unique(category, remote)
     local cat = inv and inv[category]
     if not cat then return nil end
     for unique, v in pairs(cat) do
-        if v.id == remote then return unique end
+        if v.id == remote then
+            return unique
+        end
     end
 end
 
@@ -486,7 +481,9 @@ local function inv_get_pets_with_rarity(rarity)
     local pets = get_owned_pets()
     local list = {}
     for unique, v in pairs(pets) do
-        if v.rarity == rarity then list[unique] = { remote = v.remote, unique = unique } end
+        if v.rarity == rarity then
+            list[unique] = { remote = v.remote, unique = unique }
+        end
     end
     return list
 end
@@ -495,7 +492,9 @@ local function inv_get_pets_with_age(age)
     local pets = get_owned_pets()
     local list = {}
     for unique, v in pairs(pets) do
-        if v.age == age then list[unique] = { remote = v.remote, unique = unique } end
+        if v.age == age then
+            list[unique] = { remote = v.remote, unique = unique }
+        end
     end
     return list
 end
@@ -505,15 +504,20 @@ local function check_pet_owned(remote)
     local pets = inv and inv.pets
     if not pets then return false end
     for _, v in pairs(pets) do
-        if v.id == remote then return true end
+        if v.id == remote then
+            return true
+        end
     end
     return false
 end
-
 local function send_trade_request(user, callback)
     local player = game.Players:FindFirstChild(user)
-    if not player then return callback("NoPlayer") end
-    pcall(function() safeFire("TradeAPI/SendTradeRequest", player) end)
+    if not player then
+        return callback("NoPlayer")
+    end
+    pcall(function()
+        safeFire("TradeAPI/SendTradeRequest", player)
+    end)
     local start = os.clock()
     local timeout = 120
     local name = "wait_tradeapp_" .. tostring(math.random())
@@ -522,6 +526,7 @@ local function send_trade_request(user, callback)
             Scheduler.cancel(name)
             return callback(true)
         end
+
         if os.clock() - start >= timeout then
             Scheduler.cancel(name)
             return callback("No response")
@@ -535,28 +540,38 @@ local function count_of_product(category, remote)
     if not cat then return 0 end
     local count = 0
     for _, v in pairs(cat) do
-        if v.id == remote then count += 1 end
+        if v.id == remote then
+            count += 1
+        end
     end
     return count
 end
 
-local function check_remote_existance(category, remote)
-    return InventoryDB[category] and InventoryDB[category][remote]
+local function check_remote_existance(category, remote) -- optimized
+	return InventoryDB[category][remote] 
 end
 
 local function count(t)
-    local n = 0
-    for _ in pairs(t) do n += 1 end
-    return n
+	local n = 0
+	for _ in pairs(t) do
+		n +=1 
+	end
+	return n
 end
 
+-- unit: b, kb, mb, gb
 local function get_memory(unit)
     unit = unit:lower()
     local mb = Stats:GetTotalMemoryUsageMb()
-    if unit == "b" then return mb * 1024 * 1024
-    elseif unit == "kb" then return mb * 1024
-    elseif unit == "mb" then return mb
-    elseif unit == "gb" then return mb / 1024 end
+    if unit == "b" then
+        return mb * 1024 * 1024
+    elseif unit == "kb" then
+        return mb * 1024
+    elseif unit == "mb" then
+        return mb
+    elseif unit == "gb" then
+        return mb / 1024
+    end
     return mb
 end
 
@@ -570,7 +585,9 @@ local function gotovec(x, y, z)
             task.wait(0.4)
             root.CFrame = CFrame.new(x, y, z)
             task.wait(0.2)
-            if actual_pet.model then pcall(function() safeFire("AdoptAPI/EjectBaby", actual_pet.model) end) end
+            if actual_pet.model then
+                pcall(function() safeFire("AdoptAPI/EjectBaby", actual_pet.model) end)
+            end
         else
             root.CFrame = CFrame.new(x, y, z)
         end
@@ -587,8 +604,14 @@ local function webhook(title, description)
                     title = title,
                     description = description,
                     color = 0,
-                    author = { name = "Arcanic", url = "https://discord.gg/E8BVmZWnHs", icon_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png" },
-                    footer = { text = os.date("%d.%m.%Y") .. " " .. os.date("%H:%M:%S") }
+                    author = {
+                        name = "Arcanic",
+                        url = "https://discord.gg/E8BVmZWnHs",
+                        icon_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png"
+                    },
+                    footer = {
+                        text = os.date("%d.%m.%Y") .. " " .. os.date("%H:%M:%S")
+                    }
                 }
             },
             username = "Arcanic Farmhook",
@@ -605,42 +628,32 @@ local function webhook(title, description)
     end)
 end
 
-local function update_gui(label, val)
+-- proceed here
+local function update_gui(label, val: number) -- optimized
     local overlay = CoreGui:FindFirstChild("StatsOverlay")
     if not overlay then return end
     local frame = overlay:FindFirstChild("StatsFrame")
     if not frame then return end
     local lbl = frame:FindFirstChild(label)
     if not lbl then return end
-    local prefix = lbl.Text:match("^[^:]+") or lbl.Name
-    if prefix then lbl.Text = prefix .. ": " .. val end
-end
-
-local function pet_update()
-    local pet = get_equiped_pet()
-    if not pet then return end
-    actual_pet.unique = pet.unique
-    actual_pet.remote = pet.remote
-    actual_pet.model = pet.model
-    actual_pet.wrapper = pet.wrapper
-    actual_pet.rarity = pet.rarity
-    actual_pet.is_egg = (pet.name:lower()):match("egg") ~= nil
-end
-
-local function remove_pet_ailment_from_queue(ailment)
-    local pattern = "ailment pet: " .. tostring(ailment)
-    queue:taskdestroy("ailment pet", ailment)
-    StateDB.active_ailments[ailment] = nil
-    for i = queue._head, queue._tail do
-        local v = queue._data[i]
-        if v and v[1] and type(v[1]) == "string" and v[1]:find(pattern, 1, true) then
-            queue._data[i] = nil
-        end
+	local prefix = lbl.Text:match("^[^:]+") or lbl.Name
+    if prefix then
+        lbl.Text = prefix .. ": " .. val
     end
 end
 
+local function pet_update()
+	local pet = get_equiped_pet()
+	actual_pet.unique = pet.unique
+	actual_pet.remote = pet.remote
+	actual_pet.model = pet.model
+	actual_pet.wrapper = pet.wrapper
+	actual_pet.rarity = pet.rarity
+	actual_pet.is_egg = (pet.name:lower()):match("egg") ~= nil
+end
 local function enstat(age, friendship, money, ailment)
     local start_unique = actual_pet.unique
+
     Scheduler.add("enstat_delay_" .. tostring(math.random()), 0.5, function()
         if actual_pet.is_egg then
             if start_unique ~= cur_unique() then
@@ -650,6 +663,7 @@ local function enstat(age, friendship, money, ailment)
                 update_gui("bucks", farmed.money)
                 update_gui("pet_needs", farmed.ailments)
                 farmed.ailments += 1
+
                 if not _G.flag_if_no_one_to_farm then
                     actual_pet.unique = nil
                     queue:destroy_linked("ailment pet")
@@ -669,7 +683,7 @@ local function enstat(age, friendship, money, ailment)
             end
         end
 
-        if _G.InternalConfig.AutoFarmFilter and _G.InternalConfig.AutoFarmFilter.PotionFarm then
+        if _G.InternalConfig.AutoFarmFilter.PotionFarm then
             if age < 6 and ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
                 farmed.pets_fullgrown += 1
                 update_gui("fullgrown", farmed.pets_fullgrown)
@@ -690,6 +704,7 @@ local function enstat(age, friendship, money, ailment)
                 farmed.pets_fullgrown += 1
                 update_gui("fullgrown", farmed.pets_fullgrown)
                 table.insert(StateDB.total_fullgrowned, actual_pet.unique)
+
                 if not _G.flag_if_no_one_to_farm then
                     actual_pet.unique = nil
                     queue:destroy_linked("ailment pet")
@@ -721,6 +736,7 @@ local function enstat_baby(money, ailment)
         farmed.money += ClientData.get("money") - money
         farmed.baby_ailments += 1
         StateDB.baby_active_ailments[ailment] = nil
+
         update_gui("bucks", farmed.money)
         update_gui("baby_needs", farmed.baby_ailments)
     end, { once = true })
@@ -728,26 +744,18 @@ end
 
 local function __pet_callback(age, friendship, ailment)
     Scheduler.add("pet_callback_" .. tostring(math.random()), 0.5, function()
-        if StateDB.baby_active_ailments[ailment] then
-            if StateDB.active_ailments[ailment] then
-                remove_pet_ailment_from_queue(ailment)
-            end
-            return
-        end
-
         if not _G.InternalConfig.FarmPriority then
             farmed.ailments += 1
             update_gui("pet_needs", farmed.ailments)
-            StateDB.active_ailments[ailment] = nil
             return
         end
-
         if actual_pet.is_egg then
             if actual_pet.unique ~= cur_unique() then
                 farmed.eggs_hatched += 1
                 update_gui("eggs", farmed.eggs_hatched)
                 farmed.ailments += 1
                 update_gui("pet_needs", farmed.ailments)
+
                 if not _G.flag_if_no_one_to_farm then
                     actual_pet.unique = nil
                     queue:destroy_linked("ailment pet")
@@ -764,7 +772,7 @@ local function __pet_callback(age, friendship, ailment)
             end
         end
 
-        if _G.InternalConfig.AutoFarmFilter and _G.InternalConfig.AutoFarmFilter.PotionFarm then
+        if _G.InternalConfig.AutoFarmFilter.PotionFarm then
             if age < 6 and ClientData.get("pet_char_wrappers")[1].pet_progression.age == 6 then
                 farmed.pets_fullgrown += 1
                 update_gui("fullgrown", farmed.pets_fullgrown)
@@ -785,6 +793,7 @@ local function __pet_callback(age, friendship, ailment)
                 farmed.pets_fullgrown += 1
                 update_gui("fullgrown", farmed.pets_fullgrown)
                 table.insert(StateDB.total_fullgrowned, actual_pet.unique)
+
                 if not _G.flag_if_no_one_to_farm then
                     actual_pet.unique = nil
                     queue:destroy_linked("ailment pet")
@@ -816,41 +825,12 @@ local function __baby_callbak(ailment, money)
             update_gui("baby_needs", farmed.baby_ailments)
             return
         end
+
         queue:taskdestroy("baby", ailment)
         farmed.baby_ailments += 1
         StateDB.baby_active_ailments[ailment] = nil
         update_gui("baby_needs", farmed.baby_ailments)
     end, { once = true })
-end
-
-local function baby_loop_adaptive(ailment, timeout, intervals, action_fn, on_success)
-    local start = os.clock()
-    local last = os.clock()
-    local idx = 1
-    local key = "baby_loop_" .. ailment .. "_" .. tostring(math.random())
-    Scheduler.add(key, 0.1, function()
-        if not has_ailment_baby(ailment) then
-            Scheduler.cancel(key)
-            if on_success then pcall(on_success) end
-            return
-        end
-        if os.clock() - start >= timeout then
-            Scheduler.cancel(key)
-            StateDB.baby_active_ailments[ailment] = nil
-            return
-        end
-        local curInterval = intervals[idx] or intervals[#intervals]
-        if os.clock() - last >= curInterval then
-            last = os.clock()
-            idx = idx % #intervals + 1
-            pcall(action_fn)
-        end
-    end)
-end
-
-local function enqueue_ailment(kind, name, fn)
-    local taskname = ("ailment %s: %s"):format(kind, tostring(name))
-    queue:enqueue({ taskname, fn })
 end
 
 local pet_ailments = {
@@ -862,28 +842,35 @@ local pet_ailments = {
             table.clear(StateDB.active_ailments)
             return
         end
+
         local cdata = ClientData.get("inventory").pets[actual_pet.unique]
         local friendship = cdata.properties.friendship_level
         local money = ClientData.get("money")
         local age = pet.pet_progression.age
         local baby_has = has_ailment_baby("camping")
+
         to_mainmap()
         gotovec(-23, 37, -1063)
+
         local start = os.clock()
         local key = "camping_wait_" .. tostring(math.random())
+
         Scheduler.add(key, 1, function()
             if not has_ailment("camping") then
                 Scheduler.cancel(key)
                 enstat(age, friendship, money, "camping")
+
                 local key2 = "camping_baby_" .. tostring(math.random())
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("camping") then
-                        __baby_callbak("camping", money)
+                        __baby_callbak(money, "camping")
                     end
                 end, { once = true })
+
                 return
             end
+
             if os.clock() - start >= 60 then
                 Scheduler.cancel(key)
                 StateDB.active_ailments.camping = nil
@@ -900,10 +887,12 @@ local pet_ailments = {
             table.clear(StateDB.active_ailments)
             return
         end
+
         local cdata = ClientData.get("inventory").pets[actual_pet.unique]
         local friendship = cdata.properties.friendship_level
         local money = ClientData.get("money")
         local age = pet.pet_progression.age
+
         if count_of_product("food", "apple") == 0 then
             if money == 0 then
                 StateDB.active_ailments.hungry = nil
@@ -912,9 +901,10 @@ local pet_ailments = {
             if money > 20 then
                 safeInvoke("ShopAPI/BuyItem", "food", "apple", { buy_count = 20 })
             else
-                safeInvoke("ShopAPI/BuyItem", "food", "apple", { buy_count = math.floor(money / 2) })
+                safeInvoke("ShopAPI/BuyItem", "food", "apple", { buy_count = money / 2 })
             end
         end
+
         safeInvoke("PetObjectAPI/CreatePetObject",
             "__Enum_PetObjectCreatorType_2",
             {
@@ -923,14 +913,17 @@ local pet_ailments = {
                 unique_id = inv_get_category_unique("food", "apple")
             }
         )
+
         local start = os.clock()
         local key = "hungry_wait_" .. tostring(math.random())
+
         Scheduler.add(key, 1, function()
             if not has_ailment("hungry") then
                 Scheduler.cancel(key)
                 enstat(age, friendship, money, "hungry")
                 return
             end
+
             if os.clock() - start >= 10 then
                 Scheduler.cancel(key)
                 StateDB.active_ailments.hungry = nil
@@ -947,10 +940,12 @@ local pet_ailments = {
             table.clear(StateDB.active_ailments)
             return
         end
+
         local cdata = ClientData.get("inventory").pets[actual_pet.unique]
         local friendship = cdata.properties.friendship_level
         local money = ClientData.get("money")
         local age = pet.pet_progression.age
+
         if count_of_product("food", "water") == 0 then
             if money == 0 then
                 StateDB.active_ailments.thirsty = nil
@@ -959,10 +954,11 @@ local pet_ailments = {
             if money > 20 then
                 safeInvoke("ShopAPI/BuyItem", "food", "water", { buy_count = 20 })
             else
-                safeInvoke("ShopAPI/BuyItem", "food", "water", { buy_count = math.floor(money / 2) })
+                safeInvoke("ShopAPI/BuyItem", "food", "water", { buy_count = money / 2 })
             end
         end
-        safeInvoke("PetObjectAPI/CreatePetObject",
+
+        safeInvoke(PetObjectAPI/CreatePetObject,
             "__Enum_PetObjectCreatorType_2",
             {
                 additional_consume_uniques = {},
@@ -970,14 +966,17 @@ local pet_ailments = {
                 unique_id = inv_get_category_unique("food", "water")
             }
         )
+
         local start = os.clock()
         local key = "thirsty_wait_" .. tostring(math.random())
+
         Scheduler.add(key, 1, function()
             if not has_ailment("thirsty") then
                 Scheduler.cancel(key)
                 enstat(age, friendship, money, "thirsty")
                 return
             end
+
             if os.clock() - start >= 10 then
                 Scheduler.cancel(key)
                 StateDB.active_ailments.thirsty = nil
@@ -994,25 +993,37 @@ local pet_ailments = {
             table.clear(StateDB.active_ailments)
             return
         end
+
         local cdata = ClientData.get("inventory").pets[actual_pet.unique]
         local friendship = cdata.properties.friendship_level
         local money = ClientData.get("money")
         local age = pet.pet_progression.age
         local baby_has = has_ailment_baby("sick")
+
         goto("Hospital", "MainDoor")
+
         local key = "sick_wait_" .. tostring(math.random())
+
         Scheduler.add(key, 1, function()
-            safeInvoke("HousingAPI/ActivateInteriorFurniture", "f-14", "UseBlock", "Yes", LocalPlayer.Character)
+            safeInvoke("HousingAPI/ActivateInteriorFurniture",
+                "f-14",
+                "UseBlock",
+                "Yes",
+                LocalPlayer.Character
+            )
+
             if not has_ailment("sick") then
                 Scheduler.cancel(key)
                 enstat(age, friendship, money, "sick")
+
                 local key2 = "sick_baby_" .. tostring(math.random())
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
-                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("sick") then
-                        __baby_callbak("sick", money)
+                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment("sick") then
+                        __baby_callbak(money, "sick")
                     end
                 end, { once = true })
+
                 return
             end
         end)
@@ -1026,28 +1037,35 @@ local pet_ailments = {
             table.clear(StateDB.active_ailments)
             return
         end
+
         local cdata = ClientData.get("inventory").pets[actual_pet.unique]
         local friendship = cdata.properties.friendship_level
         local money = ClientData.get("money")
         local age = pet.pet_progression.age
         local baby_has = has_ailment_baby("bored")
+
         to_mainmap()
         gotovec(-365, 30, -1749)
+
         local start = os.clock()
         local key = "bored_wait_" .. tostring(math.random())
+
         Scheduler.add(key, 1, function()
             if not has_ailment("bored") then
                 Scheduler.cancel(key)
                 enstat(age, friendship, money, "bored")
+
                 local key2 = "bored_baby_" .. tostring(math.random())
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("bored") then
-                        __baby_callbak("bored", money)
+                        __baby_callbak(money, "bored")
                     end
                 end, { once = true })
+
                 return
             end
+
             if os.clock() - start >= 60 then
                 Scheduler.cancel(key)
                 StateDB.active_ailments.bored = nil
@@ -1056,286 +1074,497 @@ local pet_ailments = {
         end)
     end,
 
-    ["salon"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("salon") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        local baby_has = has_ailment_baby("salon")
-        goto("Salon", "MainDoor")
-        local start = os.clock()
-        local key = "salon_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("salon") then
-                Scheduler.cancel(key)
-                enstat(age, friendship, money, "salon")
-                local key2 = "salon_baby_" .. tostring(math.random())
-                Scheduler.add(key2, 0.8, function()
-                    Scheduler.cancel(key2)
-                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("salon") then
-                        __baby_callbak("salon", money)
-                    end
-                end, { once = true })
-                return
-            end
-            if os.clock() - start >= 60 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.salon = nil
-                return
-            end
-        end)
-    end,
+	["salon"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("salon") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
 
-    ["beach_party"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("beach_party") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        local baby_has = has_ailment_baby("beach_party")
-        to_mainmap()
-        gotovec(-596, 27, -1473)
-        local start = os.clock()
-        local key = "beach_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("beach_party") then
-                Scheduler.cancel(key)
-                enstat(age, friendship, money, "beach_party")
-                local key2 = "beach_baby_" .. tostring(math.random())
-                Scheduler.add(key2, 0.8, function()
-                    Scheduler.cancel(key2)
-                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("beach_party") then
-                        __baby_callbak("beach_party", money)
-                    end
-                end, { once = true })
-                return
-            end
-            if os.clock() - start >= 60 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.beach_party = nil
-                return
-            end
-        end)
-    end,
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+		local baby_has = has_ailment_baby("salon")
 
-    ["dirty"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("dirty") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        to_home()
-        run_parallel(function()
-            pcall(function()
-                safeInvoke("HousingAPI/ActivateFurniture", LocalPlayer, furn.bath.unique, furn.bath.usepart, { cframe = furn.bath.cframe }, actual_pet.model)
-            end)
-        end)
-        local start = os.clock()
-        local key = "dirty_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("dirty") then
-                Scheduler.cancel(key)
-                enstat(age, friendship, money, "dirty")
-                return
-            end
-            if os.clock() - start >= 20 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.dirty = nil
-                return
-            end
-        end)
-    end,
+		goto("Salon", "MainDoor")
 
-    ["walk"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("walk") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        to_mainmap()
-        gotovec(1000, 25, 1000)
-        safeFire("AdoptAPI/HoldBaby", actual_pet.model)
-        local start = os.clock()
-        local key = "walk_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("walk") then
-                Scheduler.cancel(key)
-                safeFire("AdoptAPI/EjectBaby", pet.model)
-                enstat(age, friendship, money, "walk")
-                return
-            end
-            if os.clock() - start >= 60 then
-                Scheduler.cancel(key)
-                safeFire("AdoptAPI/EjectBaby", pet.model)
-                StateDB.active_ailments.walk = nil
-                return
-            end
-        end)
-    end,
+		local start = os.clock()
+		local key = "salon_wait_" .. tostring(math.random())
 
-    ["school"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("school") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        local baby_has = has_ailment_baby("school")
-        goto("School", "MainDoor")
-        local start = os.clock()
-        local key = "school_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("school") then
-                Scheduler.cancel(key)
-                enstat(age, friendship, money, "school")
-                local key2 = "school_baby_" .. tostring(math.random())
-                Scheduler.add(key2, 0.8, function()
-                    Scheduler.cancel(key2)
-                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("school") then
-                        __baby_callbak("school", money)
-                    end
-                end, { once = true })
-                return
-            end
-            if os.clock() - start >= 60 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.school = nil
-                return
-            end
-        end)
-    end,
+		Scheduler.add(key, 1, function()
+			if not has_ailment("salon") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "salon")
 
-    ["sleepy"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sleepy") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        to_home()
-        run_parallel(function()
-            pcall(function()
-                safeInvoke("HousingAPI/ActivateFurniture", LocalPlayer, furn.bed.unique, furn.bed.usepart, { cframe = furn.bed.cframe }, actual_pet.model)
-            end)
-        end)
-        local start = os.clock()
-        local key = "sleepy_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("sleepy") then
-                Scheduler.cancel(key)
-                StateManagerClient.exit_seat_states()
-                enstat(age, friendship, money, "sleepy")
-                return
-            end
-            if os.clock() - start >= 20 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.sleepy = nil
-                return
-            end
-        end)
-    end,
+				local key2 = "salon_baby_" .. tostring(math.random())
+				Scheduler.add(key2, 0.8, function()
+					Scheduler.cancel(key2)
+					if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("salon") then
+						__baby_callbak(money, "salon")
+					end
+				end, { once = true })
 
-    ["mystery"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("mystery") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local list = loader("new:AilmentsDB")
-        local keys = {}
-        for k,_ in pairs(list) do table.insert(keys, k) end
-        local idx = 1
-        local key = "mystery_loop_" .. tostring(math.random())
-        Scheduler.add(key, 1.5, function()
-            if not has_ailment("mystery") then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.mystery = nil
-                return
-            end
-            if idx > #keys then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.mystery = nil
-                return
-            end
-            safeFire("AilmentsAPI/ChooseMysteryAilment", actual_pet.unique, "mystery", 1, keys[idx])
-            idx += 1
-        end)
-    end,
+				return
+			end
 
-    ["pizza_party"] = function()
-        local pet = ClientData.get("pet_char_wrappers")[1]
-        if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("pizza_party") then
-            queue:destroy_linked("ailment pet")
-            actual_pet.unique = nil
-            table.clear(StateDB.active_ailments)
-            return
-        end
-        local cdata = ClientData.get("inventory").pets[actual_pet.unique]
-        local friendship = cdata.properties.friendship_level
-        local money = ClientData.get("money")
-        local age = pet.pet_progression.age
-        local baby_has = has_ailment_baby("pizza_party")
-        goto("PizzaShop", "MainDoor")
-        local start = os.clock()
-        local key = "pizza_wait_" .. tostring(math.random())
-        Scheduler.add(key, 1, function()
-            if not has_ailment("pizza_party") then
-                Scheduler.cancel(key)
-                enstat(age, friendship, money, "pizza_party")
-                local key2 = "pizza_baby_" .. tostring(math.random())
-                Scheduler.add(key2, 0.8, function()
-                    Scheduler.cancel(key2)
-                    if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("pizza_party") then
-                        __baby_callbak("pizza_party", money)
-                    end
-                end, { once = true })
-                return
-            end
-            if os.clock() - start >= 60 then
-                Scheduler.cancel(key)
-                StateDB.active_ailments.pizza_party = nil
-                return
-            end
-        end)
-    end,
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.salon = nil
+				return
+			end
+		end)
+	end,
+
+	["play"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("play") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		gotovec(1000,25,1000)
+		safeInvoke("ToolAPI/Equip", inv_get_category_unique("toys", "squeaky_bone_default"), {})
+
+		safeInvoke("PetObjectAPI/CreatePetObject",
+			"__Enum_PetObjectCreatorType_1",
+			{
+				reaction_name = "ThrowToyReaction",
+				unique_id = inv_get_category_unique("toys", "squeaky_bone_default")
+			}
+		)
+
+		local start = os.clock()
+		local key = "play_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("play") then
+				Scheduler.cancel(key)
+				safeInvoke("ToolAPI/Unequip", inv_get_category_unique("toys", "squeaky_bone_default"), {})
+				enstat(age, friendship, money, "play")
+				return
+			end
+
+			if os.clock() - start >= 25 then
+				Scheduler.cancel(key)
+				safeInvoke("ToolAPI/Unequip", inv_get_category_unique("toys", "squeaky_bone_default"), {})
+				StateDB.active_ailments.play = nil
+				return
+			end
+		end)
+	end,
+
+	["toilet"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("toilet") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		to_home()
+		safeInvoke('HousingAPI/ActivateFurniture',
+			LocalPlayer,
+			furn.toilet.unique,
+			furn.toilet.usepart,
+			{ cframe = furn.toilet.cframe },
+			actual_pet.model
+		)
+
+		local start = os.clock()
+		local key = "toilet_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("toilet") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "toilet")
+				return
+			end
+
+			if os.clock() - start >= 15 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.toilet = nil
+				return
+			end
+		end)
+	end,
+
+	["beach_party"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("beach_party") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+		local baby_has = has_ailment_baby("beach_party")
+
+		to_mainmap()
+		gotovec(-596, 27, -1473)
+
+		local start = os.clock()
+		local key = "beach_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("beach_party") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "beach_party")
+
+				local key2 = "beach_baby_" .. tostring(math.random())
+				Scheduler.add(key2, 0.8, function()
+					Scheduler.cancel(key2)
+					if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("beach_party") then
+						__baby_callbak(money, "beach_party")
+					end
+				end, { once = true })
+
+				return
+			end
+
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.beach_party = nil
+				return
+			end
+		end)
+	end,
+
+	["ride"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("ride") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		gotovec(1000,25,1000)
+		safeInvoke("ToolAPI/Equip", inv_get_category_unique("strollers", "stroller-default"), {})
+
+		LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0,0,50))
+
+		local start = os.clock()
+		local key = "ride_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("ride") then
+				Scheduler.cancel(key)
+				safeInvoke("ToolAPI/Unequip", inv_get_category_unique("strollers", "stroller-default"), {})
+				enstat(age, friendship, money, "ride")
+				return
+			end
+
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				safeInvoke("ToolAPI/Unequip", inv_get_category_unique("strollers", "stroller-default"), {})
+				StateDB.active_ailments.ride = nil
+				return
+			end
+		end)
+	end,
+
+	["dirty"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("dirty") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		to_home()
+		safeInvoke('HousingAPI/ActivateFurniture',
+			LocalPlayer,
+			furn.bath.unique,
+			furn.bath.usepart,
+			{ cframe = furn.bath.cframe },
+			actual_pet.model
+		)
+
+		local start = os.clock()
+		local key = "dirty_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("dirty") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "dirty")
+				return
+			end
+
+			if os.clock() - start >= 20 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.dirty = nil
+				return
+			end
+		end)
+	end,
+
+	["walk"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("walk") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		gotovec(1000,25,1000)
+		safeFire("AdoptAPI/HoldBaby", actual_pet.model)
+
+		LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0,0,50))
+
+		local start = os.clock()
+		local key = "walk_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("walk") then
+				Scheduler.cancel(key)
+				safeFire("AdoptAPI/EjectBaby", pet.model)
+				enstat(age, friendship, money, "walk")
+				return
+			end
+
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				safeFire("AdoptAPI/EjectBaby", pet.model)
+				StateDB.active_ailments.walk = nil
+				return
+			end
+		end)
+	end,
+
+	["school"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("school") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+		local baby_has = has_ailment_baby("school")
+
+		goto("School", "MainDoor")
+
+		local start = os.clock()
+		local key = "school_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("school") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "school")
+
+				local key2 = "school_baby_" .. tostring(math.random())
+				Scheduler.add(key2, 0.8, function()
+					Scheduler.cancel(key2)
+					if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("school") then
+						__baby_callbak(money, "school")
+					end
+				end, { once = true })
+
+				return
+			end
+
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.school = nil
+				return
+			end
+		end)
+	end,
+
+	["sleepy"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sleepy") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+
+		to_home()
+		safeInvoke('HousingAPI/ActivateFurniture',
+			LocalPlayer,
+			furn.bed.unique,
+			furn.bed.usepart,
+			{ cframe = furn.bed.cframe },
+			actual_pet.model
+		)
+
+		local start = os.clock()
+		local key = "sleepy_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("sleepy") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "sleepy")
+				return
+			end
+
+			if os.clock() - start >= 20 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.sleepy = nil
+				return
+			end
+		end)
+	end,
+
+	["mystery"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("mystery") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local list = loader("new:AilmentsDB")
+		local keys = {}
+
+		for k,_ in pairs(list) do
+			table.insert(keys, k)
+		end
+
+		local idx = 1
+		local key = "mystery_loop_" .. tostring(math.random())
+
+		Scheduler.add(key, 1.5, function()
+			if not has_ailment("mystery") then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.mystery = nil
+				return
+			end
+
+			if idx > #keys then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.mystery = nil
+				return
+			end
+
+			safeFire("AilmentsAPI/ChooseMysteryAilment",
+				actual_pet.unique,
+				"mystery",
+				1,
+				keys[idx]
+			)
+
+			idx += 1
+		end)
+	end,
+
+	["pizza_party"] = function()
+		local pet = ClientData.get("pet_char_wrappers")[1]
+		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("pizza_party") then
+			queue:destroy_linked("ailment pet")
+			actual_pet.unique = nil
+			table.clear(StateDB.active_ailments)
+			return
+		end
+
+		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
+		local friendship = cdata.properties.friendship_level
+		local money = ClientData.get("money")
+		local age = pet.pet_progression.age
+		local baby_has = has_ailment_baby("pizza_party")
+
+		goto("PizzaShop", "MainDoor")
+
+		local start = os.clock()
+		local key = "pizza_wait_" .. tostring(math.random())
+
+		Scheduler.add(key, 1, function()
+			if not has_ailment("pizza_party") then
+				Scheduler.cancel(key)
+				enstat(age, friendship, money, "pizza_party")
+
+				local key2 = "pizza_baby_" .. tostring(math.random())
+				Scheduler.add(key2, 0.8, function()
+					Scheduler.cancel(key2)
+					if baby_has and ClientData.get("team") == "Babies" and not has_ailment_baby("pizza_party") then
+						__baby_callbak(money, "pizza_party")
+					end
+				end, { once = true })
+
+				return
+			end
+
+			if os.clock() - start >= 60 then
+				Scheduler.cancel(key)
+				StateDB.active_ailments.pizza_party = nil
+				return
+			end
+		end)
+	end
 }
+
+local function baby_loop_adaptive(ailment, timeout, intervals, action_fn, on_success)
+    local start = os.clock()
+    local last = os.clock()
+    local idx = 1
+    local key = "baby_loop_" .. ailment .. "_" .. tostring(math.random())
+    Scheduler.add(key, 0.3, function()
+        if not has_ailment_baby(ailment) then
+            Scheduler.cancel(key)
+            on_success()
+            return
+        end
+        if os.clock() - start >= timeout then
+            Scheduler.cancel(key)
+            StateDB.baby_active_ailments[ailment] = nil
+            return
+        end
+        local curInterval = intervals[idx] or intervals[#intervals]
+        if os.clock() - last >= curInterval then
+            last = os.clock()
+            idx = idx % #intervals + 1
+            pcall(action_fn)
+        end
+    end)
+end
 
 local baby_ailments = {
     ["camping"] = function()
@@ -1359,7 +1588,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("camping") then
-                        __pet_callback(age, friendship, "camping")
+                        __baby_callbak("camping", money)
                     end
                 end, { once = true })
                 return
@@ -1392,14 +1621,7 @@ local baby_ailments = {
             end,
             function()
                 enstat_baby(money, "hungry")
-                if equiped() and has_ailment("hungry") == false then
-                    local pet_has = has_ailment("hungry")
-                    if pet_has then
-                        local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-                        local friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-                        __pet_callback(age, friendship, "hungry")
-                    end
-                end
+                __baby_callbak("hungry", money)
             end
         )
     end,
@@ -1424,14 +1646,7 @@ local baby_ailments = {
             end,
             function()
                 enstat_baby(money, "thirsty")
-                if equiped() and has_ailment("thirsty") == false then
-                    local pet_has = has_ailment("thirsty")
-                    if pet_has then
-                        local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-                        local friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-                        __pet_callback(age, friendship, "thirsty")
-                    end
-                end
+                __baby_callbak("thirsty", money)
             end
         )
     end,
@@ -1455,9 +1670,7 @@ local baby_ailments = {
             end,
             function()
                 enstat_baby(money, "sick")
-                if pet_has and equiped() and not has_ailment("sick") then
-                    __pet_callback(age, friendship, "sick")
-                end
+                __baby_callbak("sick", money)
             end
         )
     end,
@@ -1483,7 +1696,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("bored") then
-                        __pet_callback(age, friendship, "bored")
+                        __baby_callbak("bored", money)
                     end
                 end, { once = true })
                 return
@@ -1516,7 +1729,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("salon") then
-                        __pet_callback(age, friendship, "salon")
+                        __baby_callbak("salon", money)
                     end
                 end, { once = true })
                 return
@@ -1550,7 +1763,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("beach_party") then
-                        __pet_callback(age, friendship, "beach_party")
+                        __baby_callbak("beach_party", money)
                     end
                 end, { once = true })
                 return
@@ -1567,10 +1780,8 @@ local baby_ailments = {
         if ClientData.get("team") ~= "Babies" or not has_ailment_baby("dirty") then return end
         local money = ClientData.get("money")
         to_home()
-        run_parallel(function()
-            pcall(function()
-                safeInvoke("HousingAPI/ActivateFurniture", LocalPlayer, furn.bath.unique, furn.bath.usepart, { cframe = furn.bath.cframe }, LocalPlayer.Character)
-            end)
+        task.spawn(function()
+            safeInvoke('HousingAPI/ActivateFurniture', LocalPlayer, furn.bath.unique, furn.bath.usepart, { cframe = furn.bath.cframe }, LocalPlayer.Character)
         end)
         local start = os.clock()
         local key = "baby_dirty_wait_" .. tostring(math.random())
@@ -1609,7 +1820,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("school") then
-                        __pet_callback(age, friendship, "school")
+                        __baby_callbak("school", money)
                     end
                 end, { once = true })
                 return
@@ -1626,10 +1837,8 @@ local baby_ailments = {
         if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then return end
         local money = ClientData.get("money")
         to_home()
-        run_parallel(function()
-            pcall(function()
-                safeInvoke("HousingAPI/ActivateFurniture", LocalPlayer, furn.bed.unique, furn.bed.usepart, { cframe = furn.bed.cframe }, LocalPlayer.Character)
-            end)
+        task.spawn(function()
+            safeInvoke('HousingAPI/ActivateFurniture', LocalPlayer, furn.bed.unique, furn.bed.usepart, { cframe = furn.bed.cframe }, LocalPlayer.Character)
         end)
         local start = os.clock()
         local key = "baby_sleepy_wait_" .. tostring(math.random())
@@ -1668,7 +1877,7 @@ local baby_ailments = {
                 Scheduler.add(key2, 0.8, function()
                     Scheduler.cancel(key2)
                     if pet_has and equiped() and not has_ailment("pizza_party") then
-                        __pet_callback(age, friendship, "pizza_party")
+                        __baby_callbak("pizza_party", money)
                     end
                 end, { once = true })
                 return
@@ -1767,7 +1976,6 @@ local function step_autofarm()
     end
 
     if not flag or not equiped() then
-        -- ничего не экипировано — следующая итерация Scheduler проверит снова
         return
     end
 
@@ -2003,7 +2211,7 @@ local function async_auto_give_potion()
                 local equiped_pet = ClientData.get("pet_char_wrappers")[1]
                 if equiped_pet then
                     safeInvoke("ToolAPI/Unequip", equiped_pet.pet_unique, { use_sound_delay = true, equip_as_last = false }) 
-                    wait_for(function() return not equiped() end, 3) -- неблокирующее ожидание
+                    wait_for(function() return not equiped() end, 3)
                     safeInvoke("ToolAPI/Equip", pet_unique, { use_sound_delay = true, equip_as_last = false }) 
                     wait_for(function() return equiped() end, 5)
                 end
@@ -2194,6 +2402,14 @@ end
 local function __init()
     print("[?] Starting init sequence...")
     _G.__RUNNING = true
+	
+	task.spawn(function()
+		while _G.__RUNNING do
+			Scheduler.tick(os.clock())
+			task.wait(0.1)
+		end
+	end)
+
     create_stats_gui()
     register_background_tasks()
     table.insert(_CONNECTIONS, NetworkClient.ChildRemoved:Connect(function()
