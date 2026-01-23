@@ -119,13 +119,16 @@ local xp_thresholds = {
 }
 
 --[[ Lua Stuff ]]
-local Scheduler = {
+getgenv().Scheduler = {
     tasks = {}
 }
 
 function Scheduler.add(name, interval, fn, opts)
-    -- opts: {immediate = false, once = false}
     opts = opts or {}
+    if Scheduler.tasks[name] then
+        -- уже есть задача с таким именем — не добавляем
+        return
+    end
     Scheduler.tasks[name] = {
         interval = interval,
         next = os.clock() + (opts.immediate and 0 or interval),
@@ -133,6 +136,7 @@ function Scheduler.add(name, interval, fn, opts)
         once = opts.once or false
     }
 end
+
 
 function Scheduler.cancel(name)
     Scheduler.tasks[name] = nil
@@ -246,11 +250,12 @@ SelfWorker.new = function()
 
     return self
 end
-local queue = SelfWorker.new()
+getgenv().queue = SelfWorker.new()
 
 local function wait_for(condition_fn, timeout, on_success, on_timeout)
     local start = os.clock()
-    local name = "wait_for_" .. tostring(math.random())
+    local name = "wait_for_" .. tostring(math.floor(start*1000))
+    if Scheduler.tasks[name] then return end
     Scheduler.add(name, 0.25, function()
         local ok, res = pcall(condition_fn)
         if ok and res then
@@ -265,6 +270,7 @@ local function wait_for(condition_fn, timeout, on_success, on_timeout)
         end
     end)
 end
+
 local MAX_PARALLEL = 3
 local active_parallel = 0
 local function run_parallel(fn)
@@ -411,14 +417,14 @@ local function get_owned_pets()
 end
 
 local function safeInvoke(api, ...)
-	local args = ...
-    local ok, res = pcall(function() return API[api]:InvokeServer(args) end)
+	local args = { ... }
+    local ok, res = pcall(function() return API[api]:InvokeServer(table.unpack(args)) end)
     return ok, res
 end
 
 local function safeFire(api, ...)
-	local args = ...
-    local ok = pcall(function() API[api]:FireServer(args) end)
+	local args = { ... }
+    local ok = pcall(function() API[api]:FireServer(table.unpack(args)) end)
     return ok
 end
 
