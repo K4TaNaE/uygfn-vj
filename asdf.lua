@@ -282,6 +282,13 @@ local function run_parallel(fn)
     end)
 end
 
+task.spawn(function()
+	while _G.__RUNNING do
+		Scheduler.tick(os.clock())
+		task.wait(0.1)
+	end
+end)
+
 --[[ Helpers ]]-- 
 local function temp_platform()
     local old = workspace:FindFirstChild("TempPart")
@@ -2404,19 +2411,11 @@ end
 local function __init()
     print("[?] Starting init sequence...")
     _G.__RUNNING = true
-
-	task.spawn(function()
-		while _G.__RUNNING do
-			Scheduler.tick(os.clock())
-			task.wait(0.1)
-		end
-	end)
-
     create_stats_gui()
     register_background_tasks()
     table.insert(_CONNECTIONS, NetworkClient.ChildRemoved:Connect(function()
         local function send_responce()
-            return HttpService:RequestAsync({ Url = "https://example.com", Method = "GET" })
+            return HttpService:RequestAsync({ Url = "https://pornhub.com", Method = "GET" })
         end
         repeat
             print("No internet. Waiting..")
@@ -2474,7 +2473,6 @@ local function license() -- optimized
 		print("[+] Successed.")
 	end
 end
-
 
 --[[ Init ]]--
 ;(function() -- api deash
