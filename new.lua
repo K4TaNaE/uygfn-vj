@@ -403,15 +403,17 @@ local function get_owned_pets()
     return result
 end
 
--- local function safeInvoke(api, ...)
---     local ok, res = pcall(function() return API[api]:InvokeServer(...) end)
---     return ok, res
--- end
+local function safeInvoke(api, ...)
+	local args = ...
+    local ok, res = pcall(function() return API[api]:InvokeServer(args) end)
+    return ok, res
+end
 
--- local function safeFire(api, ...)
---     local ok = pcall(function() API[api]:FireServer(...) end)
---     return ok
--- end
+local function safeFire(api, ...)
+	local args = ...
+    local ok = pcall(function() API[api]:FireServer(args) end)
+    return ok
+end
 
 local function get_owned_category(category)
     local inv = ClientData.get("inventory")
