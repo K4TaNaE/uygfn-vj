@@ -9,6 +9,7 @@ local cloneref = cloneref or function(obj) return obj end -- potassium, seliware
 local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
 
 --[[ Services ]]--
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -92,7 +93,7 @@ Queue.new = function()
 		dequeue = function(self,raw)
 			if self.__head > self.__tail then return end
 			local v = self._data[self.__head]
-			self.data[self.__head] = nil
+			self._data[self.__head] = nil
 			self.__head += 1
 			return v
 		end,
@@ -167,6 +168,56 @@ Queue.new = function()
 end
 local queue = Queue.new()
 
+local Scheduler = {}
+Scheduler.tasks = {}
+
+--[[
+	**name**: name of task.\
+	**interval**: function will run every "interval" secconds -> int.\
+	**callback**: function that will be called.\
+	**once**: if true will run only once.\
+	**now**: if true will run now and every "interval" secconds
+]]
+function Scheduler:add(name: string, interval: number, callback, once: boolean, now: boolean)
+	self.tasks[name] = {
+        interval = interval,
+        cb = callback,
+
+        once = once == true,
+        next = now == true and os.clock() or (os.clock() + interval)
+    }
+end
+
+function Scheduler:remove(name)
+    if self.tasks[name] then
+        self.tasks[name] = nil
+    end
+end
+
+function Scheduler:change_interval(name, interval)
+    local t = self.tasks[name]
+    if t then
+        t.interval = interval
+        t.next = os.clock() + interval
+    end
+end
+
+function Scheduler:exists(name) 
+	return self.tasks[name] 
+end
+
+local function waitForCondition(check, timeout: number)
+    local start = os.clock()
+    while true do
+        if check() then
+            return true
+        end
+        if timeout and os.clock() - start >= timeout then
+            return false
+        end
+        RunService.Heartbeat:Wait()
+    end
+end
 
 --[[ Helpers ]]-- 
 local function temp_platform()
@@ -192,9 +243,7 @@ local function goto(destId, door, ops:table)
 	if get_current_location() == destId then return end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
-	while get_current_location() ~= destId do
-		task.wait(.1)
-	end
+	waitForCondition(function() return get_current_location() == destId end, 10)
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
 end
@@ -304,20 +353,17 @@ local function get_owned_category(category)
     return result
 end
 
-local function get_equiped_pet_ailments()
-    local wrapper = ClientData.get("pet_char_wrappers")[1]
-    if not wrapper then return {} end
-    local ailments = wrapper.pet_ailments
-    if type(ailments) ~= "table" then
-        return {}
-    end
-    local result = {}
-    for name, active in pairs(ailments) do
-        if active then
-            result[name] = true
-        end
-    end
-    return result
+local function get_equiped_pet_ailments() -- optimized
+	local ailments = {}
+	local pet = ClientData.get("pet_char_wrappers")[1]
+	if pet then
+		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
+		if not path then return nil end
+		for k,_ in pairs(path) do
+			ailments[k] = true
+		end
+	end
+	return ailments
 end
 
 local function has_ailment(ailment) 
@@ -1537,198 +1583,202 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	if count(get_owned_pets()) == 0 then
-		repeat 
-			task.wait(50)
-		until count(get_owned_pets()) > 0
+		Scheduler:remove("init_autofarm")
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
 	end
 
-	while task.wait(1) do
-		local owned_pets = get_owned_pets()
-		local flag = false
-		
-		local pet = ClientData.get("pet_char_wrappers")[1]
-		if pet and not _G.flag_if_no_one_to_farm then
-			safeInvoke("ToolAPI/Unequip",
-				pet.pet_unique,
-				{
-					use_sound_delay = true,
-					equip_as_last = false
-				}
-			)
-		end
-		
-		local d2kitty = inv_get_category_unique("pets", "2d_kitty")
-		if owned_pets[d2kitty] then
-			safeInvoke("ToolAPI/Equip",
-				d2kitty,
-				{
-					use_sound_delay = true,
-					equip_as_last = false
-				}
-			)
-			flag = true
-			_G.flag_if_no_one_to_farm = false
-		end
-		if _G.InternalConfig.PotionFarm then
-			if _G.InternalConfig.FarmPriority == "pets" then
-				for k,v in pairs(owned_pets) do
-					if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
-						end
-						flag = true		
-						_G.flag_if_no_one_to_farm = false
-						break				
+	local owned_pets = get_owned_pets()
+	local flag = false
+	
+	local pet = ClientData.get("pet_char_wrappers")[1]
+	if pet and not _G.flag_if_no_one_to_farm then
+		safeInvoke("ToolAPI/Unequip",
+			pet.pet_unique,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+	end
+	
+	local d2kitty = inv_get_category_unique("pets", "2d_kitty")
+	if owned_pets[d2kitty] then
+		safeInvoke("ToolAPI/Equip",
+			d2kitty,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+		flag = true
+		_G.flag_if_no_one_to_farm = false
+	end
+	if _G.InternalConfig.PotionFarm then
+		if _G.InternalConfig.FarmPriority == "pets" then
+			for k,v in pairs(owned_pets) do
+				if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
 					end
-				end
-			else 
-				for k,v in pairs(owned_pets) do
-					if (v.name:lower()):find("egg") then
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
-						end
-						flag = true
-						_G.flag_if_no_one_to_farm = false
-						break
-					end
-				end
-				if not flag then
-					for k, _ in pairs(owned_pets) do
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
-						end
-						flag = true
-						_G.flag_if_no_one_to_farm = false
-						break
-					end
+					flag = true		
+					_G.flag_if_no_one_to_farm = false
+					break				
 				end
 			end
-		else
-			if _G.InternalConfig.FarmPriority == "pets" then			
-				for k,v in pairs(owned_pets) do
-					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
-						end
-						flag = true
-						_G.flag_if_no_one_to_farm = false
-						break
+		else 
+			for k,v in pairs(owned_pets) do
+				if (v.name:lower()):find("egg") then
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
 					end
-				end
-			else 
-				for k,v in pairs(owned_pets) do
-					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
-						end
-						flag = true
-						_G.flag_if_no_one_to_farm = false
-						break
-					end
+					flag = true
+					_G.flag_if_no_one_to_farm = false
+					break
 				end
 			end
 			if not flag then
-				if _G.InternalConfig.OppositeFarmEnabled then
-					if not _G.flag_if_no_one_to_farm then  
-					print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
-						for k, v in pairs(owned_pets) do
-							if v.rarity == "legendary" then
-								safeInvoke("ToolAPI/Equip",
-									k,
-									{
-										use_sound_delay = true,
-										equip_as_last = false
-									}
-								)
-								if not equiped() then
-									continue
-								end
-								flag = true
-								_G.flag_if_no_one_to_farm = true
-								_G.random_farm = true
-								break
-							end
-						end
+				for k, _ in pairs(owned_pets) do
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
 					end
+					flag = true
+					_G.flag_if_no_one_to_farm = false
+					break
 				end
 			end
-			if not flag then
+		end
+	else
+		if _G.InternalConfig.FarmPriority == "pets" then			
+			for k,v in pairs(owned_pets) do
+				if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
+					end
+					flag = true
+					_G.flag_if_no_one_to_farm = false
+					break
+				end
+			end
+		else 
+			for k,v in pairs(owned_pets) do
+				if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
+					end
+					flag = true
+					_G.flag_if_no_one_to_farm = false
+					break
+				end
+			end
+		end
+		if not flag then
+			if _G.InternalConfig.OppositeFarmEnabled then
 				if not _G.flag_if_no_one_to_farm then  
-					for k, _ in pairs(owned_pets) do
-						safeInvoke("ToolAPI/Equip",
-							k,
-							{
-								use_sound_delay = true,
-								equip_as_last = false
-							}
-						)
-						if not equiped() then
-							continue
+				print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+					for k, v in pairs(owned_pets) do
+						if v.rarity == "legendary" then
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = true
+							_G.random_farm = true
+							break
 						end
-						flag = true
-						_G.flag_if_no_one_to_farm = true
-						_G.random_farm = true
-						break
 					end
 				end
 			end
-		end 
-		if not _G.flag_if_no_one_to_farm and _G.random_farm then
-			table.clear(StateDB.active_ailments)
-			queue:destroy_linked("ailment pet")
-			_G.random_farm = false
 		end
-		if not flag or not equiped() then task.wait(28) continue end
-		task.wait(2)
-		pet_update()
-		while task.wait(1) do	
-			if actual_pet.unique ~= cur_unique() then
-				actual_pet.unique = nil
-				break
+		if not flag then
+			if not _G.flag_if_no_one_to_farm then  
+				for k, _ in pairs(owned_pets) do
+					safeInvoke("ToolAPI/Equip",
+						k,
+						{
+							use_sound_delay = true,
+							equip_as_last = false
+						}
+					)
+					if not equiped() then
+						continue
+					end
+					flag = true
+					_G.flag_if_no_one_to_farm = true
+					_G.random_farm = true
+					break
+				end
 			end
-			if not actual_pet.unique then
-				break
-			end			
+		end
+	end 
+
+	if not _G.flag_if_no_one_to_farm and _G.random_farm then
+		table.clear(StateDB.active_ailments)
+		queue:destroy_linked("ailment pet")
+		_G.random_farm = false
+	end
+
+	if not flag or not equiped() then return end
+	pet_update()
+
+	if not Scheduler:exists("init_autofarm_main") then 
+		Scheduler:add("init_autofarm_main", 15, function()
+		
+			if actual_pet.unique ~= cur_unique() or not actual_pet.unique then
+				actual_pet.unique = nil
+				Scheduler:remove("init_autofarm_main")
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
+			end
+
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
-				task.wait(10)
-				continue
+				Scheduler:remove("init_autofarm_main")
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
 			end
+
 			for k,_ in pairs(eqpetailms) do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
@@ -1740,13 +1790,15 @@ local function init_autofarm() -- optimized
 					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
-			task.wait(20)
 			if _G.flag_if_no_one_to_farm then
-				break
+				Scheduler:remove("init_autofarm_main")
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
 			end
-		end
+		end, false, true)
 	end
 end
+
 	
 local function init_baby_autofarm() -- optimized
 	while task.wait(1) do
@@ -1841,14 +1893,14 @@ local function init_auto_trade() -- optimized
 		exist = true
 	end
 
-	game.Players.PlayerAdded:Connect(function(player)
+	_G.CONNECTIONS.TradePA = game.Players.PlayerAdded:Connect(function(player)
 		if player == user then 
 			player.CharacterAdded:Wait()
 			exist = true 
 		end
 	end)
 	
-	game.Players.PlayerRemoving:Connect(function(player) 
+	_G.CONNECTIONS.TradePR = game.Players.PlayerRemoving:Connect(function(player) 
 		if player == user then
 			exist = false
 		end
@@ -2139,11 +2191,10 @@ local function optimized_waiting_coroutine()
 end
 
 local function __init() 
-	task.spawn(internal_countdown)
-	task.wait(.1)
 	if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, true)
 	end
+
 	task.wait(.1)
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
@@ -2200,35 +2251,71 @@ local function license() -- optimized
 	end
 end
 
-
 --[[ Init ]]--
 ;(function() -- api deash
-	print("[?] Starting..")
 	for k, v in pairs(getupvalue(require(ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient")).init, 7)) do
 		v.Name = k
 	end
 	print("[+] API dehashed.")
 end)()
 
-NetworkClient.ChildRemoved:Connect(function()
-	local send_responce = function()
-		return HttpService:RequestAsync({
-			Url = "https://pornhub.com",
-			Method = "GET"
-		})
-	end
-	repeat
-		print("No internet. Waiting..")
-		task.wait(5)
-		local success, _ = pcall(send_responce)
-	until success 
-	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+_G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
+    local now = os.clock()
+    for name, t in next, Scheduler.tasks do
+		if now >= t.next then
+			local ok, err = pcall(t.cb)
+			if not ok then
+				warn("Scheduler task error:", name, err)
+			end
+			if t.once then
+				Scheduler.tasks[name] = nil
+			else
+				t.next = t.next + t.interval
+			end
+		end
+    end
 end)
 
-LocalPlayer.Idled:Connect(function() -- anti afk
-  VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-  task.wait(1)
-  VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+local function __CONN_CLEANUP(player)
+	if player == LocalPlayer then
+		for _, v in pairs(_G.CONNECTIONS) do
+			v:Disconnect()
+		end
+	end
+end
+
+_G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
+
+_G.Looping = {}
+if not _G.Looping["NetworkHook"] then 
+	_G.Looping.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
+		local send_responce = function()
+			return HttpService:RequestAsync({
+				Url = "https://pornhub.com",
+				Method = "GET"
+			})
+		end
+		Scheduler:add("InternetCheck", 5, function() 
+			local success = pcall(send_responce)
+			if success then
+				Scheduler:remove("InternetCheck")
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+			else
+				print("[!] No internet, waiting...")
+			end
+		end, false, true)
+	end)
+end 
+
+Scheduler:add("gc", 300, function() -- watchdog
+	print('watchdog working')
+	collectgarbage("step", 260)
+end, false, false) 
+
+_G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
+	VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
 
 -- internal config init
