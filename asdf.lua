@@ -124,7 +124,6 @@ end
 function Scheduler:_awaitTaskWrapper(name, checkFn, timeout)
     local thread = coroutine.running()
     local start = os.clock()
-    Scheduler:remove(name)
     Scheduler:add(name, 0.1, function()
         if checkFn() then
             Scheduler:remove(name)
@@ -134,6 +133,7 @@ function Scheduler:_awaitTaskWrapper(name, checkFn, timeout)
         if timeout and (os.clock() - start) >= timeout then
             Scheduler:remove(name)
             coroutine.resume(thread, false)
+            return
         end
     end, false, true)
     return coroutine.yield()
