@@ -243,9 +243,7 @@ local function goto(destId, door, ops:table)
 	if get_current_location() == destId then return end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
-	while get_current_location() ~= destId do
-		task.wait(.1)
-	end
+	waitForCondition(function() return get_current_location() == destId end, 10)
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
 end
