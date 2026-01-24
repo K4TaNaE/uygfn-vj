@@ -2119,7 +2119,7 @@ local function __init()
 	end
 
 	if _G.InternalConfig.BabyAutoFarm then
-		Scheduler:add("init_autofarm", 15, init_baby_autofarm, false, true)
+		Scheduler:add("init_baby_autofarm", 15, init_baby_autofarm, false, true)
 	end
 	task.wait(.1)
 	if _G.InternalConfig.AutoRecyclePet then
@@ -2192,7 +2192,7 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
             end
         end
         if now >= t.next then
-            local ok, err = pcall(t.cb)
+            local ok, err = pcall(function() print("calilng") t.cb() end)
             if not ok then
                 warn("Scheduler task error:", name, err)
             end
