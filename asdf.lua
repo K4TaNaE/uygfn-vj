@@ -71,6 +71,64 @@ _G.CONNECTIONS = {}
 _G.CLEANUP_INSTANCES = {}
 
 --[[ Lua Stuff ]]
+local Scheduler = {}
+Scheduler.tasks = {}
+
+--[[
+	**name**: name of task.\
+	**interval**: function will run every "interval" secconds -> int.\
+	**callback**: function that will be called.\
+	**once**: if true will run only once.\
+	**now**: if true will run now and every "interval" secconds
+]]
+function Scheduler:add(name, interval, callback, once, now, fallback)
+    self.tasks[name] = {
+        interval = interval,
+        cb = callback,
+        once = once == true,
+        next = now == true and os.clock() or (os.clock() + interval),
+		running = false, 
+        paused = false,
+        pause_until = nil,
+		fallback = fallback or function() end
+    } 
+end
+
+function Scheduler:remove(name)
+    if self.tasks[name] then
+        self.tasks[name] = nil
+    end
+end
+
+function Scheduler:change_interval(name, interval)
+    local t = self.tasks[name]
+    if t then
+        t.interval = interval
+        t.next = os.clock() + interval
+    end
+end
+
+function Scheduler:resume(name)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = false
+    t.pause_until = nil
+    t.next = os.clock() + t.interval
+end
+
+function Scheduler:pause(name, seconds)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = true
+    t.pause_until = os.clock() + (seconds or math.huge)
+end
+
+function Scheduler:exists(name) 
+	return self.tasks[name] 
+end
+
 local Queue = {} 
 Queue.new = function() 
 	return {
@@ -80,9 +138,10 @@ Queue.new = function()
 		running = false,
 		blocked = false,
 
-		enqueue = function(self, ttask: table) -- task must be {taskname, callback}.
+		enqueue = function(self, ttask: table) -- task must be {taskname, callback, rollback}.
 			if self.blocked then return end
 			if type(ttask) == "table" and type(ttask[1]) == "string" and type(ttask[2]) == "function" then
+				ttask.rollback = ttask.rollback or ""
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
@@ -142,88 +201,37 @@ Queue.new = function()
 		end,
 
 		__run = function(self)
+			if self.running then return end
 			self.running = true
+			local function process_next()
+				if self:empty() then
+					self.running = false
+					return
+				end
 
-			while not self:empty() do
 				local dtask = self._data[self.__head]
+				self:dequeue(true)
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				local ok, err = xpcall(callback, debug.traceback)
-				self:dequeue(true)
-				if not ok then
-					print("Task failed:", err)
-					local spl = name:split(": ")
-					if spl[1]:match("ailment pet") then
-						StateDB.active_ailments[spl[2]] = nil
-					elseif spl[1]:match("ailment baby") then
-						StateDB.baby_active_ailments[spl[2]] = nil
+				local ailm = dtask[3]
+				local rollback = function() 
+					if name == "ailment pet" then
+						StateDB.active_ailments[ailm] = nil
+					elseif name == "ailment baby" then
+						StateDB.baby_active_ailments[ailm] = nil
 					end
 				end
-				task.wait(.5) 
+				Scheduler:add(name, 1, function()
+					callback()
+					process_next()
+				end, true, true, rollback)
 			end
-			self.running = false
+			process_next()
 		end
 	}
 end
 local queue = Queue.new()
-
-local Scheduler = {}
-Scheduler.tasks = {}
-
---[[
-	**name**: name of task.\
-	**interval**: function will run every "interval" secconds -> int.\
-	**callback**: function that will be called.\
-	**once**: if true will run only once.\
-	**now**: if true will run now and every "interval" secconds
-]]
-function Scheduler:add(name, interval, callback, once, now)
-    self.tasks[name] = {
-        interval = interval,
-        cb = callback,
-        once = once == true,
-        next = now == true and os.clock() or (os.clock() + interval),
-		running = false, 
-        paused = false,
-        pause_until = nil
-    }
-end
-
-function Scheduler:remove(name)
-    if self.tasks[name] then
-        self.tasks[name] = nil
-    end
-end
-
-function Scheduler:change_interval(name, interval)
-    local t = self.tasks[name]
-    if t then
-        t.interval = interval
-        t.next = os.clock() + interval
-    end
-end
-
-function Scheduler:resume(name)
-    local t = self.tasks[name]
-    if not t then return end
-
-    t.paused = false
-    t.pause_until = nil
-    t.next = os.clock() + t.interval
-end
-
-function Scheduler:pause(name, seconds)
-    local t = self.tasks[name]
-    if not t then return end
-
-    t.paused = true
-    t.pause_until = os.clock() + (seconds or math.huge)
-end
-
-function Scheduler:exists(name) 
-	return self.tasks[name] 
-end
 
 local function waitForCondition(check, timeout: number)
     local start = os.clock()
@@ -1708,10 +1716,10 @@ local function init_autofarm() -- optimized
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
 					if k == "mystery" then 
-						queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						queue:asyncrun({"ailment pet", pet_ailments[k]}) 
 						continue 
 					end
-					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
+					queue:enqueue({"ailment pet", pet_ailments[k], k})
 				end
 			end
 			if _G.flag_if_no_one_to_farm then
@@ -1723,7 +1731,6 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	print("started")
 	if ClientData.get("team") ~= "Babies" then
 		safeInvoke("TeamAPI/ChooseTeam",
 			"Babies",
@@ -1732,9 +1739,7 @@ local function init_baby_autofarm() -- optimized
 				source_for_logging = "avatar_editor"
 			}
 		)
-		print("1s pause begin")
 		Scheduler:pause("init_baby_autofarm", 1)
-		print("1s pause end")
 	end	
 	if not _G.InternalConfig.FarmPriority then
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1748,16 +1753,14 @@ local function init_baby_autofarm() -- optimized
 			)
 		end
 	end
-	print("looking for ailments")
 	local active_ailments = get_baby_ailments()
 	for k,_ in pairs(active_ailments) do
 		if StateDB.baby_active_ailments[k] then continue end
 		if baby_ailments[k] then
 			StateDB.baby_active_ailments[k] = true
-			queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
+			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
 	end
-	print("end of baby")
 end
 
 local function async_auto_buy() -- optimized
@@ -2201,7 +2204,7 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
             task.spawn(function()
                 local ok, err = pcall(t.cb)
                 if not ok then
-                    warn("Scheduler task error:", name, err)
+					warn("Error to task: ", name, err)
                 end
                 if Scheduler.tasks[name] then
                     if t.once then
