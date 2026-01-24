@@ -2300,8 +2300,8 @@ end
 
 Scheduler:add("gc", 300, function() -- watchdog
 	print('watchdog working')
-	collectgarbage("step", 260)
-end, false, true) 
+	-- collectgarbage("step", 260)
+end, false, false) 
 
 _G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
 	Scheduler:add("AntiAFK", 0, function() 
