@@ -1601,10 +1601,8 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	if count(get_owned_pets()) == 0 then
-		Scheduler:remove("init_autofarm")
-		if not Scheduler:exists("init_autofarm") then 
-			Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-		end
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		return
 	end
 
 	local owned_pets = get_owned_pets()
@@ -1684,10 +1682,7 @@ local function init_autofarm() -- optimized
 	end
 
 	if not flag or not equiped() then 
-		Scheduler:remove("init_autofarm")
-		if not Scheduler:exists("init_autofarm") then
-			Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-		end
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
 	end
 	pet_update()
 
@@ -1696,10 +1691,7 @@ local function init_autofarm() -- optimized
 		
 			if actual_pet.unique ~= cur_unique() or not actual_pet.unique then
 				actual_pet.unique = nil
-				Scheduler:remove("init_autofarm_main")
-				if not Scheduler:exists("init_autofarm") then 
-					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-				end
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
 				return
 			end
 
@@ -1720,13 +1712,8 @@ local function init_autofarm() -- optimized
 				end
 			end
 			if _G.flag_if_no_one_to_farm then
-				Scheduler:remove("init_autofarm_main")
-				if not Scheduler:exists("init_autofarm") then
-					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-				else
-					Scheduler:remove("init_autofarm")					
-					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-				end
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
 			end
 		end, false, true)
 	end
@@ -1978,9 +1965,9 @@ local function async_gift_autoopen() -- чета тут не так
 		Cooldown.GiftsAutoOpen = 3600
 		return
 	end
-	for k,_ in pairs(get_owned_category("gifts")) do
+	for k,v in pairs(get_owned_category("gifts")) do
 		if k.remote:lower():match("box") or v.remote:lower():match("chest") then
-			safeInvoke(r"LootBoxAPI/ExchangeItemForReward", k.remote,k)
+			safeInvoke("LootBoxAPI/ExchangeItemForReward", k.remote,k)
 		else
 			safeInvoke("ShopAPI/OpenGift", k)
 		end
