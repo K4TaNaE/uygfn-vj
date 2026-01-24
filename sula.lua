@@ -2256,17 +2256,17 @@ end)()
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
     for name, t in next, Scheduler.tasks do
-        if now >= t.next then
-            local ok, err = pcall(t.cb)
-            if not ok then
-                warn("Scheduler task error:", name, err)
-            end
-            if t.once then
-                Scheduler.tasks[name] = nil
-            else
-                t.next = now + t.interval
-            end
-        end
+		if now >= t.next then
+			local ok, err = pcall(t.cb)
+			if not ok then
+				warn("Scheduler task error:", name, err)
+			end
+			if t.once then
+				Scheduler.tasks[name] = nil
+			else
+				t.next = t.next + t.interval
+			end
+		end
     end
 end)
 
@@ -2298,7 +2298,7 @@ if not _G.Looping["NetworkHook"] then
 	end)
 end 
 
-Scheduler:add("gc", 300, function() -- watchdog
+Scheduler:add("gc", 5, function() -- watchdog
 	print('watchdog working')
 	-- collectgarbage("step", 260)
 end, false, false) 
