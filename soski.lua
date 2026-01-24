@@ -178,13 +178,14 @@ Scheduler.tasks = {}
 	**once**: if true will run only once.\
 	**now**: if true will run now and every "interval" secconds
 ]]
-function Scheduler:add(name: string, interval: number, callback, once: boolean, now: boolean)
-	self.tasks[name] = {
+function Scheduler:add(name, interval, callback, once, now)
+    self.tasks[name] = {
         interval = interval,
         cb = callback,
-
         once = once == true,
-        next = now == true and os.clock() or (os.clock() + interval)
+        next = now == true and os.clock() or (os.clock() + interval),
+        paused = false,
+        pause_until = nil
     }
 end
 
@@ -202,7 +203,28 @@ function Scheduler:change_interval(name, interval)
     end
 end
 
-function waitForCondition(check, timeout)
+function Scheduler:resume(name)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = false
+    t.pause_until = nil
+    t.next = os.clock() + t.interval
+end
+
+function Scheduler:pause(name, seconds)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = true
+    t.pause_until = os.clock() + (seconds or math.huge)
+end
+
+function Scheduler:exists(name) 
+	return self.tasks[name] 
+end
+
+local function waitForCondition(check, timeout: number)
     local start = os.clock()
     while true do
         if check() then
@@ -239,9 +261,7 @@ local function goto(destId, door, ops:table)
 	if get_current_location() == destId then return end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
-	while get_current_location() ~= destId do
-		task.wait(.1)
-	end
+	waitForCondition(function() return get_current_location() == destId end, 10)
 	game.Workspace:FindFirstChild("TempPart"):Destroy()
 	task.wait(.5)
 end
@@ -1581,38 +1601,25 @@ baby_ailments = {
 
 local function init_autofarm() -- optimized
 	if count(get_owned_pets()) == 0 then
-		repeat 
-			task.wait(50)
-		until count(get_owned_pets()) > 0
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		return
 	end
 
-	while task.wait(1) do
-		local owned_pets = get_owned_pets()
-		local flag = false
-		
-		local pet = ClientData.get("pet_char_wrappers")[1]
-		if pet and not _G.flag_if_no_one_to_farm then
-			safeInvoke("ToolAPI/Unequip",
-				pet.pet_unique,
-				{
-					use_sound_delay = true,
-					equip_as_last = false
-				}
-			)
-		end
-		
-		local d2kitty = inv_get_category_unique("pets", "2d_kitty")
-		if owned_pets[d2kitty] then
-			safeInvoke("ToolAPI/Equip",
-				d2kitty,
-				{
-					use_sound_delay = true,
-					equip_as_last = false
-				}
-			)
-			flag = true
-			_G.flag_if_no_one_to_farm = false
-		end
+	local owned_pets = get_owned_pets()
+	local flag = false
+	
+	local pet = ClientData.get("pet_char_wrappers")[1]
+	if pet and not _G.flag_if_no_one_to_farm then
+		safeInvoke("ToolAPI/Unequip",
+			pet.pet_unique,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+	end
+	
+
 		if _G.InternalConfig.PotionFarm then
 			if _G.InternalConfig.FarmPriority == "pets" then
 				for k,v in pairs(owned_pets) do
@@ -1752,27 +1759,35 @@ local function init_autofarm() -- optimized
 				end
 			end
 		end 
-		if not _G.flag_if_no_one_to_farm and _G.random_farm then
-			table.clear(StateDB.active_ailments)
-			queue:destroy_linked("ailment pet")
-			_G.random_farm = false
-		end
-		if not flag or not equiped() then task.wait(28) continue end
-		task.wait(2)
-		pet_update()
-		while task.wait(1) do	
-			if actual_pet.unique ~= cur_unique() then
+
+	if not _G.flag_if_no_one_to_farm and _G.random_farm then
+		table.clear(StateDB.active_ailments)
+		queue:destroy_linked("ailment pet")
+		_G.random_farm = false
+	end
+
+	if not flag or not equiped() then 
+		print("flag: ", flag, "equiped: ", equiped())
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		return
+	end
+	Scheduler:pause("init_autofarm", 2)
+	pet_update()
+
+	if not Scheduler:exists("init_autofarm_main") then 
+		Scheduler:add("init_autofarm_main", 15, function()
+		
+			if actual_pet.unique ~= cur_unique() or not actual_pet.unique then
 				actual_pet.unique = nil
-				break
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
 			end
-			if not actual_pet.unique then
-				break
-			end			
+
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
-				task.wait(10)
-				continue
+				return
 			end
+
 			for k,_ in pairs(eqpetailms) do 
 				if StateDB.active_ailments[k] then continue end
 				if pet_ailments[k] then
@@ -1784,11 +1799,11 @@ local function init_autofarm() -- optimized
 					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
 				end
 			end
-			task.wait(20)
 			if _G.flag_if_no_one_to_farm then
-				break
+				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				return
 			end
-		end
+		end, false, true)
 	end
 end
 	
@@ -2038,9 +2053,9 @@ local function async_gift_autoopen() -- чета тут не так
 		Cooldown.GiftsAutoOpen = 3600
 		return
 	end
-	for k,_ in pairs(get_owned_category("gifts")) do
+	for k,v in pairs(get_owned_category("gifts")) do
 		if k.remote:lower():match("box") or v.remote:lower():match("chest") then
-			safeInvoke(r"LootBoxAPI/ExchangeItemForReward", k.remote,k)
+			safeInvoke("LootBoxAPI/ExchangeItemForReward", k.remote,k)
 		else
 			safeInvoke("ShopAPI/OpenGift", k)
 		end
@@ -2183,11 +2198,10 @@ local function optimized_waiting_coroutine()
 end
 
 local function __init() 
-	task.spawn(internal_countdown)
-	task.wait(.1)
 	if _G.InternalConfig.FarmPriority then
-		task.defer(init_autofarm)
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, true)
 	end
+
 	task.wait(.1)
 	if _G.InternalConfig.BabyAutoFarm then
 		task.defer(init_baby_autofarm)
@@ -2246,7 +2260,6 @@ end
 
 --[[ Init ]]--
 ;(function() -- api deash
-	print("[?] Starting..")
 	for k, v in pairs(getupvalue(require(ReplicatedStorage.ClientModules.Core:WaitForChild("RouterClient"):WaitForChild("RouterClient")).init, 7)) do
 		v.Name = k
 	end
@@ -2256,6 +2269,13 @@ end)()
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
     for name, t in next, Scheduler.tasks do
+        if t.paused then
+            if t.pause_until and now >= t.pause_until then
+                Scheduler:resume(name)
+            else
+                continue
+            end
+        end
         if now >= t.next then
             local ok, err = pcall(t.cb)
             if not ok then
@@ -2264,17 +2284,20 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
             if t.once then
                 Scheduler.tasks[name] = nil
             else
-                t.next = now + t.interval
+                t.next = t.next + t.interval
             end
         end
     end
 end)
 
-local function __CONN_CLEANUP()
-	for _, v in pairs(_G.CONNECTIONS) do
-		v:Disconnect()
+local function __CONN_CLEANUP(player)
+	if player == LocalPlayer then
+		for _, v in pairs(_G.CONNECTIONS) do
+			v:Disconnect()
+		end
 	end
 end
+
 _G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
 
 _G.Looping = {}
@@ -2300,15 +2323,13 @@ end
 
 Scheduler:add("gc", 300, function() -- watchdog
 	print('watchdog working')
-	-- collectgarbage("step", 260)
-end, false, true) 
+	collectgarbage("step", 260)
+end, false, false) 
 
 _G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
-	Scheduler:add("AntiAFK", 0, function() 
-		VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-		task.wait(.5)
-		VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-	end, true, true)
+	VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 end)
 
 -- internal config init
