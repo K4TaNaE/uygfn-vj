@@ -32,11 +32,6 @@ local StateManagerClient = loader("StateManagerClient")
 local LureBaitHelper = loader("LureBaitHelper")
 local API = ReplicatedStorage.API
 
--- local StateDB = {
--- 	active_ailments = {},
--- 	baby_active_ailments = {},
--- 	total_fullgrowned = {}
--- }
 local StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {},
@@ -71,159 +66,107 @@ local Cooldown = {
 local furn = {}
 _G.InternalConfig = {}
 _G.flag_if_no_one_to_farm = false
+_G.CONNECTIONS = {}
+_G.CLEANUP_INSTANCES = {}
 
 --[[ Lua Stuff ]]
-local Queue = {}
-Queue.new = function(opts)
-    opts = opts or {}
-    local COMPACT_THRESHOLD = opts.compact_threshold or 1024 -- when to compact internal table
-    local q = {
-        head = 1,
-        tail = 0,
-        data = {},
-        running = false,
-        blocked = false,
-        max_size = opts.max_size or 10000,
-    }
+local Queue = {} 
+Queue.new = function() 
+	return {
+		__head = 1,
+		__tail = 0,
+		_data = {} ,
+		running = false,
+		blocked = false,
 
-    local function compact(self)
-        if self.head <= 1 then return end
-        local newData = {}
-        local idx = 1
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v ~= nil then
-                newData[idx] = v
-                idx = idx + 1
-            end
-        end
-        self.data = newData
-        self.tail = idx - 1
-        self.head = 1
-    end
+		enqueue = function(self, ttask: table) -- task must be {taskname, callback}.
+			if self.blocked then return end
+			if type(ttask) == "table" and type(ttask[1]) == "string" and type(ttask[2]) == "function" then
+				self.__tail += 1
+				self._data[self.__tail] = ttask
 
-    function q:enqueue(task)
-        if self.blocked then return false, "blocked" end
-        if type(task) ~= "table" or type(task[1]) ~= "string" or type(task[2]) ~= "function" then
-            return false, "invalid_task"
-        end
-        if (self.tail - self.head + 1) >= self.max_size then
-            return false, "overflow"
-        end
-        self.tail = self.tail + 1
-        self.data[self.tail] = task
-        if not self.running then
-            task.spawn(function()
-                local ok, err = pcall(function() self:run() end)
-                if not ok then warn("Queue runner crashed:", err) end
-            end)
-        end
-        if self.head > COMPACT_THRESHOLD then
-            compact(self)
-        end
-        return true
-    end
+				if not self.running then self:__run() end
+			end
+		end,
 
-    function q:dequeue(raw)
-        if self.head > self.tail then return nil end
-        local value = self.data[self.head]
-        if raw and self.blocked then
-            self.data[self.head] = nil
-        else
-            self.data[self.head] = nil
-        end
-        self.head = self.head + 1
-        if (self.head > COMPACT_THRESHOLD) and ((self.tail - self.head) < (COMPACT_THRESHOLD / 2)) then
-            compact(self)
-        end
-        return value
-    end
+		dequeue = function(self,raw)
+			if self.__head > self.__tail then return end
+			local v = self._data[self.__head]
+			self.data[self.head] = nil
+			self.__head += 1
+			return v
+		end,
 
-    function q:empty()
-        return self.head > self.tail
-    end
+		enqblock = function(self)
+			self.blocked = true
+		end,
 
-    function q:enqblock()
-        self.blocked = true
-    end
+		enqunblock = function(self) 
+			self.blocked = false
+		end,
 
-    function q:enqunblock()
-        self.blocked = false
-    end
+		destroy_linked = function(self, taskname) 
+			if not self:empty() then
+				for k,v in ipairs(self._data) do
+					if v[1]:match(taskname) then
+						table.remove(self._data, k)
+						self.__tail -= 1
+					end
+				end
+			end
+		end,
 
-    function q:destroy_linked(pattern)
-        if not pattern or self:empty() then return end
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v and type(v[1]) == "string" and v[1]:find(pattern, 1, true) then
-                self.data[i] = nil
-            end
-        end
-        if (self.tail - self.head) > 0 and (self.tail - self.head) > (COMPACT_THRESHOLD * 2) then
-            compact(self)
-        end
-    end
+		taskdestroy = function(self, pattern1, pattern2) 
+			if not self:empty() then 
+				for k,v in ipairs(self._data) do
+					if v[1]:match(pattern1) and v[1]:match(pattern2) then
+						table.remove(self._data, k)
+						self.__tail -= 1
+					end
+				end
+			end
+		end,
 
-    function q:taskdestroy(pattern1, pattern2)
-        if not pattern1 or not pattern2 or self:empty() then return end
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v and type(v[1]) == "string" and v[1]:find(pattern1, 1, true) and v[1]:find(pattern2, 1, true) then
-                self.data[i] = nil
-            end
-        end
-        if (self.tail - self.head) > 0 and (self.tail - self.head) > (COMPACT_THRESHOLD * 2) then
-            compact(self)
-        end
-    end
+		empty = function(self)
+			return self.__head > self.__tail
+		end,
 
-    function q:asyncrun(taskt)
-        if type(taskt) ~= "table" or type(taskt[2]) ~= "function" then return false, "invalid" end
-        task.spawn(function()
-            local ok, err = xpcall(taskt[2], debug.traceback)
-            if not ok then warn("Async error:", err) end
-        end)
-        return true
-    end
+		asyncrun = function(self, taskt: table)
+			task.spawn(function()
+				local ok, err = pcall(taskt[2])
+				if not ok then
+					warn("Async error:", err)
+				end
+			end)
+		end,
 
-    function q:run()
-        if self.running then return end
-        self.running = true
-        local ok, err
-        while not self:empty() do
-            local dtask = self.data[self.head]
-            if dtask == nil then
-                self.head = self.head + 1
-                continue
-            end
-            local name = dtask[1]
-            local callback = dtask[2]
-            self.data[self.head] = nil
-            self.head = self.head + 1
+		__run = function(self)
+			self.running = true
 
-            ok, err = xpcall(callback, debug.traceback)
-            if not ok then
-                warn("Queue task failed:", name, err)
-                if type(name) == "string" then
-                    local spl = name:split(": ")
-                    if spl and type(spl) == "table" and #spl >= 2 then
-                        if spl[1] == "ailment pet" then
-                            pcall(function() StateDB.active_ailments[spl[2]] = nil end)
-                        elseif spl[1] == "ailment baby" then
-                            pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end)
-                        end
-                    end
-                end
-            end
-            task.wait(0.5)
-        end
-        self.running = false
-        if self.head > COMPACT_THRESHOLD then compact(self) end
-    end
+			while not self:empty() do
+				local dtask = self._data[self.__head]
 
-    return q
+				local name = dtask[1]
+				local callback = dtask[2]
+				local ok, err = xpcall(callback, debug.traceback)
+				self:dequeue(true)
+				if not ok then
+					print("Task failed:", err)
+					local spl = name:split(": ")
+					if spl[1]:match("ailment pet") then
+						StateDB.active_ailments[spl[2]] = nil
+					elseif spl[1]:match("ailment baby") then
+						StateDB.baby_active_ailments[spl[2]] = nil
+					end
+				end
+				task.wait(.5) 
+			end
+			self.running = false
+		end
+	}
 end
-local queue = Queue.new({ compact_threshold = 512, max_size = 5000 })
+local queue = Queue.new()
+
 
 --[[ Helpers ]]-- 
 local function temp_platform()
@@ -241,11 +184,11 @@ local function temp_platform()
     part.Parent = workspace
 end
 
-local function get_current_location() -- optimized
+local function get_current_location()
 	return InteriorsM.get_current_location()["destination_id"]
 end 
 
-local function goto(destId, door, ops:table) -- optimized
+local function goto(destId, door, ops:table) 
 	if get_current_location() == destId then return end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
@@ -256,15 +199,15 @@ local function goto(destId, door, ops:table) -- optimized
 	task.wait(.5)
 end
 
-local function to_neighborhood() -- optimized
+local function to_neighborhood()
 	goto("Neighborhood", "MainDoor")
 end
 
-local function to_home() -- optimized
+local function to_home() 
 	goto("housing", "MainDoor", { house_owner=LocalPlayer })
 end
 
-local function to_mainmap() -- optimized
+local function to_mainmap() 
 	goto("MainMap", "Neighborhood/MainDoor")
 end
 
@@ -449,7 +392,7 @@ local function check_pet_owned(remote)
 end
 
 local function send_trade_request(user)  -- optimized
-	API["TradeAPI/SendTradeRequest"]:FireServer(game.Players[user])
+	safeFire("TradeAPI/SendTradeRequest", game.Players[user])
 	local timer = 120
 	while not UIManager.is_visible("TradeApp") and timer > 0 do
 		task.wait(1)
@@ -503,22 +446,20 @@ local function get_memory(unit)
 end
 
 local function gotovec(x, y, z)
-    run_parallel(function()
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        if actual_pet.unique and actual_pet.wrapper then
-            pcall(function() PetActions.pick_up(actual_pet.wrapper) end)
-            task.wait(0.4)
-            root.CFrame = CFrame.new(x, y, z)
-            task.wait(0.2)
-            if actual_pet.model then
-                pcall(function() safeFire("AdoptAPI/EjectBaby", actual_pet.model) end)
-            end
-        else
-            root.CFrame = CFrame.new(x, y, z)
-        end
-    end)
+	local char = LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	if actual_pet.unique and actual_pet.wrapper then
+		PetActions.pick_up(actual_pet.wrapper)
+		task.wait(0.4)
+		root.CFrame = CFrame.new(x, y, z)
+		task.wait(0.2)
+		if actual_pet.model then
+			safeFire("AdoptAPI/EjectBaby", actual_pet.model)
+		end
+	else
+		root.CFrame = CFrame.new(x, y, z)
+	end
 end
 
 local function webhook(title, description)
@@ -790,7 +731,7 @@ local pet_ailments = {
 				return
 			end
 			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"apple",
 					{
@@ -798,7 +739,7 @@ local pet_ailments = {
 					}
 				)
 			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"apple",
 					{
@@ -808,7 +749,7 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+		safeInvoke("PetObjectAPI/CreatePetObject",
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
@@ -844,7 +785,7 @@ local pet_ailments = {
 				return
 			end
 			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"water",
 					{
@@ -852,7 +793,7 @@ local pet_ailments = {
 					}
 				)
 			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"water",
 					{
@@ -862,7 +803,7 @@ local pet_ailments = {
 			end
 		end
 		local deadline = os.clock() + 10
-		API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+		safeInvoke("PetObjectAPI/CreatePetObject",
 			"__Enum_PetObjectCreatorType_2",
 			{
 				additional_consume_uniques={},
@@ -894,7 +835,7 @@ local pet_ailments = {
 		local baby_has_ailment = has_ailment_baby("sick")
 		goto("Hospital", "MainDoor")
 		repeat 
-			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+			safeInvoke("HousingAPI/ActivateInteriorFurniture",
 				"f-14",
 				"UseBlock",
 				"Yes",
@@ -979,10 +920,10 @@ local pet_ailments = {
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		gotovec(1000,25,1000)
 		task.wait(.3)
-		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
+		safeInvoke("ToolAPI/Equip", inv_get_category_unique("toys", "squeaky_bone_default"), {})
 		local deadline = os.clock() + 25
 		repeat 
-			API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+			safeInvoke("PetObjectAPI/CreatePetObject",
 				"__Enum_PetObjectCreatorType_1",
 				{
 					reaction_name = "ThrowToyReaction",
@@ -992,7 +933,7 @@ local pet_ailments = {
 			task.wait(5) 
 		until not has_ailment("play") or os.clock() > deadline
 		task.wait(.3)
-		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("toys", "squeaky_bone_default"), {})
+		safeInvoke("ToolAPI/Unequip", inv_get_category_unique("toys", "squeaky_bone_default"), {})
         if os.clock() > deadline then 
 			StateDB.active_ailments.play = nil
 			error("Out of limits") 
@@ -1012,7 +953,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		to_home()
-		API['HousingAPI/ActivateFurniture']:InvokeServer(
+		safeInvoke('HousingAPI/ActivateFurniture',
 			LocalPlayer,
 			furn.toilet.unique,
 			furn.toilet.usepart,
@@ -1074,14 +1015,14 @@ local pet_ailments = {
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local deadline = os.clock() + 60
 		gotovec(1000,25,1000)
-		API["ToolAPI/Equip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
+		safeInvoke("ToolAPI/Equip", inv_get_category_unique("strollers", "stroller-default"), {})
 		repeat 
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()			
 		until not has_ailment("ride") or os.clock() > deadline
-		API["ToolAPI/Unequip"]:InvokeServer(inv_get_category_unique("strollers", "stroller-default"), {})
+		safeInvoke("ToolAPI/Unequip", inv_get_category_unique("strollers", "stroller-default"), {})
 		if os.clock() > deadline then 
 			StateDB.active_ailments.ride = nil
 			error("Out of limits") 
@@ -1101,7 +1042,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		to_home()
-		API['HousingAPI/ActivateFurniture']:InvokeServer(
+		safeInvoke('HousingAPI/ActivateFurniture',
 			LocalPlayer,
 			furn.bath.unique,
 			furn.bath.usepart,
@@ -1134,14 +1075,14 @@ local pet_ailments = {
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		local deadline = os.clock() + 60
 		gotovec(1000,25,1000)
-		API["AdoptAPI/HoldBaby"]:FireServer(actual_pet.model)
+		safeFire("AdoptAPI/HoldBaby", actual_pet.model)
 		repeat
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()				
 		until not has_ailment("walk") or os.clock() > deadline
-		API["AdoptAPI/EjectBaby"]:FireServer(pet.model)
+		safeFire("AdoptAPI/EjectBaby", pet.model)
 		if os.clock() > deadline then 
 			StateDB.active_ailments.walk = nil
 			error("Out of limits") 
@@ -1189,7 +1130,7 @@ local pet_ailments = {
 		local money = ClientData.get("money")
 		local age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
 		to_home()
-		API['HousingAPI/ActivateFurniture']:InvokeServer(
+		safeInvoke('HousingAPI/ActivateFurniture',
 			LocalPlayer,
 			furn.bed.unique,
 			furn.bed.usepart,
@@ -1218,7 +1159,7 @@ local pet_ailments = {
 			return 
 		end
 		for k,_ in loader("new:AilmentsDB") do
-			API["AilmentsAPI/ChooseMysteryAilment"]:FireServer(
+			safeFire("AilmentsAPI/ChooseMysteryAilment",
 				actual_pet.unique,
 				"mystery",
 				1,
@@ -1301,7 +1242,7 @@ baby_ailments = {
 				return 
 			end
 			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"apple",
 					{
@@ -1309,7 +1250,7 @@ baby_ailments = {
 					}
 				)
 			else
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"apple",
 					{
@@ -1320,7 +1261,7 @@ baby_ailments = {
 		end
 		local deadline = os.clock() + 5
 		repeat 
-			API["ToolAPI/ServerUseTool"]:FireServer(
+			safeFire("ToolAPI/ServerUseTool",
 				inv_get_category_unique("food", "apple"),
 				"END"
 			)
@@ -1344,7 +1285,7 @@ baby_ailments = {
 				return 
 			end			
 			if money > 20 then
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"water",
 					{
@@ -1352,7 +1293,7 @@ baby_ailments = {
 					}
 				)
 			else 
-				API["ShopAPI/BuyItem"]:InvokeServer(
+				safeInvoke("ShopAPI/BuyItem",
 					"food",
 					"water",
 					{
@@ -1363,7 +1304,7 @@ baby_ailments = {
 		end
         local deadline = os.clock() + 5
 		repeat			
-			API["ToolAPI/ServerUseTool"]:FireServer(
+			safeFire("ToolAPI/ServerUseTool",
 				inv_get_category_unique("food", "water"),
 				"END"
 			)
@@ -1388,7 +1329,7 @@ baby_ailments = {
 		end
 		repeat 
 			goto("Hospital", "MainDoor")
-			API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+			safeInvoke("HousingAPI/ActivateInteriorFurniture",
 				"f-14",
 				"UseBlock",
 				"Yes",
@@ -1489,7 +1430,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		to_home()
 		task.spawn(function() 
-			API['HousingAPI/ActivateFurniture']:InvokeServer(
+			safeInvoke('HousingAPI/ActivateFurniture',
 				LocalPlayer,
 				furn.bath.unique,
 				furn.bath.usepart,
@@ -1544,7 +1485,7 @@ baby_ailments = {
 		local money = ClientData.get("money")
 		to_home()
 		task.spawn(function() 
-			API['HousingAPI/ActivateFurniture']:InvokeServer(
+			safeInvoke('HousingAPI/ActivateFurniture',
 				LocalPlayer,
 				furn.bed.unique,
 				furn.bed.usepart,
@@ -1607,7 +1548,7 @@ local function init_autofarm() -- optimized
 		
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		if pet and not _G.flag_if_no_one_to_farm then
-			API["ToolAPI/Unequip"]:InvokeServer(
+			safeInvoke("ToolAPI/Unequip",
 				pet.pet_unique,
 				{
 					use_sound_delay = true,
@@ -1618,7 +1559,7 @@ local function init_autofarm() -- optimized
 		
 		local d2kitty = inv_get_category_unique("pets", "2d_kitty")
 		if owned_pets[d2kitty] then
-			API["ToolAPI/Equip"]:InvokeServer(
+			safeInvoke("ToolAPI/Equip",
 				d2kitty,
 				{
 					use_sound_delay = true,
@@ -1632,7 +1573,7 @@ local function init_autofarm() -- optimized
 			if _G.InternalConfig.FarmPriority == "pets" then
 				for k,v in pairs(owned_pets) do
 					if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1650,7 +1591,7 @@ local function init_autofarm() -- optimized
 			else 
 				for k,v in pairs(owned_pets) do
 					if (v.name:lower()):find("egg") then
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1667,7 +1608,7 @@ local function init_autofarm() -- optimized
 				end
 				if not flag then
 					for k, _ in pairs(owned_pets) do
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1687,7 +1628,7 @@ local function init_autofarm() -- optimized
 			if _G.InternalConfig.FarmPriority == "pets" then			
 				for k,v in pairs(owned_pets) do
 					if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1705,7 +1646,7 @@ local function init_autofarm() -- optimized
 			else 
 				for k,v in pairs(owned_pets) do
 					if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1727,7 +1668,7 @@ local function init_autofarm() -- optimized
 					print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
 						for k, v in pairs(owned_pets) do
 							if v.rarity == "legendary" then
-								API["ToolAPI/Equip"]:InvokeServer(
+								safeInvoke("ToolAPI/Equip",
 									k,
 									{
 										use_sound_delay = true,
@@ -1749,7 +1690,7 @@ local function init_autofarm() -- optimized
 			if not flag then
 				if not _G.flag_if_no_one_to_farm then  
 					for k, _ in pairs(owned_pets) do
-						API["ToolAPI/Equip"]:InvokeServer(
+						safeInvoke("ToolAPI/Equip",
 							k,
 							{
 								use_sound_delay = true,
@@ -1810,7 +1751,7 @@ end
 local function init_baby_autofarm() -- optimized
 	while task.wait(1) do
 		if ClientData.get("team") ~= "Babies" then
-			API["TeamAPI/ChooseTeam"]:InvokeServer(
+			safeInvoke("TeamAPI/ChooseTeam",
 				"Babies",
 				{
 					dont_respawn = true,
@@ -1822,7 +1763,7 @@ local function init_baby_autofarm() -- optimized
 		if not _G.InternalConfig.FarmPriority then
 			local pet = ClientData.get("pet_char_wrappers")[1]
 			if pet then
-				API["ToolAPI/Unequip"]:InvokeServer(
+				safeInvoke("ToolAPI/Unequip",
 					pet.pet_unique,
 					{
 						use_sound_delay = true,
@@ -1847,7 +1788,7 @@ local function async_auto_buy() -- optimized
 	local cost = InventoryDB.pets[_G.InternalConfig.AutoFarmFilter.EggAutoBuy].cost
 	if cost then
 		local farmd = farmed.money
-		API["ShopAPI/BuyItem"]:InvokeServer(
+		safeInvoke("ShopAPI/BuyItem",
 			"pets",
 			_G.InternalConfig.AutoFarmFilter.EggAutoBuy,
 			{
@@ -1881,7 +1822,7 @@ local function init_auto_recycle()
 		end
 	end
 
-	API["HousingAPI/ActivateInteriorFurniture"]:InvokeServer(
+	safeInvoke("HousingAPI/ActivateInteriorFurniture",
 		"f-9",
 		"UseBlock",
 		{
@@ -1971,15 +1912,15 @@ local function init_auto_trade() -- optimized
 				end
 				pcall(function()
 				for k,_ in pairs(pets_to_send) do 
-					API["TradeAPI/AddItemToOffer"]:FireServer(k)
+					safeFire("TradeAPI/AddItemToOffer", k)
 					task.wait(.2)
 				end
 				repeat 
 					while UIManager.apps.TradeApp:_get_local_trade_state().current_stage == "negotiation" do
-						API["TradeAPI/AcceptNegotiation"]:FireServer()
+						safeFire("TradeAPI/AcceptNegotiation")
 						task.wait(5)
 					end
-					API["TradeAPI/ConfirmTrade"]:FireServer()
+					safeFire("TradeAPI/ConfirmTrade")
 					task.wait(5)
 				until not UIManager.is_visible("TradeApp")
 			end)
@@ -2011,7 +1952,7 @@ local function async_lurebox_farm()
 	local function to_home_and_check_bait_placed()
 		to_home()
 		if not debug.getupvalue(LureBaitHelper.run_tutorial, 11)() then
-			API["HousingAPI/ActivateFurniture"]:InvokeServer(
+			safeInvoke("HousingAPI/ActivateFurniture",
 				LocalPlayer,
 				furn.lurebox.unique,
 				"UseBlock",
@@ -2023,7 +1964,7 @@ local function async_lurebox_farm()
 			print("[Lure] Tried to place bait.")
 		end
 
-		API["HousingAPI/ActivateFurniture"]:InvokeServer(
+		safeInvoke("HousingAPI/ActivateFurniture",
 			LocalPlayer,
 			furn.lurebox.unique,
 			"UseBlock",
@@ -2055,9 +1996,9 @@ local function async_gift_autoopen() -- чета тут не так
 	end
 	for k,_ in pairs(get_owned_category("gifts")) do
 		if k.remote:lower():match("box") or v.remote:lower():match("chest") then
-			API["LootBoxAPI/ExchangeItemForReward"]:InvokeServer(k.remote,k)
+			safeInvoke(r"LootBoxAPI/ExchangeItemForReward", k.remote,k)
 		else
-			API["ShopAPI/OpenGift"]:InvokeServer(k)
+			safeInvoke("ShopAPI/OpenGift", k)
 		end
 		task.wait(.5) 
 	end
@@ -2105,7 +2046,7 @@ local function async_auto_give_potion()
 		if count_of_potions > 0 then
 			equiped_pet = ClientData.get("pet_char_wrappers")[1]
 			if equiped_pet then
-				API["ToolAPI/Unequip"]:InvokeServer(
+				safeInvoke("ToolAPI/Unequip",
 					equiped_pet.pet_unique,
 					{
 						use_sound_delay = true,
@@ -2113,7 +2054,7 @@ local function async_auto_give_potion()
 					}
 				)
 				task.wait(1)
-				API["ToolAPI/Equip"]:InvokeServer(
+				safeInvoke("ToolAPI/Equip",
 					k,
 					{
 						use_sound_delay = true,
@@ -2121,6 +2062,7 @@ local function async_auto_give_potion()
 					}
 				)
 			end
+			
 			task.wait(1)
 			for a,_ in ipairs(potions) do
 				local others = {}
@@ -2129,7 +2071,7 @@ local function async_auto_give_potion()
 						if j ~= i then table.insert(others, p) end
 					end
 				end
-				API["PetObjectAPI/CreatePetObject"]:InvokeServer(
+				safeInvoke("PetObjectAPI/CreatePetObject",
 					"__Enum_PetObjectCreatorType_2",
 					{
 						additional_consume_uniques = {
@@ -2144,7 +2086,7 @@ local function async_auto_give_potion()
 		end
 	end
 	task.wait(1)
-	API["ToolAPI/Equip"]:InvokeServer(
+	safeInvoke("ToolAPI/Equip",
 		first_equiped_pet.pet_unique or actual_pet.unique or "",
 		{
 			use_sound_delay = true,
@@ -2248,11 +2190,11 @@ local function license() -- optimized
 		print("[+] License found.")
 	else
 		print("[?] License not found, trying to get..")
-		API["SettingsAPI/SetBooleanFlag"]:FireServer("has_talked_to_trade_quest_npc", true)
-		API["TradeAPI/BeginQuiz"]:FireServer()
+		safeFire("SettingsAPI/SetBooleanFlag", "has_talked_to_trade_quest_npc", true)
+		safeFire("TradeAPI/BeginQuiz")
 		task.wait(.2)
 		for _,v in pairs(ClientData.get("trade_license_quiz_manager").quiz) do
-			API["TradeAPI/AnswerQuizQuestion"]:FireServer(v.answer)
+			safeFire("TradeAPI/AnswerQuizQuestion", v.answer)
 		end
 		print("[+] Successed.")
 	end
@@ -2663,15 +2605,15 @@ end)()
 	repeat 
 		task.wait(1)
 	until not LocalPlayer.PlayerGui.AssetLoadUI.Enabled
-	API["TeamAPI/ChooseTeam"]:InvokeServer("Parents", {source_for_logging="intro_sequence"})
+	safeInvoke("TeamAPI/ChooseTeam", "Parents", {source_for_logging="intro_sequence"})
 	task.wait(1)
 	UIManager.set_app_visibility("MainMenuApp", false)
 	UIManager.set_app_visibility("NewsApp", false)
 	UIManager.set_app_visibility("DialogApp", false)
 	task.wait(3)
-	API["DailyLoginAPI/ClaimDailyReward"]:InvokeServer()
+	safeInvoke("DailyLoginAPI/ClaimDailyReward")
 	UIManager.set_app_visibility("DailyLoginApp", false)
-	API["PayAPI/DisablePopups"]:FireServer()
+	safeFire("PayAPI/DisablePopups")
 	repeat task.wait(.3) until LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and LocalPlayer.Character.Humanoid and LocalPlayer.PlayerGui
 	task.wait(1)
 end)()
@@ -2786,7 +2728,7 @@ end)
 	end
 	local cframe
 	if not furn.bed then
-		local result = API["HousingAPI/BuyFurnitures"]:InvokeServer(
+		local result = safeInvoke("HousingAPI/BuyFurnitures",
 			{
 				{
 					kind = "basicbed",
@@ -2820,7 +2762,7 @@ end)
 		}
 	end
 	if not furn.bath then
-		local result = API["HousingAPI/BuyFurnitures"]:InvokeServer(
+		local result = safeInvoke("HousingAPI/BuyFurnitures",
 			{
 				{
 					kind = "cheap_pet_bathtub",
@@ -2853,7 +2795,7 @@ end)
 		}
 	end
 	if not furn.toilet then
-		local result = API["HousingAPI/BuyFurnitures"]:InvokeServer(
+		local result = safeInvoke("HousingAPI/BuyFurnitures",
 			{
 				{
 					kind = "ailments_refresh_2024_litter_box",
@@ -2886,7 +2828,7 @@ end)
 		}
 	end
 	if not furn.lurebox then
-		local result = API["HousingAPI/BuyFurnitures"]:InvokeServer(
+		local result = safeInvoke("HousingAPI/BuyFurnitures",
 			{
 				{
 					kind = "lures_2033_normal_lure",
@@ -2925,7 +2867,7 @@ end)
 end)()
 
 task.spawn(function() -- optimized
-	if game.Workspace.FarmPart then return end
+	if game.Workspace:FindFirstChild("FarmPart") then return end
 	local part:Part = Instance.new("Part")
 	part.Size = Vector3.new(150, 1, 150)
 	part.Position = Vector3.new(1000, 20, 1000) 
