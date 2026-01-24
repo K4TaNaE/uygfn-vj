@@ -306,16 +306,10 @@ end
 
 local function get_equiped_pet_ailments()
     local wrapper = ClientData.get("pet_char_wrappers")[1]
-    if not wrapper then return {} end
-    local ailments = wrapper.pet_ailments
-    if type(ailments) ~= "table" then
-        return {}
-    end
+    if not wrapper then return nil end
     local result = {}
-    for name, active in pairs(ailments) do
-        if active then
-            result[name] = true
-        end
+    for name in pairs(wrapper.pet_ailments) do
+		result[name] = true
     end
     return result
 end
