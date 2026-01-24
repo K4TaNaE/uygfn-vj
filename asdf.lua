@@ -83,6 +83,9 @@ Scheduler.tasks = {}
 	**fallback**: function that will be called on error.
 ]]
 function Scheduler:add(name, interval, callback, once, now, fallback)
+	if type(callback) == "function" then
+        callback = coroutine.create(callback)
+    end
     self.tasks[name] = {
         interval = interval,
         cb = callback,
@@ -117,17 +120,6 @@ function Scheduler:resume(name)
     t.pause_until = nil
     t.next = os.clock() + t.interval
 end
-
--- function Scheduler:sleep(seconds)
---     local id = "delay_" .. tostring(math.random(1, 999999))
---     local start = os.clock()
-
---     Scheduler:add(id, 0.25, function()
---         if (os.clock() - start) >= seconds then
---             Scheduler:remove(id)
---         end
---     end, false, true)
--- end
 
 function Scheduler:_awaitTaskWrapper(name, checkFn, timeout)
     local thread = coroutine.running()
@@ -574,9 +566,9 @@ local function gotovec(x, y, z)
 	Scheduler:add("gotovec_1", 1, function() 
 		if actual_pet.unique and actual_pet.wrapper then
 			PetActions.pick_up(actual_pet.wrapper)
-			Scheduler:sleep("gotovec_1", .4)
+			Scheduler:sleep(.4)
 			root.CFrame = CFrame.new(x, y, z)
-			Scheduler:sleep("gotovec_1", .2)
+			Scheduler:sleep(.2)
 			if actual_pet.model then
 				safeFire("AdoptAPI/EjectBaby", actual_pet.model)
 			end
@@ -2285,7 +2277,8 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         end
         if now >= t.next then
             t.running = true
-            local ok, err = pcall(t.cb)
+            local ok, err = coroutine.resume(t.cb)
+			print("runned", name)
             if not ok then
                 warn("Error to task:", name, err)
             end
