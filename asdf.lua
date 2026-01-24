@@ -1664,7 +1664,6 @@ local function init_autofarm() -- optimized
             try_equip(function(k,v) return not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") end)
         end
         if not flag and _G.InternalConfig.OppositeFarmEnabled and not _G.flag_if_no_one_to_farm then
-            _G.flag_opposite_checked = true
             print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
             local legendary = try_equip(function(k,v) return v.rarity == "legendary" end)
             if not legendary then
@@ -1682,8 +1681,11 @@ local function init_autofarm() -- optimized
 	end
 
 	if not flag or not equiped() then 
+		print("flag: ", flag, "equiped: ", equiped())
 		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		return
 	end
+	Scheduler:pause("init_autofarm", 2)
 	pet_update()
 
 	if not Scheduler:exists("init_autofarm_main") then 
