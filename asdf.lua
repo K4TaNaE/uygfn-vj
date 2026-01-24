@@ -92,7 +92,7 @@ Queue.new = function()
 		dequeue = function(self,raw)
 			if self.__head > self.__tail then return end
 			local v = self._data[self.__head]
-			self.data[self.head] = nil
+			self.data[self.__head] = nil
 			self.__head += 1
 			return v
 		end,
