@@ -92,7 +92,7 @@ Queue.new = function()
 		dequeue = function(self,raw)
 			if self.__head > self.__tail then return end
 			local v = self._data[self.__head]
-			self.data[self.__head] = nil
+			self._data[self.__head] = nil
 			self.__head += 1
 			return v
 		end,
@@ -167,6 +167,27 @@ Queue.new = function()
 end
 local queue = Queue.new()
 
+local Scheduler = {}
+Scheduler.tasks = {}
+
+function Scheduler:add(name, interval, callback)
+    self.tasks[name] = {
+        interval = interval,
+        next = os.clock() + interval,
+        cb = callback
+    }
+end
+
+function Scheduler:remove(name)
+    self.tasks[name] = nil
+end
+
+function Scheduler:change_interval(name, interval)
+	local t = self.tasks[name]
+	if t then
+		t.interval = interval
+	end
+end
 
 --[[ Helpers ]]-- 
 local function temp_platform()
@@ -304,20 +325,17 @@ local function get_owned_category(category)
     return result
 end
 
-local function get_equiped_pet_ailments()
-    local wrapper = ClientData.get("pet_char_wrappers")[1]
-    if not wrapper then return {} end
-    local ailments = wrapper.pet_ailments
-    if type(ailments) ~= "table" then
-        return {}
-    end
-    local result = {}
-    for name, active in pairs(ailments) do
-        if active then
-            result[name] = true
-        end
-    end
-    return result
+local function get_equiped_pet_ailments() -- optimized
+	local ailments = {}
+	local pet = ClientData.get("pet_char_wrappers")[1]
+	if pet then
+		local path = ClientData.get("ailments_manager")["ailments"][pet.pet_unique]
+		if not path then return nil end
+		for k,_ in pairs(path) do
+			ailments[k] = true
+		end
+	end
+	return ailments
 end
 
 local function has_ailment(ailment) 
@@ -1841,14 +1859,14 @@ local function init_auto_trade() -- optimized
 		exist = true
 	end
 
-	game.Players.PlayerAdded:Connect(function(player)
+	_G.CONNECTIONS.TradePA = game.Players.PlayerAdded:Connect(function(player)
 		if player == user then 
 			player.CharacterAdded:Wait()
 			exist = true 
 		end
 	end)
 	
-	game.Players.PlayerRemoving:Connect(function(player) 
+	_G.CONNECTIONS.TradePR = game.Players.PlayerRemoving:Connect(function(player) 
 		if player == user then
 			exist = false
 		end
@@ -2210,7 +2228,24 @@ end
 	print("[+] API dehashed.")
 end)()
 
-NetworkClient.ChildRemoved:Connect(function()
+_G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function() -- Run Scheduler
+    local now = os.clock()
+    for _, task in pairs(Scheduler.tasks) do
+        if now >= task.next then
+            task.next = now + task.interval
+            task.cb()
+        end
+    end
+end)
+
+local function __CONN_CLEANUP()
+	for _, v in pairs(_G.CONNECTIONS) do
+		v:Disconnect()
+	end
+end
+game:BindToClose(__CONN_CLEANUP)
+
+_G.CONNECTIONS.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
 	local send_responce = function()
 		return HttpService:RequestAsync({
 			Url = "https://pornhub.com",
@@ -2225,7 +2260,12 @@ NetworkClient.ChildRemoved:Connect(function()
 	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 end)
 
-LocalPlayer.Idled:Connect(function() -- anti afk
+Scheduler:add("gc", 300, function() -- watchdog
+	print('watchdog working')
+	collectgarbage("collect")
+end) 
+
+_G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
   VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
   task.wait(1)
   VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
