@@ -208,24 +208,22 @@ Queue.new = function()
 					self.running = false
 					return
 				end
-
 				local dtask = self._data[self.__head]
 				self:dequeue(true)
-
 				local name = dtask[1]
 				local callback = dtask[2]
 				local ailm = dtask[3]
-				local rollback = function() 
-					if name == "ailment pet" then
-						StateDB.active_ailments[ailm] = nil
-					elseif name == "ailment baby" then
-						StateDB.baby_active_ailments[ailm] = nil
+				task.spawn(function()
+					local ok, err = pcall(callback)
+					if not ok then
+						if name == "ailment pet" then
+							StateDB.active_ailments[ailm] = nil
+						elseif name == "ailment baby" then
+							StateDB.baby_active_ailments[ailm] = nil
+						end
 					end
-				end
-				Scheduler:add(name, 1, function()
-					callback()
 					process_next()
-				end, true, true, rollback)
+				end)
 			end
 			process_next()
 		end
