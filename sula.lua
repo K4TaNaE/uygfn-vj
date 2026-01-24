@@ -9,6 +9,7 @@ local cloneref = cloneref or function(obj) return obj end -- potassium, seliware
 local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
 
 --[[ Services ]]--
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -170,23 +171,48 @@ local queue = Queue.new()
 local Scheduler = {}
 Scheduler.tasks = {}
 
-function Scheduler:add(name, interval, callback)
-    self.tasks[name] = {
+--[[
+	**name**: name of task.\
+	**interval**: function will run every "interval" secconds -> int.\
+	**callback**: function that will be called.\
+	**once**: if true will run only once.\
+	**now**: if true will run now and every "interval" secconds
+]]
+function Scheduler:add(name: string, interval: number, callback, once: boolean, now: boolean)
+	self.tasks[name] = {
         interval = interval,
-        next = os.clock() + interval,
-        cb = callback
+        cb = callback,
+
+        once = once == true,
+        next = now == true and os.clock() or (os.clock() + interval)
     }
 end
 
 function Scheduler:remove(name)
-    self.tasks[name] = nil
+    if self.tasks[name] then
+        self.tasks[name] = nil
+    end
 end
 
 function Scheduler:change_interval(name, interval)
-	local t = self.tasks[name]
-	if t then
-		t.interval = interval
-	end
+    local t = self.tasks[name]
+    if t then
+        t.interval = interval
+        t.next = os.clock() + interval
+    end
+end
+
+function waitForCondition(check, timeout)
+    local start = os.clock()
+    while true do
+        if check() then
+            return true
+        end
+        if timeout and os.clock() - start >= timeout then
+            return false
+        end
+        RunService.Heartbeat:Wait()
+    end
 end
 
 --[[ Helpers ]]-- 
@@ -2218,7 +2244,6 @@ local function license() -- optimized
 	end
 end
 
-
 --[[ Init ]]--
 ;(function() -- api deash
 	print("[?] Starting..")
@@ -2228,12 +2253,19 @@ end
 	print("[+] API dehashed.")
 end)()
 
-_G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function() -- Run Scheduler
+_G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
-    for _, task in pairs(Scheduler.tasks) do
-        if now >= task.next then
-            task.next = now + task.interval
-            task.cb()
+    for name, t in next, Scheduler.tasks do
+        if now >= t.next then
+            local ok, err = pcall(t.cb)
+            if not ok then
+                warn("Scheduler task error:", name, err)
+            end
+            if t.once then
+                Scheduler.tasks[name] = nil
+            else
+                t.next = now + t.interval
+            end
         end
     end
 end)
@@ -2245,7 +2277,8 @@ local function __CONN_CLEANUP()
 end
 _G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
 
-if not _G.Looping.NetworkHook then 
+_G.Looping = {}
+if not _G.Looping["NetworkHook"] then 
 	_G.Looping.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
 		local send_responce = function()
 			return HttpService:RequestAsync({
@@ -2253,24 +2286,29 @@ if not _G.Looping.NetworkHook then
 				Method = "GET"
 			})
 		end
-		repeat
-			print("No internet. Waiting..")
-			task.wait(5)
-			local success, _ = pcall(send_responce)
-		until success 
-		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+		Scheduler:add("InternetCheck", 5, function() 
+			local success = pcall(send_responce)
+			if success then
+				Scheduler:remove("InternetCheck")
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+			else
+				print("[!] No internet, waiting...")
+			end
+		end, false, true)
 	end)
 end 
 
 Scheduler:add("gc", 300, function() -- watchdog
 	print('watchdog working')
-	collectgarbage("collect")
-end) 
+	-- collectgarbage("step", 260)
+end, false, false) 
 
 _G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
-  VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-  task.wait(1)
-  VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	Scheduler:add("AntiAFK", 0, function() 
+		VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+		task.wait(.5)
+		VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+	end, true, true)
 end)
 
 -- internal config init
