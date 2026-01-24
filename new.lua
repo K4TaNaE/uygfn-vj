@@ -66,132 +66,105 @@ local Cooldown = {
 local furn = {}
 _G.InternalConfig = {}
 _G.flag_if_no_one_to_farm = false
+_G.CONNECTIONS = {}
+_G.CLEANUP_INSTANCES = {}
 
 --[[ Lua Stuff ]]
-local Queue = {}
-Queue.new = function(opts)
-    opts = opts or {}
-    local COMPACT_THRESHOLD = opts.compact_threshold or 1024
-    local q = {
-        head = 1,
-        tail = 0,
-        data = {},
-        running = false,
-        blocked = false,
-        max_size = opts.max_size or 10000,
-    }
+local Queue = {} 
+Queue.new = function() 
+	return {
+		__head = 1,
+		__tail = 0,
+		_data = {} ,
+		running = false,
+		blocked = false,
 
-    local function compact(self)
-        if self.head <= 1 then return end
-        local new = {}
-        local idx = 1
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v ~= nil then
-                new[idx] = v
-                idx = idx + 1
-            end
-        end
-        self.data = new
-        self.tail = idx - 1
-        self.head = 1
-    end
+		enqueue = function(self, ttask: table) -- task must be {taskname, callback}.
+			if self.blocked then return end
+			if type(ttask) == "table" and type(ttask[1]) == "string" and type(ttask[2]) == "function" then
+				self.__tail += 1
+				self._data[self.__tail] = ttask
 
-    function q:enqueue(task)
-        if self.blocked then return false, "blocked" end
-        if type(task) ~= "table" or type(task[1]) ~= "string" or type(task[2]) ~= "function" then
-            return false, "invalid"
-        end
-        if (self.tail - self.head + 1) >= self.max_size then
-            return false, "overflow"
-        end
-        self.tail = self.tail + 1
-        self.data[self.tail] = task
-        if not self.running then
-            task.spawn(function()
-                local ok, err = pcall(function() self:run() end)
-                if not ok then warn("Queue runner crashed:", err) end
-            end)
-        end
-        if self.head > COMPACT_THRESHOLD then compact(self) end
-        return true
-    end
+				if not self.running then self:__run() end
+			end
+		end,
 
-    function q:dequeue()
-        if self.head > self.tail then return nil end
-        local v = self.data[self.head]
-        self.data[self.head] = nil
-        self.head = self.head + 1
-        return v
-    end
+		dequeue = function(self,raw)
+			if self.__head > self.__tail then return end
+			local v = self._data[self.__head]
+			self._data[self.__head] = nil
+			self.__head += 1
+			return v
+		end,
 
-    function q:empty() return self.head > self.tail end
-    function q:enqblock() self.blocked = true end
-    function q:enqunblock() self.blocked = false end
+		enqblock = function(self)
+			self.blocked = true
+		end,
 
-    function q:destroy_linked(pattern)
-        if not pattern or self:empty() then return end
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v and type(v[1]) == "string" and v[1]:find(pattern, 1, true) then
-                self.data[i] = nil
-            end
-        end
-        if (self.tail - self.head) > (COMPACT_THRESHOLD * 2) then compact(self) end
-    end
+		enqunblock = function(self) 
+			self.blocked = false
+		end,
 
-    function q:taskdestroy(p1, p2)
-        if not p1 or not p2 or self:empty() then return end
-        for i = self.head, self.tail do
-            local v = self.data[i]
-            if v and type(v[1]) == "string" and v[1]:find(p1,1,true) and v[1]:find(p2,1,true) then
-                self.data[i] = nil
-            end
-        end
-        if (self.tail - self.head) > (COMPACT_THRESHOLD * 2) then compact(self) end
-    end
+		destroy_linked = function(self, taskname) 
+			if not self:empty() then
+				for k,v in ipairs(self._data) do
+					if v[1]:match(taskname) then
+						table.remove(self._data, k)
+						self.__tail -= 1
+					end
+				end
+			end
+		end,
 
-    function q:asyncrun(taskt)
-        if type(taskt) ~= "table" or type(taskt[2]) ~= "function" then return false end
-        task.spawn(function()
-            local ok, err = xpcall(taskt[2], debug.traceback)
-            if not ok then warn("Async error:", err) end
-        end)
-        return true
-    end
+		taskdestroy = function(self, pattern1, pattern2) 
+			if not self:empty() then 
+				for k,v in ipairs(self._data) do
+					if v[1]:match(pattern1) and v[1]:match(pattern2) then
+						table.remove(self._data, k)
+						self.__tail -= 1
+					end
+				end
+			end
+		end,
 
-    function q:run()
-        if self.running then return end
-        self.running = true
-        while not self:empty() do
-            local dtask = self.data[self.head]
-            if dtask == nil then
-                self.head = self.head + 1
-                continue
-            end
-            self.data[self.head] = nil
-            self.head = self.head + 1
-            local name, callback = dtask[1], dtask[2]
-            local ok, err = xpcall(callback, debug.traceback)
-            if not ok then
-                warn("Queue task failed:", name, err)
-                if type(name) == "string" then
-                    local spl = name:split(": ")
-                    if spl and #spl >= 2 then
-                        if spl[1] == "ailment pet" then pcall(function() StateDB.active_ailments[spl[2]] = nil end) end
-                        if spl[1] == "ailment baby" then pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end) end
-                    end
-                end
-            end
-            task.defer(function() end) 
-	        end
-        self.running = false
-        if self.head > COMPACT_THRESHOLD then compact(self) end
-    end
+		empty = function(self)
+			return self.__head > self.__tail
+		end,
 
-    return q
+		asyncrun = function(self, taskt: table)
+			task.spawn(function()
+				local ok, err = pcall(taskt[2])
+				if not ok then
+					warn("Async error:", err)
+				end
+			end)
+		end,
+
+		__run = function(self)
+			self.running = true
+
+			while not self:empty() do
+				local dtask = self._data[self.__head]
+
+				local name = dtask[1]
+				local callback = dtask[2]
+				local ok, err = xpcall(callback, debug.traceback)
+				self:dequeue(true)
+				if not ok then
+					print("Task failed:", err)
+					local spl = name:split(": ")
+					if spl[1]:match("ailment pet") then
+						StateDB.active_ailments[spl[2]] = nil
+					elseif spl[1]:match("ailment baby") then
+						StateDB.baby_active_ailments[spl[2]] = nil
+					end
+				end
+				task.wait(.5) 
+			end
+			self.running = false
+		end
+	}
 end
-
 local queue = Queue.new()
 
 
@@ -2894,7 +2867,7 @@ end)
 end)()
 
 task.spawn(function() -- optimized
-	if game.Workspace.FarmPart then return end
+	if game.Workspace:FindFirstChild("FarmPart") then return end
 	local part:Part = Instance.new("Part")
 	part.Size = Vector3.new(150, 1, 150)
 	part.Position = Vector3.new(1000, 20, 1000) 
