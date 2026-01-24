@@ -71,6 +71,99 @@ _G.CONNECTIONS = {}
 _G.CLEANUP_INSTANCES = {}
 
 --[[ Lua Stuff ]]
+local Scheduler = {}
+Scheduler.tasks = {}
+
+--[[
+	**name**: name of task.\
+	**interval**: function will run every "interval" secconds -> int.\
+	**callback**: function that will be called.\
+	**once**: if true will run only once.\
+	**now**: if true will run now and every "interval" secconds.\
+	**fallback**: function that will be called on error.
+]]
+function Scheduler:add(name, interval, callback, once, now, fallback)
+	if type(callback) == "function" then
+        callback = coroutine.create(callback)
+    end
+    self.tasks[name] = {
+        interval = interval,
+        cb = callback,
+        once = once == true,
+        next = now == true and os.clock() or (os.clock() + interval),
+		running = false, 
+        paused = false,
+        pause_until = nil,
+		fallback = fallback or function() end
+    } 
+end
+
+function Scheduler:remove(name)
+    if self.tasks[name] then
+        self.tasks[name] = nil
+    end
+end
+
+function Scheduler:change_interval(name, interval)
+    local t = self.tasks[name]
+    if t then
+        t.interval = interval
+        t.next = os.clock() + interval
+    end
+end
+
+function Scheduler:resume(name)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = false
+    t.pause_until = nil
+    t.next = os.clock() + t.interval
+end
+
+function Scheduler:_awaitTaskWrapper(name, checkFn, timeout)
+    local thread = coroutine.running()
+    local start = os.clock()
+
+    -- создаём задачу, НЕ удаляя её заранее
+    Scheduler:add(name, 0.1, function()
+        if checkFn() then
+            Scheduler:remove(name)
+            coroutine.resume(thread, true)
+            return
+        end
+
+        if timeout and (os.clock() - start) >= timeout then
+            Scheduler:remove(name)
+            coroutine.resume(thread, false)
+            return
+        end
+    end, false, true)
+
+    return coroutine.yield()
+end
+
+
+function Scheduler:waitCondition(name, fn, onDone, timeout)
+    local ok = Scheduler:_awaitTaskWrapper(name, fn, timeout)
+    if ok and onDone then
+        onDone()
+	end
+		return ok
+end
+
+function Scheduler:sleep(seconds)
+    return Scheduler:_awaitTaskWrapper(
+        "sleep_" .. tostring(math.random(1, 999999)),
+        function() return false end,
+        seconds
+    )
+end
+
+function Scheduler:exists(name) 
+	return self.tasks[name] 
+end
+
 local Queue = {} 
 Queue.new = function() 
 	return {
@@ -80,9 +173,10 @@ Queue.new = function()
 		running = false,
 		blocked = false,
 
-		enqueue = function(self, ttask: table) -- task must be {taskname, callback}.
+		enqueue = function(self, ttask: table) -- task must be {taskname, callback, rollback}.
 			if self.blocked then return end
 			if type(ttask) == "table" and type(ttask[1]) == "string" and type(ttask[2]) == "function" then
+				ttask.rollback = ttask.rollback or ""
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
@@ -142,100 +236,35 @@ Queue.new = function()
 		end,
 
 		__run = function(self)
+			if self.running then return end
 			self.running = true
-
-			while not self:empty() do
+			local function process_next()
+				if self:empty() then
+					self.running = false
+					return
+				end
 				local dtask = self._data[self.__head]
-
+				self:dequeue(true)
 				local name = dtask[1]
 				local callback = dtask[2]
-				local ok, err = xpcall(callback, debug.traceback)
-				self:dequeue(true)
-				if not ok then
-					print("Task failed:", err)
-					local spl = name:split(": ")
-					if spl[1]:match("ailment pet") then
-						StateDB.active_ailments[spl[2]] = nil
-					elseif spl[1]:match("ailment baby") then
-						StateDB.baby_active_ailments[spl[2]] = nil
+				local ailm = dtask[3]
+				task.spawn(function()
+					local ok, err = pcall(callback)
+					if not ok then
+						if name == "ailment pet" then
+							StateDB.active_ailments[ailm] = nil
+						elseif name == "ailment baby" then
+							StateDB.baby_active_ailments[ailm] = nil
+						end
 					end
-				end
-				task.wait(.5) 
+					process_next()
+				end)
 			end
-			self.running = false
+			process_next()
 		end
 	}
 end
 local queue = Queue.new()
-
-local Scheduler = {}
-Scheduler.tasks = {}
-
---[[
-	**name**: name of task.\
-	**interval**: function will run every "interval" secconds -> int.\
-	**callback**: function that will be called.\
-	**once**: if true will run only once.\
-	**now**: if true will run now and every "interval" secconds
-]]
-function Scheduler:add(name, interval, callback, once, now)
-    self.tasks[name] = {
-        interval = interval,
-        cb = callback,
-        once = once == true,
-        next = now == true and os.clock() or (os.clock() + interval),
-        paused = false,
-        pause_until = nil
-    }
-end
-
-function Scheduler:remove(name)
-    if self.tasks[name] then
-        self.tasks[name] = nil
-    end
-end
-
-function Scheduler:change_interval(name, interval)
-    local t = self.tasks[name]
-    if t then
-        t.interval = interval
-        t.next = os.clock() + interval
-    end
-end
-
-function Scheduler:resume(name)
-    local t = self.tasks[name]
-    if not t then return end
-
-    t.paused = false
-    t.pause_until = nil
-    t.next = os.clock() + t.interval
-end
-
-function Scheduler:pause(name, seconds)
-    local t = self.tasks[name]
-    if not t then return end
-
-    t.paused = true
-    t.pause_until = os.clock() + (seconds or math.huge)
-end
-
-function Scheduler:exists(name) 
-	return self.tasks[name] 
-end
-
-local function waitForCondition(check, timeout: number)
-    local start = os.clock()
-    while true do
-        if check() then
-            return true
-        end
-        if timeout and os.clock() - start >= timeout then
-            return false
-        end
-        RunService.Heartbeat:Wait()
-    end
-end
 
 --[[ Helpers ]]-- 
 local function temp_platform()
@@ -261,9 +290,15 @@ local function goto(destId, door, ops:table)
 	if get_current_location() == destId then return end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
-	waitForCondition(function() return get_current_location() == destId end, 10)
-	game.Workspace:FindFirstChild("TempPart"):Destroy()
-	task.wait(.5)
+	Scheduler:waitCondition("goto_", function() 
+		return get_current_location() == destId
+	end, 
+	function() end,
+	10
+	)
+	local p = game.Workspace:FindFirstChild("TempPart")
+	if p then p:Destroy() end 
+	Scheduler:sleep(.5)
 end
 
 local function to_neighborhood()
@@ -455,18 +490,38 @@ local function check_pet_owned(remote)
     return false
 end
 
-local function send_trade_request(user)  -- optimized
-	safeFire("TradeAPI/SendTradeRequest", game.Players[user])
-	local timer = 120
-	while not UIManager.is_visible("TradeApp") and timer > 0 do
-		task.wait(1)
-		timer -=1 
-	end
-	if not UIManager.is_visible("TradeApp") then
-		return "No response"
-	end
-	return true  
-end 
+local function send_trade_request(user)
+    safeFire("TradeAPI/SendTradeRequest", game.Players[user])
+    local timer = 120
+    local result = nil 
+    Scheduler:add("trade_check_"..user, 1, function()
+        timer -= 1
+        if UIManager.is_visible("TradeApp") then
+            result = true
+            Scheduler:remove("trade_check_"..user)
+            return
+        end
+        if timer <= 0 then
+            result = false
+            Scheduler:remove("trade_check_"..user)
+            return
+        end
+    end, false, true)
+    Scheduler:waitCondition(
+        "wait_trade_"..user,
+        function()
+            return result ~= nil
+        end,
+        function()
+        end,
+        timer
+    )
+    if result == true then
+        return true
+    else
+        return "No response"
+    end
+end
 
 local function count_of_product(category, remote)
     local inv = ClientData.get("inventory")
@@ -513,17 +568,19 @@ local function gotovec(x, y, z)
 	local char = LocalPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	if actual_pet.unique and actual_pet.wrapper then
-		PetActions.pick_up(actual_pet.wrapper)
-		task.wait(0.4)
-		root.CFrame = CFrame.new(x, y, z)
-		task.wait(0.2)
-		if actual_pet.model then
-			safeFire("AdoptAPI/EjectBaby", actual_pet.model)
+	Scheduler:add("gotovec_1", 1, function() 
+		if actual_pet.unique and actual_pet.wrapper then
+			PetActions.pick_up(actual_pet.wrapper)
+			Scheduler:sleep(.4)
+			root.CFrame = CFrame.new(x, y, z)
+			Scheduler:sleep(.2)
+			if actual_pet.model then
+				safeFire("AdoptAPI/EjectBaby", actual_pet.model)
+			end
+		else
+			root.CFrame = CFrame.new(x, y, z)
 		end
-	else
-		root.CFrame = CFrame.new(x, y, z)
-	end
+	end, true, true)
 end
 
 local function webhook(title, description)
@@ -1685,7 +1742,7 @@ local function init_autofarm() -- optimized
 		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
 		return
 	end
-	Scheduler:pause("init_autofarm", 2)
+	Scheduler:sleep("init_autofarm", 2)
 	pet_update()
 
 	if not Scheduler:exists("init_autofarm_main") then 
@@ -1707,10 +1764,10 @@ local function init_autofarm() -- optimized
 				if pet_ailments[k] then
 					StateDB.active_ailments[k] = true
 					if k == "mystery" then 
-						queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						queue:asyncrun({"ailment pet", pet_ailments[k]}) 
 						continue 
 					end
-					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
+					queue:enqueue({"ailment pet", pet_ailments[k], k})
 				end
 			end
 			if _G.flag_if_no_one_to_farm then
@@ -1722,7 +1779,6 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	print("started")
 	if ClientData.get("team") ~= "Babies" then
 		safeInvoke("TeamAPI/ChooseTeam",
 			"Babies",
@@ -1731,9 +1787,7 @@ local function init_baby_autofarm() -- optimized
 				source_for_logging = "avatar_editor"
 			}
 		)
-		print("1s pause begin")
-		Scheduler:pause("init_baby_autofarm", 1)
-		print("1s pause end")
+		Scheduler:sleep("init_baby_autofarm", 1)
 	end	
 	if not _G.InternalConfig.FarmPriority then
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1747,16 +1801,14 @@ local function init_baby_autofarm() -- optimized
 			)
 		end
 	end
-	print("looking for ailments")
 	local active_ailments = get_baby_ailments()
 	for k,_ in pairs(active_ailments) do
 		if StateDB.baby_active_ailments[k] then continue end
 		if baby_ailments[k] then
 			StateDB.baby_active_ailments[k] = true
-			queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
+			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
 	end
-	print("end of baby")
 end
 
 local function async_auto_buy() -- optimized
@@ -2181,33 +2233,71 @@ end
 	print("[+] API dehashed.")
 end)()
 
+-- _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
+--     local now = os.clock()
+--     for name, t in pairs(Scheduler.tasks) do
+--         if t.paused then
+--             if t.pause_until and now >= t.pause_until then
+--                 t.paused = false
+--                 t.pause_until = nil
+--             else
+--                 continue
+--             end
+--         end
+--         if t.running then
+--             continue
+--         end
+--         if now >= t.next then
+--             t.running = true
+--             task.spawn(function()
+--                 local ok, err = pcall(t.cb)
+--                 if not ok then
+-- 					warn("Error to task: ", name, err)
+--                 end
+--                 if Scheduler.tasks[name] then
+--                     if t.once then
+--                         Scheduler.tasks[name] = nil
+--                     else
+--                         t.next = os.clock() + t.interval
+--                         t.running = false
+--                     end
+--                 end
+--             end)
+--         end
+--     end
+-- end)
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
-    for name, t in next, Scheduler.tasks do
+    for name, t in pairs(Scheduler.tasks) do
         if t.paused then
             if t.pause_until and now >= t.pause_until then
-                Scheduler:resume(name)
+                t.paused = false
+                t.pause_until = nil
             else
                 continue
             end
         end
+        if t.running then
+            continue
+        end
         if now >= t.next then
-            local ok, err = pcall(function()
-                print("calling")
-                t.cb()
-            end)
+            t.running = true
+            local ok, err = coroutine.resume(t.cb)
+			print("runned", name)
             if not ok then
-                warn("Scheduler task error:", name, err)
+                warn("Error to task:", name, err)
             end
-            if t.once then
-                Scheduler.tasks[name] = nil
-            else
-                t.next = now + t.interval -- ✅ фикс
+            if Scheduler.tasks[name] then
+                if t.once then
+                    Scheduler.tasks[name] = nil
+                else
+                    t.next = os.clock() + t.interval
+                    t.running = false
+                end
             end
         end
     end
 end)
-
 
 local function __CONN_CLEANUP(player)
 	if player == LocalPlayer then
