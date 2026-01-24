@@ -1722,6 +1722,7 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
+	print("started")
 	if ClientData.get("team") ~= "Babies" then
 		safeInvoke("TeamAPI/ChooseTeam",
 			"Babies",
@@ -1730,7 +1731,9 @@ local function init_baby_autofarm() -- optimized
 				source_for_logging = "avatar_editor"
 			}
 		)
+		print("1s pause begin")
 		Scheduler:pause("init_baby_autofarm", 1)
+		print("1s pause end")
 	end	
 	if not _G.InternalConfig.FarmPriority then
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -1744,6 +1747,7 @@ local function init_baby_autofarm() -- optimized
 			)
 		end
 	end
+	print("looking for ailments")
 	local active_ailments = get_baby_ailments()
 	for k,_ in pairs(active_ailments) do
 		if StateDB.baby_active_ailments[k] then continue end
@@ -1752,7 +1756,7 @@ local function init_baby_autofarm() -- optimized
 			queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
 		end
 	end
-	Scheduler:pause("init_baby_autofarm", 15)
+	print("end of baby")
 end
 
 local function async_auto_buy() -- optimized
