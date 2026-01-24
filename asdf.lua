@@ -184,6 +184,7 @@ function Scheduler:add(name, interval, callback, once, now)
         cb = callback,
         once = once == true,
         next = now == true and os.clock() or (os.clock() + interval),
+		running = false, 
         paused = false,
         pause_until = nil
     }
@@ -2183,31 +2184,37 @@ end)()
 
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
-    for name, t in next, Scheduler.tasks do
+    for name, t in pairs(Scheduler.tasks) do
         if t.paused then
             if t.pause_until and now >= t.pause_until then
-                Scheduler:resume(name)
+                t.paused = false
+                t.pause_until = nil
             else
                 continue
             end
         end
+        if t.running then
+            continue
+        end
         if now >= t.next then
-            local ok, err = pcall(function()
-                print("calling")
-                t.cb()
+            t.running = true
+            task.spawn(function()
+                local ok, err = pcall(t.cb)
+                if not ok then
+                    warn("Scheduler task error:", name, err)
+                end
+                if Scheduler.tasks[name] then
+                    if t.once then
+                        Scheduler.tasks[name] = nil
+                    else
+                        t.next = os.clock() + t.interval
+                        t.running = false
+                    end
+                end
             end)
-            if not ok then
-                warn("Scheduler task error:", name, err)
-            end
-            if t.once then
-                Scheduler.tasks[name] = nil
-            else
-                t.next = now + t.interval -- ✅ фикс
-            end
         end
     end
 end)
-
 
 local function __CONN_CLEANUP(player)
 	if player == LocalPlayer then
