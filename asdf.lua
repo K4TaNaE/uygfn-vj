@@ -2192,18 +2192,22 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
             end
         end
         if now >= t.next then
-            local ok, err = pcall(function() print("calilng") t.cb() end)
+            local ok, err = pcall(function()
+                print("calling")
+                t.cb()
+            end)
             if not ok then
                 warn("Scheduler task error:", name, err)
             end
             if t.once then
                 Scheduler.tasks[name] = nil
             else
-                t.next = t.next + t.interval
+                t.next = now + t.interval -- ✅ фикс
             end
         end
     end
 end)
+
 
 local function __CONN_CLEANUP(player)
 	if player == LocalPlayer then
