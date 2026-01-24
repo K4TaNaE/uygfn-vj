@@ -2278,11 +2278,14 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     end
 end)
 
-local function __CONN_CLEANUP()
-	for _, v in pairs(_G.CONNECTIONS) do
-		v:Disconnect()
+local function __CONN_CLEANUP(player)
+	if player == LocalPlayer then
+		for _, v in pairs(_G.CONNECTIONS) do
+			v:Disconnect()
+		end
 	end
 end
+
 _G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
 
 _G.Looping = {}
