@@ -1759,7 +1759,10 @@ local function init_autofarm() -- optimized
 		_G.random_farm = false
 	end
 
-	if not flag or not equiped() then return end
+	if not flag or not equiped() then 
+		Scheduler:remove("init_autofarm")
+		Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+	end
 	pet_update()
 
 	if not Scheduler:exists("init_autofarm_main") then 
@@ -1774,8 +1777,6 @@ local function init_autofarm() -- optimized
 
 			local eqpetailms = get_equiped_pet_ailments()
 			if not eqpetailms then
-				Scheduler:remove("init_autofarm_main")
-				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
 				return
 			end
 
@@ -1793,7 +1794,6 @@ local function init_autofarm() -- optimized
 			if _G.flag_if_no_one_to_farm then
 				Scheduler:remove("init_autofarm_main")
 				Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
-				return
 			end
 		end, false, true)
 	end
