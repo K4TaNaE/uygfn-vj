@@ -9,6 +9,7 @@ local cloneref = cloneref or function(obj) return obj end -- potassium, seliware
 local getupvalue = debug.getupvalue -- potassium, seliware, volcano, delta, bunni, cryptix
 
 --[[ Services ]]--
+local GuiService = game:GetService("GuiService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local RunService = game:GetService("RunService")
 local CoreGui = cloneref(game:GetService("CoreGui"))
@@ -167,6 +168,27 @@ Queue.new = function()
 end
 local queue = Queue.new()
 
+local Scheduler = {}
+Scheduler.tasks = {}
+
+function Scheduler:add(name, interval, callback)
+    self.tasks[name] = {
+        interval = interval,
+        next = os.clock() + interval,
+        cb = callback
+    }
+end
+
+function Scheduler:remove(name)
+    self.tasks[name] = nil
+end
+
+function Scheduler:change_interval(name, interval)
+	local t = self.tasks[name]
+	if t then
+		t.interval = interval
+	end
+end
 
 --[[ Helpers ]]-- 
 local function temp_platform()
@@ -1838,14 +1860,14 @@ local function init_auto_trade() -- optimized
 		exist = true
 	end
 
-	game.Players.PlayerAdded:Connect(function(player)
+	_G.CONNECTIONS.TradePA = game.Players.PlayerAdded:Connect(function(player)
 		if player == user then 
 			player.CharacterAdded:Wait()
 			exist = true 
 		end
 	end)
 	
-	game.Players.PlayerRemoving:Connect(function(player) 
+	_G.CONNECTIONS.TradePR = game.Players.PlayerRemoving:Connect(function(player) 
 		if player == user then
 			exist = false
 		end
@@ -2207,22 +2229,47 @@ end
 	print("[+] API dehashed.")
 end)()
 
-NetworkClient.ChildRemoved:Connect(function()
-	local send_responce = function()
-		return HttpService:RequestAsync({
-			Url = "https://pornhub.com",
-			Method = "GET"
-		})
-	end
-	repeat
-		print("No internet. Waiting..")
-		task.wait(5)
-		local success, _ = pcall(send_responce)
-	until success 
-	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+_G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function() -- Run Scheduler
+    local now = os.clock()
+    for _, task in pairs(Scheduler.tasks) do
+        if now >= task.next then
+            task.next = now + task.interval
+            task.cb()
+        end
+    end
 end)
 
-LocalPlayer.Idled:Connect(function() -- anti afk
+local function __CONN_CLEANUP()
+	for _, v in pairs(_G.CONNECTIONS) do
+		v:Disconnect()
+	end
+end
+_G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
+
+_G.Looping = {}
+if not _G.Looping["NetworkHook"] then 
+	_G.Looping.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
+		local send_responce = function()
+			return HttpService:RequestAsync({
+				Url = "https://pornhub.com",
+				Method = "GET"
+			})
+		end
+		repeat
+			print("No internet. Waiting..")
+			task.wait(5)
+			local success, _ = pcall(send_responce)
+		until success 
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+	end)
+end 
+
+Scheduler:add("gc", 300, function() -- watchdog
+	print('watchdog working')
+	collectgarbage("collect")
+end) 
+
+_G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
   VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
   task.wait(1)
   VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
