@@ -2066,6 +2066,9 @@ local function optimized_waiting_coroutine()
 end
 
 local function __init() 
+	Scheduler:add("init_autofar", 15, function() warn("SOSI") end, true, true)
+	
+	
 	if _G.InternalConfig.FarmPriority then
 		Scheduler:add("init_autofarm", 15, init_autofarm, true, true)
 	end
