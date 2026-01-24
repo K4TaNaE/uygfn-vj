@@ -2243,22 +2243,24 @@ local function __CONN_CLEANUP()
 		v:Disconnect()
 	end
 end
-game:BindToClose(__CONN_CLEANUP)
+_G.CONNECTIONS.BindToClose = game.Players.PlayerRemoving:Connect(__CONN_CLEANUP)
 
-_G.CONNECTIONS.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
-	local send_responce = function()
-		return HttpService:RequestAsync({
-			Url = "https://pornhub.com",
-			Method = "GET"
-		})
-	end
-	repeat
-		print("No internet. Waiting..")
-		task.wait(5)
-		local success, _ = pcall(send_responce)
-	until success 
-	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-end)
+if not _G.Looping.NetworkHook then 
+	_G.Looping.NetworkHook = NetworkClient.ChildRemoved:Connect(function() -- network hook
+		local send_responce = function()
+			return HttpService:RequestAsync({
+				Url = "https://pornhub.com",
+				Method = "GET"
+			})
+		end
+		repeat
+			print("No internet. Waiting..")
+			task.wait(5)
+			local success, _ = pcall(send_responce)
+		until success 
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+	end)
+end 
 
 Scheduler:add("gc", 300, function() -- watchdog
 	print('watchdog working')
