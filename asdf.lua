@@ -178,13 +178,14 @@ Scheduler.tasks = {}
 	**once**: if true will run only once.\
 	**now**: if true will run now and every "interval" secconds
 ]]
-function Scheduler:add(name: string, interval: number, callback, once: boolean, now: boolean)
-	self.tasks[name] = {
+function Scheduler:add(name, interval, callback, once, now)
+    self.tasks[name] = {
         interval = interval,
         cb = callback,
-
         once = once == true,
-        next = now == true and os.clock() or (os.clock() + interval)
+        next = now == true and os.clock() or (os.clock() + interval),
+        paused = false,
+        pause_until = nil
     }
 end
 
@@ -200,6 +201,23 @@ function Scheduler:change_interval(name, interval)
         t.interval = interval
         t.next = os.clock() + interval
     end
+end
+
+function Scheduler:resume(name)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = false
+    t.pause_until = nil
+    t.next = os.clock() + t.interval
+end
+
+function Scheduler:pause(name, seconds)
+    local t = self.tasks[name]
+    if not t then return end
+
+    t.paused = true
+    t.pause_until = os.clock() + (seconds or math.huge)
 end
 
 function Scheduler:exists(name) 
@@ -1581,28 +1599,44 @@ baby_ailments = {
 	end,
 }
 
-local function init_autofarm()
-    local owned_pets = get_owned_pets()
-    if count(owned_pets) == 0 then return end
+local function init_autofarm() -- optimized
+	if count(get_owned_pets()) == 0 then
+		Scheduler:remove("init_autofarm")
+		if not Scheduler:exists("init_autofarm") then 
+			Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		end
+	end
 
-    local flag = false
-    _G.flag_opposite_checked = false  
+	local owned_pets = get_owned_pets()
+	local flag = false
+	
+	local pet = ClientData.get("pet_char_wrappers")[1]
+	if pet and not _G.flag_if_no_one_to_farm then
+		safeInvoke("ToolAPI/Unequip",
+			pet.pet_unique,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+	end
+	
+	local d2kitty = inv_get_category_unique("pets", "2d_kitty")
+	if owned_pets[d2kitty] then
+		safeInvoke("ToolAPI/Equip",
+			d2kitty,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+		if equiped() then 
+			flag = true
+			_G.flag_if_no_one_to_farm = false
+		end
+	end
 
-    local pet = ClientData.get("pet_char_wrappers")[1]
-    if pet and not _G.flag_if_no_one_to_farm then
-        safeInvoke("ToolAPI/Unequip", pet.pet_unique, {use_sound_delay = true, equip_as_last = false})
-    end
-
-    local d2kitty = inv_get_category_unique("pets", "2d_kitty")
-    if owned_pets[d2kitty] then
-        safeInvoke("ToolAPI/Equip", d2kitty, {use_sound_delay = true, equip_as_last = false})
-        if equiped() then
-            flag = true
-            _G.flag_if_no_one_to_farm = false
-        end
-    end
-
-    local function try_equip(check)
+	local function try_equip(check)
         for k,v in pairs(owned_pets) do
             if check(k,v) then
                 safeInvoke("ToolAPI/Equip", k, {use_sound_delay = true, equip_as_last = false})
@@ -1643,38 +1677,61 @@ local function init_autofarm()
         end
     end
 
-    if _G.random_farm and not _G.flag_if_no_one_to_farm then
-        table.clear(StateDB.active_ailments)
-        queue:destroy_linked("ailment pet")
-        _G.random_farm = false
-    end
+	if not _G.flag_if_no_one_to_farm and _G.random_farm then
+		table.clear(StateDB.active_ailments)
+		queue:destroy_linked("ailment pet")
+		_G.random_farm = false
+	end
 
-    if not flag or not equiped() then return end
-    pet_update()
+	if not flag or not equiped() then 
+		Scheduler:remove("init_autofarm")
+		if not Scheduler:exists("init_autofarm") then
+			Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+		end
+	end
+	pet_update()
 
-    if not Scheduler:exists("init_autofarm_main") then
-        Scheduler:add("init_autofarm_main", 15, function()
-            if actual_pet.unique ~= cur_unique() or not actual_pet.unique then
-                actual_pet.unique = nil
-                return
-            end
-            local eqpetailms = get_equiped_pet_ailments()
-            if not eqpetailms then return end
-            for k,_ in pairs(eqpetailms) do
-                if StateDB.active_ailments[k] then continue end
-                if pet_ailments[k] then
-                    StateDB.active_ailments[k] = true
-                    if k == "mystery" then
-                        queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]})
-                    else
-                        queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
-                    end
-                end
-            end
-        end, false, true)
-    end
+	if not Scheduler:exists("init_autofarm_main") then 
+		Scheduler:add("init_autofarm_main", 15, function()
+		
+			if actual_pet.unique ~= cur_unique() or not actual_pet.unique then
+				actual_pet.unique = nil
+				Scheduler:remove("init_autofarm_main")
+				if not Scheduler:exists("init_autofarm") then 
+					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				end
+				return
+			end
+
+			local eqpetailms = get_equiped_pet_ailments()
+			if not eqpetailms then
+				return
+			end
+
+			for k,_ in pairs(eqpetailms) do 
+				if StateDB.active_ailments[k] then continue end
+				if pet_ailments[k] then
+					StateDB.active_ailments[k] = true
+					if k == "mystery" then 
+						queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
+						continue 
+					end
+					queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
+				end
+			end
+			if _G.flag_if_no_one_to_farm then
+				Scheduler:remove("init_autofarm_main")
+				if not Scheduler:exists("init_autofarm") then
+					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				else
+					Scheduler:remove("init_autofarm")					
+					Scheduler:add("init_autofarm", 15, init_autofarm, true, false)
+				end
+			end
+		end, false, true)
+	end
 end
-
+	
 local function init_baby_autofarm() -- optimized
 	while task.wait(1) do
 		if ClientData.get("team") ~= "Babies" then
@@ -2066,9 +2123,6 @@ local function optimized_waiting_coroutine()
 end
 
 local function __init() 
-	Scheduler:add("init_autofar", 15, function() warn("SOSI") end, true, true)
-	
-	
 	if _G.InternalConfig.FarmPriority then
 		Scheduler:add("init_autofarm", 15, init_autofarm, true, true)
 	end
@@ -2140,17 +2194,24 @@ end)()
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
     for name, t in next, Scheduler.tasks do
-		if now >= t.next then
-			local ok, err = pcall(t.cb)
-			if not ok then
-				warn("Scheduler task error:", name, err)
-			end
-			if t.once then
-				Scheduler.tasks[name] = nil
-			else
-				t.next = t.next + t.interval
-			end
-		end
+        if t.paused then
+            if t.pause_until and now >= t.pause_until then
+                Scheduler:resume(name)
+            else
+                continue
+            end
+        end
+        if now >= t.next then
+            local ok, err = pcall(t.cb)
+            if not ok then
+                warn("Scheduler task error:", name, err)
+            end
+            if t.once then
+                Scheduler.tasks[name] = nil
+            else
+                t.next = t.next + t.interval
+            end
+        end
     end
 end)
 
