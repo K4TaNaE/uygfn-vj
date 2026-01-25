@@ -83,9 +83,6 @@ Scheduler.tasks = {}
 	**fallback**: function that will be called on error.
 ]]
 function Scheduler:add(name, interval, callback, once, now, fallback)
-	if type(callback) == "function" then
-        callback = coroutine.create(callback)
-    end
     self.tasks[name] = {
         interval = interval,
         cb = callback,
