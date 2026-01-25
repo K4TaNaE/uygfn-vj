@@ -83,9 +83,6 @@ Scheduler.tasks = {}
 	**fallback**: function that will be called on error.
 ]]
 function Scheduler:add(name, interval, callback, once, now, fallback)
-	if type(callback) == "function" then
-        callback = coroutine.create(callback)
-    end
     self.tasks[name] = {
         interval = interval,
         cb = callback,
@@ -121,47 +118,23 @@ function Scheduler:resume(name)
     t.next = os.clock() + t.interval
 end
 
-function Scheduler:_awaitTaskWrapper(name, checkFn, timeout)
-    local thread = coroutine.running()
-    local start = os.clock()
-
-    -- создаём задачу, НЕ удаляя её заранее
-    Scheduler:add(name, 0.1, function()
-        if checkFn() then
-            Scheduler:remove(name)
-            coroutine.resume(thread, true)
-            return
-        end
-
-        if timeout and (os.clock() - start) >= timeout then
-            Scheduler:remove(name)
-            coroutine.resume(thread, false)
-            return
-        end
-    end, false, true)
-
-    return coroutine.yield()
-end
-
-
-function Scheduler:waitCondition(name, fn, onDone, timeout)
-    local ok = Scheduler:_awaitTaskWrapper(name, fn, timeout)
-    if ok and onDone then
-        onDone()
-	end
-		return ok
-end
-
-function Scheduler:sleep(seconds)
-    return Scheduler:_awaitTaskWrapper(
-        "sleep_" .. tostring(math.random(1, 999999)),
-        function() return false end,
-        seconds
-    )
-end
-
 function Scheduler:exists(name) 
 	return self.tasks[name] 
+end
+
+function Scheduler:waitForCondition(name, condition, onDone, timeout)
+    local start = os.clock()
+    Scheduler:add(name, 0.2, function()
+        if condition() then
+            Scheduler:remove(name)
+            onDone(true)
+            return
+        end
+        if timeout and os.clock() - start >= timeout then
+            Scheduler:remove(name)
+            onDone(false) 
+        end
+    end, false, true)
 end
 
 local Queue = {} 
@@ -235,35 +208,48 @@ Queue.new = function()
 			end)
 		end,
 
-		__run = function(self)
-			if self.running then return end
-			self.running = true
-			local function process_next()
-				if self:empty() then
-					self.running = false
-					return
-				end
-				local dtask = self._data[self.__head]
-				self:dequeue(true)
-				local name = dtask[1]
-				local callback = dtask[2]
-				local ailm = dtask[3]
-				task.spawn(function()
-					local ok, err = pcall(callback)
-					if not ok then
-						if name == "ailment pet" then
-							StateDB.active_ailments[ailm] = nil
-						elseif name == "ailment baby" then
-							StateDB.baby_active_ailments[ailm] = nil
+	__run = function(self)
+		if self.running then return end
+		self.running = true
+		local function process_next()
+			if self:empty() then
+				self.running = false
+				return
+			end
+			local task = self:dequeue()
+			local name = task[1]
+			local fn = task[2]
+			local ailment = task[3]
+			task.spawn(function()
+				local ok, err = pcall(function()
+					fn(function(success)
+
+						if success == false then
+							if name == "ailment baby" then
+								StateDB.baby_active_ailments[ailment] = nil
+							elseif name == "ailment pet" then
+								StateDB.active_ailments[ailment] = nil
+							end
 						end
+						process_next()
+					end)
+				end)
+				if not ok then
+					warn("Queue error:", name, err)
+					if name == "ailment baby" then
+						StateDB.baby_active_ailments[ailment] = nil
+					elseif name == "ailment pet" then
+						StateDB.active_ailments[ailment] = nil
 					end
 					process_next()
-				end)
-			end
-			process_next()
+				end
+			end)
 		end
-	}
+		process_next()
+	end
+    }
 end
+
 local queue = Queue.new()
 
 --[[ Helpers ]]-- 
@@ -286,31 +272,39 @@ local function get_current_location()
 	return InteriorsM.get_current_location()["destination_id"]
 end 
 
-local function goto(destId, door, ops:table) 
-	if get_current_location() == destId then return end
+local function goto(destId, door, ops, onArrived)
+	if get_current_location() == destId then
+		if onArrived then onArrived() end
+		return
+	end
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
-	Scheduler:waitCondition("goto_", function() 
-		return get_current_location() == destId
-	end, 
-	function() end,
-	10
+	Scheduler:waitForCondition(
+		"goto_await",
+		function()
+			return get_current_location() == destId
+		end,
+		function()
+			local p = workspace:FindFirstChild("TempPart")
+			if p then p:Destroy() end
+			if onArrived then
+				onArrived()
+			end
+		end,
+		10
 	)
-	local p = game.Workspace:FindFirstChild("TempPart")
-	if p then p:Destroy() end 
-	Scheduler:sleep(.5)
 end
 
-local function to_neighborhood()
-	goto("Neighborhood", "MainDoor")
+local function to_neighborhood(onArrived)
+	goto("Neighborhood", "MainDoor", nil, onArrived)
 end
 
-local function to_home() 
-	goto("housing", "MainDoor", { house_owner=LocalPlayer })
+local function to_home(onArrived) 
+	goto("housing", "MainDoor", { house_owner=LocalPlayer }, onArrived)
 end
 
-local function to_mainmap() 
-	goto("MainMap", "Neighborhood/MainDoor")
+local function to_mainmap(onArrived) 
+	goto("MainMap", "Neighborhood/MainDoor", nil, onArrived)
 end
 
 local function get_equiped_pet() 
@@ -507,15 +501,15 @@ local function send_trade_request(user)
             return
         end
     end, false, true)
-    Scheduler:waitCondition(
-        "wait_trade_"..user,
-        function()
-            return result ~= nil
-        end,
-        function()
-        end,
-        timer
-    )
+    -- Scheduler:waitCondition(
+    --     "wait_trade_"..user,
+    --     function()
+    --         return result ~= nil
+    --     end,
+    --     function()
+    --     end,
+    --     timer
+    -- )
     if result == true then
         return true
     else
@@ -564,23 +558,37 @@ local function get_memory(unit)
     return mb
 end
 
-local function gotovec(x, y, z)
+local function gotovec(x, y, z, onArrived)
 	local char = LocalPlayer.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	Scheduler:add("gotovec_1", 1, function() 
+	if Scheduler:exists("gotovec_move") then return end
+	Scheduler:add("gotovec_move", 0.1, function()
 		if actual_pet.unique and actual_pet.wrapper then
 			PetActions.pick_up(actual_pet.wrapper)
-			Scheduler:sleep(.4)
-			root.CFrame = CFrame.new(x, y, z)
-			Scheduler:sleep(.2)
-			if actual_pet.model then
-				safeFire("AdoptAPI/EjectBaby", actual_pet.model)
-			end
-		else
-			root.CFrame = CFrame.new(x, y, z)
+		end
+		root.CFrame = CFrame.new(x, y, z)
+		if actual_pet.model then
+			safeFire("AdoptAPI/EjectBaby", actual_pet.model)
 		end
 	end, true, true)
+
+	Scheduler:waitForCondition(
+		"gotovec_wait",
+		function()
+			return (root.Position - Vector3.new(x, y, z)).Magnitude < 4
+		end,
+		function(success)
+			if success then
+				if onArrived then
+					onArrived()
+				end
+			else
+				warn("gotovec timeout")
+			end
+		end,
+		5
+	)
 end
 
 local function webhook(title, description)
@@ -711,15 +719,6 @@ local function enstat(age, friendship, money, ailment)  -- optimized
 	update_gui("pet_needs", farmed.ailments)
 end
 
-local function enstat_baby(money, ailment) -- optimized
-	task.wait(.5)
-	farmed.money += ClientData.get("money") - money 
-	farmed.baby_ailments += 1
-	StateDB.baby_active_ailments[ailment] = nil
-	update_gui("bucks", farmed.money)
-	update_gui("baby_needs", farmed.baby_ailments)
-end
-
 local function __pet_callback(age, friendship, ailment) 
 	task.wait(.5)
 	if not _G.InternalConfig.FarmPriority then
@@ -790,17 +789,39 @@ local function __pet_callback(age, friendship, ailment)
 	end
 end
 
-local function __baby_callbak(ailment, money) 
-	task.wait(.5)
-	if not _G.InternalConfig.BabyAutoFarm then
-		farmed.baby_ailments += 1 
-		update_gui("baby_needs", farmed.baby_ailments)
-	else
-		queue:taskdestroy("baby", ailment)
+local function enstat_baby(money, ailment, pet_has_ailment, petData) -- optimized
+	local pet_has_ailment = pet_has_ailment or false
+	Scheduler:waitForCondition("enstat_baby_"..tostring(math.random(1,999)), function()
+		return money ~= ClientData.get("money")
+	end,
+	function(success)
+		farmed.money += ClientData.get("money") - money 
 		farmed.baby_ailments += 1
 		StateDB.baby_active_ailments[ailment] = nil
+		if pet_has_ailment and equiped() and not has_ailment(ailment) then
+			__pet_callback(petData[1], petData[2], ailment)
+		end
+		update_gui("bucks", farmed.money)
 		update_gui("baby_needs", farmed.baby_ailments)
-	end
+	end,
+	3
+	)
+end
+
+local function __baby_callbak(money, ailment) 
+	Scheduler:waitForCondition("__baby_callback_"..tostring(math.random(1,999)), function()
+		return money ~= ClientData.get("money") 
+	end,
+	function(success)
+		if _G.InternalConfig.BabyAutoFarm then
+			queue:taskdestroy("baby", ailment)
+			StateDB.baby_active_ailments[ailment] = nil
+		end
+		farmed.baby_ailments += 1
+		update_gui("baby_needs", farmed.baby_ailments)
+	end,
+	3
+	)
 end
 
 local pet_ailments = { 
@@ -1324,42 +1345,50 @@ local pet_ailments = {
 }
 
 baby_ailments = {
-	["camping"] = function() 
+	["camping"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("camping") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		to_mainmap()
-		gotovec(-23, 37, -1063)
-        local deadline = os.clock() + 60
-		local pet_has_ailment = has_ailment("camping")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		to_mainmap(function() 
+			gotovec(-23, 37, -1063, function() 
+				local money = ClientData.get("money")
+				local pet_has_ailment = has_ailment("camping")
+				local age, friendship
+				if pet_has_ailment then
+					age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+					friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+				end
+				Scheduler:waitForCondition(
+					"ailment_baby_camping",
+					function()
+						return not has_ailment_baby("camping")
+					end,
+					function(success)
+						if not success then
+							done(false)
+							return
+						end
+						enstat_baby(money, "camping", pet_has_ailment, { age, friendship })
+						done(true)
+					end,
+					60
+				)
+			end
+			)
 		end
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("camping") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.camping = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "camping")
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("camping") then
-			__pet_callback(age, friendship, "camping")
-		end
+		)
 	end,
-	["hungry"] = function() 
+	["hungry"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
+			done(false)
 			return 
 		end
 		local money = ClientData.get("money")
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
-				StateDB.baby_active_ailments.hungry = nil 
 				print("[-] No money to buy food.") 
+				done(false)
 				return 
 			end
 			if money > 20 then
@@ -1380,29 +1409,42 @@ baby_ailments = {
 				)
 			end
 		end
-		local deadline = os.clock() + 5
-		repeat 
-			safeFire("ToolAPI/ServerUseTool",
-				inv_get_category_unique("food", "apple"),
-				"END"
-			)
-			task.wait(.5)
-        until not has_ailment_baby("hungry") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.hungry = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "hungry")  
+		Scheduler:add("ailemnt_baby_hungry_eat", 1, function() 
+			if not Scheduler:exists("ailment_baby_hungry_check") then
+				Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
+						return not has_ailment_baby("hungry")
+					end,
+					function(success) 
+						if not success then
+							Scheduler:remove("ailemnt_baby_hungry_eat")
+							Scheduler:remove("ailment_baby_hungry_check")
+							done(false)
+							return
+						end
+						enstat_baby(money, "hungry")  
+						done(true)
+						Scheduler:remove("ailemnt_baby_hungry_eat")
+						Scheduler:remove("ailment_baby_hungry_check")
+					end,
+					10
+				)
+				safeFire("ToolAPI/ServerUseTool",
+					inv_get_category_unique("food", "apple"),
+					"END"
+				)
+			end
+		end, false, true)
 	end,
-	["thirsty"] = function() 
+	["thirsty"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
+			done(false)
 			return 
 		end
 		local money = ClientData.get("money")
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				StateDB.baby_active_ailments.thirsty = nil 
 				print("[!] No money to buy food.") 
+				done(false)
 				return 
 			end			
 			if money > 20 then
@@ -1423,236 +1465,300 @@ baby_ailments = {
 				)
 			end
 		end
-        local deadline = os.clock() + 5
-		repeat			
-			safeFire("ToolAPI/ServerUseTool",
-				inv_get_category_unique("food", "water"),
-				"END"
-			)
-			task.wait(.5)
-		until not has_ailment_baby("thirsty") or os.clock() > deadline  
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.thirsty = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "thirsty")  
+		Scheduler:add("ailemnt_baby_thirsty_eat", 1, function() 
+			if not Scheduler:exists("ailment_baby_thirsty_check") then
+				Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
+						return not has_ailment_baby("thirsty")
+					end,
+					function(success) 
+						if not success then
+							Scheduler:remove("ailemnt_baby_thirsty_eat")
+							Scheduler:remove("ailment_baby_thirsty_check")
+							done(false)
+							return
+						end
+						enstat_baby(money, "thirsty")  
+						done(true)
+						Scheduler:remove("ailemnt_baby_thirsty_eat")
+						Scheduler:remove("ailment_baby_thirsty_check")
+					end,
+					10
+				)
+				safeFire("ToolAPI/ServerUseTool",
+					inv_get_category_unique("food", "water"),
+					"END"
+				)
+			end
+		end, false, true)
 	end,
-	["sick"] = function() 
+	["sick"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sick") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("sick")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-		end
-		repeat 
-			goto("Hospital", "MainDoor")
+		goto('Hospital', "MainDoor", function() 
+			local money = ClientData.get("money")
+			local pet_has_ailment = has_ailment("sick")
+			local age, friendship
+			if pet_has_ailment then
+				age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+				friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+			end
 			safeInvoke("HousingAPI/ActivateInteriorFurniture",
 				"f-14",
 				"UseBlock",
 				"Yes",
 				LocalPlayer.Character
 			)
-			task.wait(1)
-		until not has_ailment_baby("sick") 
-		enstat_baby(money, "sick") 
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("sick") then
-			__pet_callback(age, friendship, "sick")
-		end
+			Scheduler:waitForCondition("ailment_baby_sick", function()
+				return not has_ailment_baby("sick")
+			end,
+			function(success)
+				if not success then
+					done(false)
+					return
+				end
+				enstat_baby(money, "sick", pet_has_ailment, { age, friendship }) 
+				done(true)
+			end,
+			5)	
+		end)
 	end,
-	["bored"] = function() 
+	["bored"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("bored") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("bored")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-		end
-		to_mainmap()
-		gotovec(-365, 30, -1749)
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("bored") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.bored = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "bored")  
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("bored") then
-			__pet_callback(age, friendship, "bored")
-		end
+		to_mainmap(function()
+			gotovec(-365, 30, -1749, function()
+				local money = ClientData.get("money")
+				local pet_has_ailment = has_ailment("bored")
+				local age, friendship
+				if pet_has_ailment then
+					age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+					friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+				end
+				Scheduler:waitForCondition(
+					"ailment_baby_bored",
+					function()
+						return not has_ailment_baby("bored")
+					end,
+					function(success)
+						if not success then
+							done(false)
+							return
+						end
+						enstat_baby(money, "bored", pet_has_ailment, { age, friendship })
+						done(true)
+					end,
+					60
+				)
+			end)
+		end)
 	end,
-	["salon"] = function() 
+	["salon"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("salon") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("salon")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-		end
-		goto("Salon", "MainDoor")
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("salon") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.salon = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "salon")  
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("salon") then
-			__pet_callback(age, friendship, "salon")
-		end
+		goto("Salon", "MainDoor", function()
+			local money = ClientData.get("money")
+			local pet_has_ailment = has_ailment("salon")
+			local age, friendship
+			if pet_has_ailment then
+				age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+				friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+			end
+			Scheduler:waitForCondition(
+				"ailment_baby_salon",
+				function()
+					return not has_ailment_baby("salon")
+				end,
+				function(success)
+					if not success then
+						done(false)
+						return
+					end
+					enstat_baby(money, "salon", pet_has_ailment, { age, friendship })
+					done(true)
+				end,
+				60
+			)	
+		end)
 	end,
-	["beach_party"] = function() 
+	["beach_party"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("beach_party") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("beach_party")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-		end
-		to_mainmap()
-		gotovec(-596, 27, -1473)
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("beach_party") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.beach_party = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "beach_party")  
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("beach_party") then
-			__pet_callback(age, friendship, "beach_party")
-		end
+		to_mainmap(function()
+			gotovec(-596, 27, -1473, function()
+				local money = ClientData.get("money")
+				local pet_has_ailment = has_ailment("beach_party")
+				local age, friendship
+				if pet_has_ailment then
+					age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+					friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+				end
+				Scheduler:waitForCondition(
+					"ailment_baby_beach_party",
+					function()
+						return not has_ailment_baby("beach_party")
+					end,
+					function(success)
+						if not success then
+							done(false)
+							return
+						end
+						enstat_baby(money, "beach_party", pet_has_ailment, { age, friendship })
+						done(true)
+					end,
+					60
+				)
+			end)
+		end)
 	end,
-	["dirty"] = function() 
+	["dirty"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("dirty") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		to_home()
-		task.spawn(function() 
-			safeInvoke('HousingAPI/ActivateFurniture',
-				LocalPlayer,
-				furn.bath.unique,
-				furn.bath.usepart,
-				{
-					cframe = furn.bath.cframe
-				},
-				LocalPlayer.Character
-			)
+		to_home(function()
+			local money = ClientData.get("money")
+			Scheduler:add("ailment_baby_dirty", 2, function()
+				if not Scheduler:exists("ailment_baby_dirty_check") then
+					Scheduler:waitForCondition("ailment_baby_dirty_check", function()
+						return not has_ailment_baby("dirty")
+					end, 
+					function(success)
+						if not success then
+							Scheduler:remove("ailment_baby_dirty")
+							Scheduler:remove("ailment_baby_dirty_check")
+							StateManagerClient.exit_seat_states()
+							done(false)
+							return
+						end
+						enstat_baby(money, "dirty")
+						StateManagerClient.exit_seat_states()
+						Scheduler:remove("ailment_baby_dirty")
+						Scheduler:remove("ailment_baby_dirty_check")
+						done(true)
+					end,
+					20
+				)
+				end
+				safeInvoke('HousingAPI/ActivateFurniture',
+					LocalPlayer,
+					furn.bath.unique,
+					furn.bath.usepart,
+					{
+						cframe = furn.bath.cframe
+					},
+					LocalPlayer.Character
+				)
+			end, false, true)
 		end)
-        local deadline = os.clock() + 20
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("dirty") or os.clock() > deadline
-		task.wait(.3)
-		StateManagerClient.exit_seat_states()
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.dirty = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "dirty")  
 	end,
-	["school"] = function() 
+	["school"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("school") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("school")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
-		end
-		goto("School", "MainDoor")
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("school") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.school = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "school")  
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("school") then
-			__pet_callback(age, friendship, "school")
-		end
-	end,
-	["sleepy"] = function() 
-		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then
-			return 
-		end
-		local money = ClientData.get("money")
-		to_home()
-		task.spawn(function() 
-			safeInvoke('HousingAPI/ActivateFurniture',
-				LocalPlayer,
-				furn.bed.unique,
-				furn.bed.usepart,
-				{
-					cframe = furn.bed.cframe
-				},
-				LocalPlayer.Character
-			)
+		goto("School", "MainDoor", function()
+			local money = ClientData.get("money")
+			local pet_has_ailment = has_ailment("school")
+			local age, friendship
+			if pet_has_ailment then
+				age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+				friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+			end
+			Scheduler:waitForCondition(
+				"ailment_baby_school",
+				function()
+					return not has_ailment_baby("school")
+				end,
+				function(success)
+					if not success then
+						done(false)
+						return
+					end
+					enstat_baby(money, "school", pet_has_ailment, { age, friendship })
+					done(true)
+				end,
+				60
+			)	
 		end)
-        local deadline = os.clock() + 20
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("sleepy") or os.clock() > deadline
-		task.wait(.3)
-		StateManagerClient.exit_seat_states()
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.sleepy = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "sleepy")  
 	end,
-	["pizza_party"] = function() 
-		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("pizza_party") then
+	["sleepy"] = function(done) 
+		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then
+			done(false)
 			return 
 		end
-		local money = ClientData.get("money")
-		local pet_has_ailment = has_ailment("pizza_party")
-		local age, friendship
-		if pet_has_ailment then
-			age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
-			friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+		to_home(function()
+			local money = ClientData.get("money")
+			Scheduler:add("ailment_baby_sleepy", 2, function()
+				if not Scheduler:exists("ailment_baby_sleepy_check") then
+					Scheduler:waitForCondition("ailment_baby_sleepy_check", function()
+						return not has_ailment_baby("sleepy")
+					end, 
+					function(success)
+						if not success then
+							Scheduler:remove("ailment_baby_sleepy")
+							Scheduler:remove("ailment_baby_sleepy_check")
+							StateManagerClient.exit_seat_states()
+							done(false)
+							return
+						end
+						enstat_baby(money, "sleepy")
+						StateManagerClient.exit_seat_states()
+						Scheduler:remove("ailment_baby_sleepy")
+						Scheduler:remove("ailment_baby_sleepy_check")
+						done(true)
+					end,
+					20
+				)
+				end
+				safeInvoke('HousingAPI/ActivateFurniture',
+					LocalPlayer,
+					furn.bed.unique,
+					furn.bed.usepart,
+					{
+						cframe = furn.bed.cframe
+					},
+					LocalPlayer.Character
+				)
+			end, false, true)
+		end)
+	end,
+	["pizza_party"] = function(done) 
+		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("pizza_party") then
+			done(false)
+			return 
 		end
-		goto("PizzaShop", "MainDoor")
-        local deadline = os.clock() + 60
-        repeat 
-            task.wait(1)
-        until not has_ailment_baby("pizza_party") or os.clock() > deadline
-        if os.clock() > deadline then 
-			StateDB.baby_active_ailments.pizza_party = nil
-			error("Out of limits") 
-		end		
-		enstat_baby(money, "pizza_party")  
-		task.wait(.8)
-		if pet_has_ailment and equiped() and not has_ailment("pizza_party") then
-			__pet_callback(age, friendship, "pizza_party")
-		end
+		goto("PizzaShop", "MainDoor", function()
+			local money = ClientData.get("money")
+			local pet_has_ailment = has_ailment("pizza_party")
+			local age, friendship
+			if pet_has_ailment then
+				age = ClientData.get("pet_char_wrappers")[1].pet_progression.age
+				friendship = ClientData.get("inventory").pets[actual_pet.unique].properties.friendship_level
+			end
+			Scheduler:waitForCondition(
+				"ailment_baby_pizza_party",
+				function()
+					return not has_ailment_baby("pizza_party")
+				end,
+				function(success)
+					if not success then
+						done(false)
+						return
+					end
+					enstat_baby(money, "pizza_party", pet_has_ailment, { age, friendship })
+					done(true)
+				end,
+				60
+			)	
+		end)
 	end,
 }
 
@@ -1787,7 +1893,6 @@ local function init_baby_autofarm() -- optimized
 				source_for_logging = "avatar_editor"
 			}
 		)
-		Scheduler:sleep("init_baby_autofarm", 1)
 	end	
 	if not _G.InternalConfig.FarmPriority then
 		local pet = ClientData.get("pet_char_wrappers")[1]
@@ -2173,35 +2278,35 @@ local function __init()
 	if _G.InternalConfig.BabyAutoFarm then
 		Scheduler:add("init_baby_autofarm", 15, init_baby_autofarm, false, true)
 	end
-	task.wait(.1)
-	if _G.InternalConfig.AutoRecyclePet then
-		task.defer(init_auto_recycle)
-	end
-	task.wait(.1)
-	if _G.InternalConfig.PetAutoTrade then
-		task.defer(init_auto_trade)
-	end
-	task.wait(.1)
-	if _G.InternalConfig.DiscordWebhookURL then
-		task.defer(function()
-			while task.wait(1) do
-				task.wait(_G.InternalConfig.WebhookSendDelay)
-				webhook(
-					"AutoFarm Log",
-					`**💸Money Earned :** {farmed.money}\n\
-	   				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-	   				**🐶Pet Needs Completed :** {farmed.ailments}\n\
-	   				**🧪Potions Farmed :** {farmed.potions}\n\
-	   				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-	   				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-	   				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
-				)
-			end
-		end)
-	end
-	task.wait(.1)
-	task.defer(optimized_waiting_coroutine)
-	task.wait(4)
+	-- task.wait(.1)
+	-- if _G.InternalConfig.AutoRecyclePet then
+	-- 	task.defer(init_auto_recycle)
+	-- end
+	-- task.wait(.1)
+	-- if _G.InternalConfig.PetAutoTrade then
+	-- 	task.defer(init_auto_trade)
+	-- end
+	-- task.wait(.1)
+	-- if _G.InternalConfig.DiscordWebhookURL then
+	-- 	task.defer(function()
+	-- 		while task.wait(1) do
+	-- 			task.wait(_G.InternalConfig.WebhookSendDelay)
+	-- 			webhook(
+	-- 				"AutoFarm Log",
+	-- 				`**💸Money Earned :** {farmed.money}\n\
+	--    				**📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
+	--    				**🐶Pet Needs Completed :** {farmed.ailments}\n\
+	--    				**🧪Potions Farmed :** {farmed.potions}\n\
+	--    				**🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
+	--    				**👶Baby Needs Completed :** {farmed.baby_ailments}\n\
+	--    				**🥚Eggs Hatched :** {farmed.eggs_hatched}`
+	-- 			)
+	-- 		end
+	-- 	end)
+	-- end
+	-- task.wait(.1)
+	-- task.defer(optimized_waiting_coroutine)
+	-- task.wait(4)
 	-- if _G.InternalConfig.Mode then
 	-- 	task.defer(init_mode)
 	-- end
@@ -2233,39 +2338,6 @@ end
 	print("[+] API dehashed.")
 end)()
 
--- _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
---     local now = os.clock()
---     for name, t in pairs(Scheduler.tasks) do
---         if t.paused then
---             if t.pause_until and now >= t.pause_until then
---                 t.paused = false
---                 t.pause_until = nil
---             else
---                 continue
---             end
---         end
---         if t.running then
---             continue
---         end
---         if now >= t.next then
---             t.running = true
---             task.spawn(function()
---                 local ok, err = pcall(t.cb)
---                 if not ok then
--- 					warn("Error to task: ", name, err)
---                 end
---                 if Scheduler.tasks[name] then
---                     if t.once then
---                         Scheduler.tasks[name] = nil
---                     else
---                         t.next = os.clock() + t.interval
---                         t.running = false
---                     end
---                 end
---             end)
---         end
---     end
--- end)
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
     for name, t in pairs(Scheduler.tasks) do
@@ -2282,19 +2354,21 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         end
         if now >= t.next then
             t.running = true
-            local ok, err = coroutine.resume(t.cb)
-			print("runned", name)
-            if not ok then
-                warn("Error to task:", name, err)
-            end
-            if Scheduler.tasks[name] then
-                if t.once then
-                    Scheduler.tasks[name] = nil
-                else
-                    t.next = os.clock() + t.interval
-                    t.running = false
+            task.spawn(function()
+                local ok, err = pcall(function() print("called: ", name) t.cb() end)
+                -- local ok, err = pcall(t.cb)
+                if not ok then
+					warn("Error to task: ", name, err)
                 end
-            end
+                if Scheduler.tasks[name] then
+                    if t.once then
+                        Scheduler.tasks[name] = nil
+                    else
+                        t.next = os.clock() + t.interval
+                        t.running = false
+                    end
+                end
+            end)
         end
     end
 end)
@@ -2772,208 +2846,209 @@ end)
 -- furniture init
 ;(function() -- optimized
 	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
-	to_home()
-	local furniture = {}
-	local filter = {
-		bed = true,
-		crib = true,
-		shower = true,
-		toilet = true,
-		tub = true,
-		litter = true,
-		potty = true,
-		lures2023normallure = true
-	}
-	for _, v in ipairs(game.Workspace.HouseInteriors.furniture:GetDescendants()) do
-		if v:IsA("Model") then
-			local name = v.Name:lower()
-			for key in pairs(filter) do
-				if name:find(key) then
-					local part = v:FindFirstChild("UseBlocks")
-					if part then
-						part = part:FindFirstChildWhichIsA("Part")
+	to_home(function()
+		local furniture = {}
+		local filter = {
+			bed = true,
+			crib = true,
+			shower = true,
+			toilet = true,
+			tub = true,
+			litter = true,
+			potty = true,
+			lures2023normallure = true
+		}
+		for _, v in ipairs(game.Workspace.HouseInteriors.furniture:GetDescendants()) do
+			if v:IsA("Model") then
+				local name = v.Name:lower()
+				for key in pairs(filter) do
+					if name:find(key) then
+						local part = v:FindFirstChild("UseBlocks")
 						if part then
-							furniture[name] = part
+							part = part:FindFirstChildWhichIsA("Part")
+							if part then
+								furniture[name] = part
+							end
 						end
 					end
 				end
 			end
 		end
-	end
-	for k,v in pairs(ClientData.get("house_interior")['furniture']) do
-		local id = v.id:lower():gsub("_", "")
-		local part = furniture[id]
-		if part then
-			if id:find("bed") or id:find("crib") then 
-				furn.bed = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("shower") or id:find("bathtub") or id:find("tub") then
-				furn.bath = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("litter") or id:find("potty") or id:find("toilet") then
-				furn.toilet = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("lures2023normallure") then
-				furn.lurebox = {
-					id=v.id,
-					unique=k,
-					usepart=part.name,
-					cframe=part.CFrame
-				}
+		for k,v in pairs(ClientData.get("house_interior")['furniture']) do
+			local id = v.id:lower():gsub("_", "")
+			local part = furniture[id]
+			if part then
+				if id:find("bed") or id:find("crib") then 
+					furn.bed = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("shower") or id:find("bathtub") or id:find("tub") then
+					furn.bath = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("litter") or id:find("potty") or id:find("toilet") then
+					furn.toilet = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("lures2023normallure") then
+					furn.lurebox = {
+						id=v.id,
+						unique=k,
+						usepart=part.name,
+						cframe=part.CFrame
+					}
+				end
 			end
+			if furn.bed and furn.bath and furn.toilet and furn.lurebox then break end
 		end
-		if furn.bed and furn.bath and furn.toilet and furn.lurebox then break end
-	end
-	local cframe
-	if not furn.bed then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
+		local cframe
+		if not furn.bed then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
 				{
-					kind = "basicbed",
-					properties = {
-						cframe = CFrame.new(11.89990234375, 0, -27.10009765625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+					{
+						kind = "basicbed",
+						properties = {
+							cframe = CFrame.new(11.89990234375, 0, -27.10009765625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
 					}
 				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("BasicBed")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("BasicBed")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
 						end
-					end
-
-				end
-			end
- 		end
-		furn.bed = {
-			id="basicbed",
-			unique=result["results"][1].unique,
-			usepart="Seat1",
-			cframe=cframe
-		}
-	end
-	if not furn.bath then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
-				{
-					kind = "cheap_pet_bathtub",
-					properties = {
-						cframe = CFrame.new(31.300048828125, 0, -3.5, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
-					}
-				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("CheapPetBathtub")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
-						end
+	
 					end
 				end
-			end
- 		end
-		furn.bath = {
-			id="cheap_pet_bathtub",
-			unique=result["results"][1].unique,
-			usepart="UseBlock",
-			cframe=cframe
-		}
-	end
-	if not furn.toilet then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
+			 end
+			furn.bed = {
+				id="basicbed",
+				unique=result["results"][1].unique,
+				usepart="Seat1",
+				cframe=cframe
+			}
+		end
+		if not furn.bath then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
 				{
-					kind = "ailments_refresh_2024_litter_box",
-					properties = {
-						cframe = CFrame.new(3.199951171875, 0, -24.2998046875, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+					{
+						kind = "cheap_pet_bathtub",
+						properties = {
+							cframe = CFrame.new(31.300048828125, 0, -3.5, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
 					}
 				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("Toilet")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("CheapPetBathtub")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
 						end
 					end
 				end
-			end
- 		end
-		furn.toilet = {
-			id="ailments_refresh_2024_litter_box",
-			unique=result["results"][1].unique,
-			usepart="Seat1",
-			cframe=cframe
-		}
-	end
-	if not furn.lurebox then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
-				{
-					kind = "lures_2033_normal_lure",
-					properties = {
-						cframe = CFrame.new(18.5, 0, -26.400390625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
-					}
-				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("Lures2023NormalLure")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
-						end
-					end
-				end
-			end
-			furn.lurebox = {
-				id="lures_2033_normal_lure",
+			 end
+			furn.bath = {
+				id="cheap_pet_bathtub",
 				unique=result["results"][1].unique,
 				usepart="UseBlock",
 				cframe=cframe
 			}
 		end
-	end
-	if not HouseClient.is_door_locked() then
-		HouseClient.lock_door()
-	end
-	print("[+] Furniture init done. Door locked.")
+		if not furn.toilet then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
+				{
+					{
+						kind = "ailments_refresh_2024_litter_box",
+						properties = {
+							cframe = CFrame.new(3.199951171875, 0, -24.2998046875, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
+					}
+				}
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("Toilet")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
+						end
+					end
+				end
+			 end
+			furn.toilet = {
+				id="ailments_refresh_2024_litter_box",
+				unique=result["results"][1].unique,
+				usepart="Seat1",
+				cframe=cframe
+			}
+		end
+		if not furn.lurebox then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
+				{
+					{
+						kind = "lures_2033_normal_lure",
+						properties = {
+							cframe = CFrame.new(18.5, 0, -26.400390625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
+					}
+				}
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("Lures2023NormalLure")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
+						end
+					end
+				end
+				furn.lurebox = {
+					id="lures_2033_normal_lure",
+					unique=result["results"][1].unique,
+					usepart="UseBlock",
+					cframe=cframe
+				}
+			end
+		end
+		if not HouseClient.is_door_locked() then
+			HouseClient.lock_door()
+		end
+		print("[+] Furniture init done. Door locked.")
+	end)
 end)()
 
 task.spawn(function() -- optimized
