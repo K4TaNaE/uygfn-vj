@@ -224,24 +224,19 @@ Queue.new = function()
 			local fn = dtask[2]
 			local ailment = dtask[3]
 			task.spawn(function()
-				print("task spawn with name and ailment: ", name, ailment)
 				local ok, err = pcall(function()
 					fn(function(success)
-						print("needed function started")
 						if success == false then
-							print("succes: false")
 							if name == "ailment baby" then
 								StateDB.baby_active_ailments[ailment] = nil
 							elseif name == "ailment pet" then
 								StateDB.active_ailments[ailment] = nil
 							end
 						end
-						print("succces, calling process_next")
 						process_next()
 					end)
 				end)
 				if not ok then
-					print("not ok")
 					warn("Queue error:", name, err)
 					if name == "ailment baby" then
 						StateDB.baby_active_ailments[ailment] = nil
@@ -252,7 +247,6 @@ Queue.new = function()
 				end
 			end)
 		end
-		print('process_next')
 		process_next()
 	end
     }
@@ -286,7 +280,16 @@ local function goto(destId, door, ops, onArrived)
 		return
 	end
 	temp_platform()
-	pcall(InteriorsM.enter, destId, door, ops or {})
+
+	Scheduler:add("goto", .2, function() 
+		local res =	pcall(function()
+			InteriorsM.enter(destId, door, ops or {})
+		end)
+		if res then
+			Scheduler:remove("goto")
+		end
+	end, false, true)
+
 	Scheduler:waitForCondition(
 		"goto_await",
 		function()
@@ -296,7 +299,7 @@ local function goto(destId, door, ops, onArrived)
 			local p = workspace:FindFirstChild("TempPart")
 			if p then p:Destroy() end
 			if onArrived then
-				onArrived()
+				task.delay(.5, onArrived)
 			end
 		end,
 		10
@@ -1383,126 +1386,126 @@ baby_ailments = {
 		end
 		)
 	end,
-	["hungry"] = function(done) 
-		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
-			done(false)
-			return 
-		end
-		local money = ClientData.get("money")
-		if count_of_product("food", "apple") < 3 then
-			if money == 0 then 
-				print("[-] No money to buy food.") 
-				done(false)
-				return 
-			end
-			if money > 20 then
-				safeInvoke("ShopAPI/BuyItem",
-					"food",
-					"apple",
-					{
-						buy_count = 30
-					}
-				)
-			else
-				safeInvoke("ShopAPI/BuyItem",
-					"food",
-					"apple",
-					{
-						buy_count = money / 2
-					}
-				)
-			end
-		end
-		Scheduler:add("ailemnt_baby_hungry_eat", 1, function() 
-			if not Scheduler:exists("ailment_baby_hungry_check") then
-				task.defer(function() 
-					Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
-							return not has_ailment_baby("hungry")
-						end,
-						function(success) 
-							task.defer(function()
-								Scheduler:remove("ailemnt_baby_hungry_eat")
-								Scheduler:remove("ailment_baby_hungry_check")
-							end)
+	-- ["hungry"] = function(done) 
+	-- 	if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
+	-- 		done(false)
+	-- 		return 
+	-- 	end
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "apple") < 3 then
+	-- 		if money == 0 then 
+	-- 			print("[-] No money to buy food.") 
+	-- 			done(false)
+	-- 			return 
+	-- 		end
+	-- 		if money > 20 then
+	-- 			safeInvoke("ShopAPI/BuyItem",
+	-- 				"food",
+	-- 				"apple",
+	-- 				{
+	-- 					buy_count = 30
+	-- 				}
+	-- 			)
+	-- 		else
+	-- 			safeInvoke("ShopAPI/BuyItem",
+	-- 				"food",
+	-- 				"apple",
+	-- 				{
+	-- 					buy_count = money / 2
+	-- 				}
+	-- 			)
+	-- 		end
+	-- 	end
+	-- 	Scheduler:add("ailemnt_baby_hungry_eat", 1, function() 
+	-- 		if not Scheduler:exists("ailment_baby_hungry_check") then
+	-- 			task.defer(function() 
+	-- 				Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
+	-- 						return not has_ailment_baby("hungry")
+	-- 					end,
+	-- 					function(success) 
+	-- 						task.defer(function()
+	-- 							Scheduler:remove("ailemnt_baby_hungry_eat")
+	-- 							Scheduler:remove("ailment_baby_hungry_check")
+	-- 						end)
 
-							if not success then
-								done(false)
-								return
-							end
+	-- 						if not success then
+	-- 							done(false)
+	-- 							return
+	-- 						end
 
-							enstat_baby(money, "hungry")  
-							done(true)
-						end,
-						10
-					)
-				end)
-				safeFire("ToolAPI/ServerUseTool",
-					inv_get_category_unique("food", "apple"),
-					"END"
-				)
-			end
-		end, false, true)
-	end,
-	["thirsty"] = function(done) 
-		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
-			done(false)
-			return 
-		end
-		local money = ClientData.get("money")
-		if count_of_product("food", "water") == 0 then
-			if money == 0 then 
-				print("[!] No money to buy food.") 
-				done(false)
-				return 
-			end			
-			if money > 20 then
-				safeInvoke("ShopAPI/BuyItem",
-					"food",
-					"water",
-					{
-						buy_count = 20
-					}
-				)
-			else 
-				safeInvoke("ShopAPI/BuyItem",
-					"food",
-					"water",
-					{
-						buy_count = money / 2
-					}
-				)
-			end
-		end
-		Scheduler:add("ailemnt_baby_thirsty_eat", 1, function() 
-			if not Scheduler:exists("ailment_baby_thirsty_check") then
-				task.defer(function() 
-					Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
-							return not has_ailment_baby("thirsty")
-						end,
-						function(success) 
-							task.defer(function() 
-								Scheduler:remove("ailemnt_baby_thirsty_eat")
-								Scheduler:remove("ailment_baby_thirsty_check")
-							end)
+	-- 						enstat_baby(money, "hungry")  
+	-- 						done(true)
+	-- 					end,
+	-- 					10
+	-- 				)
+	-- 			end)
+	-- 			safeFire("ToolAPI/ServerUseTool",
+	-- 				inv_get_category_unique("food", "apple"),
+	-- 				"END"
+	-- 			)
+	-- 		end
+	-- 	end, false, true)
+	-- end,
+	-- ["thirsty"] = function(done) 
+	-- 	if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
+	-- 		done(false)
+	-- 		return 
+	-- 	end
+	-- 	local money = ClientData.get("money")
+	-- 	if count_of_product("food", "water") == 0 then
+	-- 		if money == 0 then 
+	-- 			print("[!] No money to buy food.") 
+	-- 			done(false)
+	-- 			return 
+	-- 		end			
+	-- 		if money > 20 then
+	-- 			safeInvoke("ShopAPI/BuyItem",
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = 20
+	-- 				}
+	-- 			)
+	-- 		else 
+	-- 			safeInvoke("ShopAPI/BuyItem",
+	-- 				"food",
+	-- 				"water",
+	-- 				{
+	-- 					buy_count = money / 2
+	-- 				}
+	-- 			)
+	-- 		end
+	-- 	end
+	-- 	Scheduler:add("ailemnt_baby_thirsty_eat", 1, function() 
+	-- 		if not Scheduler:exists("ailment_baby_thirsty_check") then
+	-- 			task.defer(function() 
+	-- 				Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
+	-- 						return not has_ailment_baby("thirsty")
+	-- 					end,
+	-- 					function(success) 
+	-- 						task.defer(function() 
+	-- 							Scheduler:remove("ailemnt_baby_thirsty_eat")
+	-- 							Scheduler:remove("ailment_baby_thirsty_check")
+	-- 						end)
 							
-							if not success then
-								done(false)
-								return
-							end
+	-- 						if not success then
+	-- 							done(false)
+	-- 							return
+	-- 						end
 
-							enstat_baby(money, "thirsty")  
-							done(true)
-						end,
-						10
-					)
-				end)
-				safeFire("ToolAPI/ServerUseTool",
-					inv_get_category_unique("food", "water"),
-					"END"
-				)
-			end
-		end, false, true)
-	end,
+	-- 						enstat_baby(money, "thirsty")  
+	-- 						done(true)
+	-- 					end,
+	-- 					10
+	-- 				)
+	-- 			end)
+	-- 			safeFire("ToolAPI/ServerUseTool",
+	-- 				inv_get_category_unique("food", "water"),
+	-- 				"END"
+	-- 			)
+	-- 		end
+	-- 	end, false, true)
+	-- end,
 	["sick"] = function(done) 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sick") then
 			done(false)
@@ -2365,53 +2368,9 @@ end
 	print("[+] API dehashed.")
 end)()
 
--- _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
---     local now = os.clock()
---     for name, t in pairs(Scheduler.tasks) do
---         if t.paused then
---             if t.pause_until and now >= t.pause_until then
---                 t.paused = false
---                 t.pause_until = nil
---             else
---                 continue
---             end
---         end
---         if t.running then
---             continue
---         end
---         if now >= t.next then
---             t.running = true
---             task.spawn(function()
--- 				local ok, err = pcall(t.cb)
--- 				if not ok then warn("Scheduler error t: ", name, err) end
---                 if Scheduler.tasks[name] then
---                     if t.once then
---                         Scheduler.tasks[name] = nil
---                     else
---                         t.next = os.clock() + t.interval
---                         t.running = false
---                     end
---                 end
---             end)
---         end
---     end
--- end)
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
-
-    -- создаём снимок таблицы, чтобы изменения не ломали pairs()
-    local snapshot = {}
-    for k, v in pairs(Scheduler.tasks) do
-        snapshot[k] = v
-    end
-
-    for name, t in pairs(snapshot) do
-        -- задача могла быть удалена после создания snapshot
-        t = Scheduler.tasks[name]
-        if not t then
-            continue
-        end
-
+    for name, t in pairs(Scheduler.tasks) do
         if t.paused then
             if t.pause_until and now >= t.pause_until then
                 t.paused = false
@@ -2420,27 +2379,17 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
                 continue
             end
         end
-
         if t.running then
             continue
         end
-
         if now >= t.next then
             t.running = true
-
             task.spawn(function()
-                local ok, err = pcall(t.cb)
-                if not ok then
-                    warn("Scheduler error t:", name, err)
-                end
-
-                -- задача могла быть удалена внутри cb
+				local ok, err = pcall(t.cb)
+				if not ok then warn("Scheduler error t: ", name, err) end
                 if Scheduler.tasks[name] then
                     if t.once then
-                        -- удаляем в следующий кадр, чтобы не ломать таблицу
-                        task.defer(function()
-                            Scheduler.tasks[name] = nil
-                        end)
+                        Scheduler.tasks[name] = nil
                     else
                         t.next = os.clock() + t.interval
                         t.running = false
@@ -2450,6 +2399,60 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         end
     end
 end)
+-- _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
+--     local now = os.clock()
+
+--     -- создаём снимок таблицы, чтобы изменения не ломали pairs()
+--     local snapshot = {}
+--     for k, v in pairs(Scheduler.tasks) do
+--         snapshot[k] = v
+--     end
+
+--     for name, t in pairs(snapshot) do
+--         -- задача могла быть удалена после создания snapshot
+--         t = Scheduler.tasks[name]
+--         if not t then
+--             continue
+--         end
+
+--         if t.paused then
+--             if t.pause_until and now >= t.pause_until then
+--                 t.paused = false
+--                 t.pause_until = nil
+--             else
+--                 continue
+--             end
+--         end
+
+--         if t.running then
+--             continue
+--         end
+
+--         if now >= t.next then
+--             t.running = true
+
+--             task.spawn(function()
+--                 local ok, err = pcall(t.cb)
+--                 if not ok then
+--                     warn("Scheduler error t:", name, err)
+--                 end
+
+--                 -- задача могла быть удалена внутри cb
+--                 if Scheduler.tasks[name] then
+--                     if t.once then
+--                         -- удаляем в следующий кадр, чтобы не ломать таблицу
+--                         task.defer(function()
+--                             Scheduler.tasks[name] = nil
+--                         end)
+--                     else
+--                         t.next = os.clock() + t.interval
+--                         t.running = false
+--                     end
+--                 end
+--             end)
+--         end
+--     end
+-- end)
 
 local function __CONN_CLEANUP(player)
 	if player == LocalPlayer then
@@ -2482,9 +2485,8 @@ if not _G.Looping["NetworkHook"] then
 	end)
 end 
 
-Scheduler:add("gc", 300, function() -- watchdog
-	print('watchdog working')
-	collectgarbage("step", 260)
+Scheduler:add("gc", 60, function() -- watchdog
+	print("LuaVM Memory Usage: ", gcinfo() / 1024, "Mb")
 end, false, false) 
 
 _G.CONNECTIONS.AntiAFK = LocalPlayer.Idled:Connect(function() -- anti afk
