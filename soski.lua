@@ -223,7 +223,7 @@ Queue.new = function()
 			local name = dtask[1]
 			local fn = dtask[2]
 			local ailment = dtask[3]
-			task.spawn(function()
+			task.delay(.5, function()
 				local ok, err = pcall(function()
 					fn(function(success)
 						if success == false then
@@ -1906,43 +1906,54 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	Scheduler:waitForCondition("baby_autofarm_wait_condition", function() 
-		return LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and LocalPlayer.Character.Humanoid and ClientData.get
-	end,
-	function(success)
-		local team = ClientData.get("team")
-		local pet = ClientData.get("pet_char_wrappers")[1]
-		if team == "Babies" and not pet then return end
-		if team ~= "Babies" then
-			safeInvoke("TeamAPI/ChooseTeam",
-				"Babies",
-				{
-					dont_respawn = true,
-					source_for_logging = "avatar_editor"
-				}
-			)
-		end	
-		if not _G.InternalConfig.FarmPriority then
-			if pet then
-				safeInvoke("ToolAPI/Unequip",
-					pet.pet_unique,
-					{
-						use_sound_delay = true,
-						equip_as_last = false
-					}
-				)
-			end
-		end
-	end,
-	10)
-	local active_ailments = get_baby_ailments()
-	for k,_ in pairs(active_ailments) do
-		if StateDB.baby_active_ailments[k] then continue end
-		if baby_ailments[k] then
-			StateDB.baby_active_ailments[k] = true
-			print("enqueued: ", k)
-			queue:enqueue({"ailment baby", baby_ailments[k], k})
-		end
+	if not Scheduler:exists("baby_autofarm_wait_condition") then 
+		Scheduler:waitForCondition(
+			"baby_autofarm_wait_condition",
+			function()
+				local char = LocalPlayer.Character
+				if not char then return false end
+				if not char:FindFirstChild("HumanoidRootPart") then return false end
+				if not char:FindFirstChild("Humanoid") then return false end
+				if not ClientData.get then return false end
+				return true
+			end,
+		function(success)
+			task.delay(.5, function() 
+				local team = ClientData.get("team")
+				local pet = ClientData.get("pet_char_wrappers")[1]
+				if team == "Babies" and not pet then return end
+				if team ~= "Babies" then
+					safeInvoke("TeamAPI/ChooseTeam",
+						"Babies",
+						{
+							dont_respawn = true,
+							source_for_logging = "avatar_editor"
+						}
+					)
+				end	
+				if not _G.InternalConfig.FarmPriority then
+					if pet then
+						safeInvoke("ToolAPI/Unequip",
+							pet.pet_unique,
+							{
+								use_sound_delay = true,
+								equip_as_last = false
+							}
+						)
+					end
+				end
+				local active_ailments = get_baby_ailments()
+				for k,_ in pairs(active_ailments) do
+					if StateDB.baby_active_ailments[k] then continue end
+					if baby_ailments[k] then
+						StateDB.baby_active_ailments[k] = true
+						print("enqueued: ", k)
+						queue:enqueue({"ailment baby", baby_ailments[k], k})
+					end
+				end
+			end)
+			end,
+		10)
 	end
 end
 
