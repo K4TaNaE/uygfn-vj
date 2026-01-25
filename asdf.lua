@@ -283,7 +283,7 @@ local function goto(destId, door, ops, onArrived)
 	temp_platform()
 	InteriorsM.enter(destId, door, ops or {})
 	Scheduler:waitForCondition(
-		"goto_awaitwait",
+		"goto_await",
 		function()
 			return get_current_location() == destId
 		end,
@@ -2358,7 +2358,8 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         if now >= t.next then
             t.running = true
             task.spawn(function()
-                local ok, err = pcall(t.cb)
+                local ok, err = pcall(function() print("called: ", name) t.cb() end)
+                -- local ok, err = pcall(t.cb)
                 if not ok then
 					warn("Error to task: ", name, err)
                 end
@@ -2848,208 +2849,209 @@ end)
 -- furniture init
 ;(function() -- optimized
 	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
-	to_home()
-	local furniture = {}
-	local filter = {
-		bed = true,
-		crib = true,
-		shower = true,
-		toilet = true,
-		tub = true,
-		litter = true,
-		potty = true,
-		lures2023normallure = true
-	}
-	for _, v in ipairs(game.Workspace.HouseInteriors.furniture:GetDescendants()) do
-		if v:IsA("Model") then
-			local name = v.Name:lower()
-			for key in pairs(filter) do
-				if name:find(key) then
-					local part = v:FindFirstChild("UseBlocks")
-					if part then
-						part = part:FindFirstChildWhichIsA("Part")
+	to_home(function()
+		local furniture = {}
+		local filter = {
+			bed = true,
+			crib = true,
+			shower = true,
+			toilet = true,
+			tub = true,
+			litter = true,
+			potty = true,
+			lures2023normallure = true
+		}
+		for _, v in ipairs(game.Workspace.HouseInteriors.furniture:GetDescendants()) do
+			if v:IsA("Model") then
+				local name = v.Name:lower()
+				for key in pairs(filter) do
+					if name:find(key) then
+						local part = v:FindFirstChild("UseBlocks")
 						if part then
-							furniture[name] = part
+							part = part:FindFirstChildWhichIsA("Part")
+							if part then
+								furniture[name] = part
+							end
 						end
 					end
 				end
 			end
 		end
-	end
-	for k,v in pairs(ClientData.get("house_interior")['furniture']) do
-		local id = v.id:lower():gsub("_", "")
-		local part = furniture[id]
-		if part then
-			if id:find("bed") or id:find("crib") then 
-				furn.bed = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("shower") or id:find("bathtub") or id:find("tub") then
-				furn.bath = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("litter") or id:find("potty") or id:find("toilet") then
-				furn.toilet = {
-					id=v.id,
-					unique=k,
-					usepart=part.Name,
-					cframe=part.CFrame
-				}
-			elseif id:find("lures2023normallure") then
-				furn.lurebox = {
-					id=v.id,
-					unique=k,
-					usepart=part.name,
-					cframe=part.CFrame
-				}
+		for k,v in pairs(ClientData.get("house_interior")['furniture']) do
+			local id = v.id:lower():gsub("_", "")
+			local part = furniture[id]
+			if part then
+				if id:find("bed") or id:find("crib") then 
+					furn.bed = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("shower") or id:find("bathtub") or id:find("tub") then
+					furn.bath = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("litter") or id:find("potty") or id:find("toilet") then
+					furn.toilet = {
+						id=v.id,
+						unique=k,
+						usepart=part.Name,
+						cframe=part.CFrame
+					}
+				elseif id:find("lures2023normallure") then
+					furn.lurebox = {
+						id=v.id,
+						unique=k,
+						usepart=part.name,
+						cframe=part.CFrame
+					}
+				end
 			end
+			if furn.bed and furn.bath and furn.toilet and furn.lurebox then break end
 		end
-		if furn.bed and furn.bath and furn.toilet and furn.lurebox then break end
-	end
-	local cframe
-	if not furn.bed then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
+		local cframe
+		if not furn.bed then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
 				{
-					kind = "basicbed",
-					properties = {
-						cframe = CFrame.new(11.89990234375, 0, -27.10009765625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+					{
+						kind = "basicbed",
+						properties = {
+							cframe = CFrame.new(11.89990234375, 0, -27.10009765625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
 					}
 				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("BasicBed")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("BasicBed")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
 						end
-					end
-
-				end
-			end
- 		end
-		furn.bed = {
-			id="basicbed",
-			unique=result["results"][1].unique,
-			usepart="Seat1",
-			cframe=cframe
-		}
-	end
-	if not furn.bath then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
-				{
-					kind = "cheap_pet_bathtub",
-					properties = {
-						cframe = CFrame.new(31.300048828125, 0, -3.5, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
-					}
-				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("CheapPetBathtub")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
-						end
+	
 					end
 				end
-			end
- 		end
-		furn.bath = {
-			id="cheap_pet_bathtub",
-			unique=result["results"][1].unique,
-			usepart="UseBlock",
-			cframe=cframe
-		}
-	end
-	if not furn.toilet then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
+			 end
+			furn.bed = {
+				id="basicbed",
+				unique=result["results"][1].unique,
+				usepart="Seat1",
+				cframe=cframe
+			}
+		end
+		if not furn.bath then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
 				{
-					kind = "ailments_refresh_2024_litter_box",
-					properties = {
-						cframe = CFrame.new(3.199951171875, 0, -24.2998046875, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+					{
+						kind = "cheap_pet_bathtub",
+						properties = {
+							cframe = CFrame.new(31.300048828125, 0, -3.5, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
 					}
 				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("Toilet")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("CheapPetBathtub")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
 						end
 					end
 				end
-			end
- 		end
-		furn.toilet = {
-			id="ailments_refresh_2024_litter_box",
-			unique=result["results"][1].unique,
-			usepart="Seat1",
-			cframe=cframe
-		}
-	end
-	if not furn.lurebox then
-		local result = safeInvoke("HousingAPI/BuyFurnitures",
-			{
-				{
-					kind = "lures_2033_normal_lure",
-					properties = {
-						cframe = CFrame.new(18.5, 0, -26.400390625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
-					}
-				}
-			}
-		)
-		for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
-			if v:IsA("Folder") then
-				local model = v:FindFirstChild("Lures2023NormalLure")
-				if model and model:IsA("Model") then
-					local ub = model:FindFirstChild("UseBlocks")
-					if ub then
-						local part = ub:FindFirstChildWhichIsA("Part")
-						if part then 
-							cframe = part.CFrame
-							break 
-						end
-					end
-				end
-			end
-			furn.lurebox = {
-				id="lures_2033_normal_lure",
+			 end
+			furn.bath = {
+				id="cheap_pet_bathtub",
 				unique=result["results"][1].unique,
 				usepart="UseBlock",
 				cframe=cframe
 			}
 		end
-	end
-	if not HouseClient.is_door_locked() then
-		HouseClient.lock_door()
-	end
-	print("[+] Furniture init done. Door locked.")
+		if not furn.toilet then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
+				{
+					{
+						kind = "ailments_refresh_2024_litter_box",
+						properties = {
+							cframe = CFrame.new(3.199951171875, 0, -24.2998046875, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
+					}
+				}
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("Toilet")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
+						end
+					end
+				end
+			 end
+			furn.toilet = {
+				id="ailments_refresh_2024_litter_box",
+				unique=result["results"][1].unique,
+				usepart="Seat1",
+				cframe=cframe
+			}
+		end
+		if not furn.lurebox then
+			local result = safeInvoke("HousingAPI/BuyFurnitures",
+				{
+					{
+						kind = "lures_2033_normal_lure",
+						properties = {
+							cframe = CFrame.new(18.5, 0, -26.400390625, 1, -3.8213709303294e-15, 8.7422776573476e-08, 3.8213709303294e-15, 1, 0, -8.7422776573476e-08, 0, 1)
+						}
+					}
+				}
+			)
+			for _,v in ipairs(game.Workspace.HouseInteriors.furniture:GetChildren()) do
+				if v:IsA("Folder") then
+					local model = v:FindFirstChild("Lures2023NormalLure")
+					if model and model:IsA("Model") then
+						local ub = model:FindFirstChild("UseBlocks")
+						if ub then
+							local part = ub:FindFirstChildWhichIsA("Part")
+							if part then 
+								cframe = part.CFrame
+								break 
+							end
+						end
+					end
+				end
+				furn.lurebox = {
+					id="lures_2033_normal_lure",
+					unique=result["results"][1].unique,
+					usepart="UseBlock",
+					cframe=cframe
+				}
+			end
+		end
+		if not HouseClient.is_door_locked() then
+			HouseClient.lock_door()
+		end
+		print("[+] Furniture init done. Door locked.")
+	end)
 end)()
 
 task.spawn(function() -- optimized
