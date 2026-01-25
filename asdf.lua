@@ -218,16 +218,10 @@ Queue.new = function()
 				self.running = false
 				return
 			end
-			local task = self:dequeue()
-			local name = task[1]
-			local fn = task[2]
-			local ailment = task[3]
-			print("Dequeued:", name, typeof(fn), typeof(ailment))
-			if type(fn) ~= "function" then
-				print("❌ Invalid task callback:", name)
-				process_next()
-				return
-			end
+			local dtask = self:dequeue()
+			local name = dtask[1]
+			local fn = dtask[2]
+			local ailment = dtask[3]
 			task.spawn(function()
 				print("task spawn with name and ailment: ", name, ailment)
 				local ok, err = pcall(function()
