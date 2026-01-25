@@ -1915,12 +1915,10 @@ local function init_baby_autofarm() -- optimized
 				if not char:FindFirstChild("HumanoidRootPart") then return false end
 				if not char:FindFirstChild("Humanoid") then return false end
 				if not ClientData.get then return false end
-				local wrappers = ClientData.get("pet_char_wrappers")
-				if not wrappers then return false end
 				return true
 			end,
 		function(success)
-			task.delay(1, function() 
+			task.delay(.5, function() 
 				local team = ClientData.get("team")
 				local pet = ClientData.get("pet_char_wrappers")[1]
 				if team == "Babies" and not pet then return end
