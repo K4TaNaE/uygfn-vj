@@ -223,7 +223,7 @@ Queue.new = function()
 			local name = dtask[1]
 			local fn = dtask[2]
 			local ailment = dtask[3]
-			task.spawn(function()
+			task.delay(.5, function()
 				local ok, err = pcall(function()
 					fn(function(success)
 						if success == false then
