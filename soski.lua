@@ -212,9 +212,7 @@ Queue.new = function()
 		if self.running then return end
 		self.running = true
 		local function process_next()
-				print("process_next started")
 			if self:empty() then
-				print("empty")
 				self.running = false
 				return
 			end
@@ -285,7 +283,7 @@ local function goto(destId, door, ops, onArrived)
 		return
 	end
 	temp_platform()
-	InteriorsM.enter(destId, door, ops or {})
+	pcall(InteriorsM.enter, destId, door, ops or {})
 	Scheduler:waitForCondition(
 		"goto_await",
 		function()
@@ -1418,23 +1416,27 @@ baby_ailments = {
 		end
 		Scheduler:add("ailemnt_baby_hungry_eat", 1, function() 
 			if not Scheduler:exists("ailment_baby_hungry_check") then
-				Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
-						return not has_ailment_baby("hungry")
-					end,
-					function(success) 
-						if not success then
-							Scheduler:remove("ailemnt_baby_hungry_eat")
-							Scheduler:remove("ailment_baby_hungry_check")
-							done(false)
-							return
-						end
-						enstat_baby(money, "hungry")  
-						done(true)
-						Scheduler:remove("ailemnt_baby_hungry_eat")
-						Scheduler:remove("ailment_baby_hungry_check")
-					end,
-					10
-				)
+				task.defer(function() 
+					Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
+							return not has_ailment_baby("hungry")
+						end,
+						function(success) 
+							task.defer(function()
+								Scheduler:remove("ailemnt_baby_hungry_eat")
+								Scheduler:remove("ailment_baby_hungry_check")
+							end)
+
+							if not success then
+								done(false)
+								return
+							end
+
+							enstat_baby(money, "hungry")  
+							done(true)
+						end,
+						10
+					)
+				end)
 				safeFire("ToolAPI/ServerUseTool",
 					inv_get_category_unique("food", "apple"),
 					"END"
@@ -1474,23 +1476,27 @@ baby_ailments = {
 		end
 		Scheduler:add("ailemnt_baby_thirsty_eat", 1, function() 
 			if not Scheduler:exists("ailment_baby_thirsty_check") then
-				Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
-						return not has_ailment_baby("thirsty")
-					end,
-					function(success) 
-						if not success then
-							Scheduler:remove("ailemnt_baby_thirsty_eat")
-							Scheduler:remove("ailment_baby_thirsty_check")
-							done(false)
-							return
-						end
-						enstat_baby(money, "thirsty")  
-						done(true)
-						Scheduler:remove("ailemnt_baby_thirsty_eat")
-						Scheduler:remove("ailment_baby_thirsty_check")
-					end,
-					10
-				)
+				task.defer(function() 
+					Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
+							return not has_ailment_baby("thirsty")
+						end,
+						function(success) 
+							task.defer(function() 
+								Scheduler:remove("ailemnt_baby_thirsty_eat")
+								Scheduler:remove("ailment_baby_thirsty_check")
+							end)
+							
+							if not success then
+								done(false)
+								return
+							end
+
+							enstat_baby(money, "thirsty")  
+							done(true)
+						end,
+						10
+					)
+				end)
 				safeFire("ToolAPI/ServerUseTool",
 					inv_get_category_unique("food", "water"),
 					"END"
@@ -1634,25 +1640,28 @@ baby_ailments = {
 			local money = ClientData.get("money")
 			Scheduler:add("ailment_baby_dirty", 2, function()
 				if not Scheduler:exists("ailment_baby_dirty_check") then
-					Scheduler:waitForCondition("ailment_baby_dirty_check", function()
-						return not has_ailment_baby("dirty")
-					end, 
-					function(success)
-						if not success then
-							Scheduler:remove("ailment_baby_dirty")
-							Scheduler:remove("ailment_baby_dirty_check")
+					task.defer(function() 
+						Scheduler:waitForCondition("ailment_baby_dirty_check", function()
+							return not has_ailment_baby("dirty")
+						end, 
+						function(success)
+							task.defer(function() 
+								Scheduler:remove("ailment_baby_dirty")
+								Scheduler:remove("ailment_baby_dirty_check")
+							end)
 							StateManagerClient.exit_seat_states()
-							done(false)
-							return
-						end
-						enstat_baby(money, "dirty")
-						StateManagerClient.exit_seat_states()
-						Scheduler:remove("ailment_baby_dirty")
-						Scheduler:remove("ailment_baby_dirty_check")
-						done(true)
-					end,
-					20
-				)
+							
+							if not success then
+								done(false)
+								return
+							end
+
+							enstat_baby(money, "dirty")
+							done(true)
+						end,
+						20
+						)
+					end)
 				end
 				safeInvoke('HousingAPI/ActivateFurniture',
 					LocalPlayer,
@@ -1705,25 +1714,28 @@ baby_ailments = {
 			local money = ClientData.get("money")
 			Scheduler:add("ailment_baby_sleepy", 2, function()
 				if not Scheduler:exists("ailment_baby_sleepy_check") then
-					Scheduler:waitForCondition("ailment_baby_sleepy_check", function()
-						return not has_ailment_baby("sleepy")
-					end, 
-					function(success)
-						if not success then
-							Scheduler:remove("ailment_baby_sleepy")
-							Scheduler:remove("ailment_baby_sleepy_check")
+					task.defer(function()
+						Scheduler:waitForCondition("ailment_baby_sleepy_check", function()
+							return not has_ailment_baby("sleepy")
+						end, 
+						function(success)
+							task.defer(function() 
+								Scheduler:remove("ailment_baby_sleepy")
+								Scheduler:remove("ailment_baby_sleepy_check")
+							end)
 							StateManagerClient.exit_seat_states()
-							done(false)
-							return
-						end
-						enstat_baby(money, "sleepy")
-						StateManagerClient.exit_seat_states()
-						Scheduler:remove("ailment_baby_sleepy")
-						Scheduler:remove("ailment_baby_sleepy_check")
-						done(true)
-					end,
-					20
-				)
+							
+							if not success then
+								done(false)
+								return
+							end
+
+							enstat_baby(money, "sleepy")
+							done(true)
+						end,
+						20
+					)
+				end)
 				end
 				safeInvoke('HousingAPI/ActivateFurniture',
 					LocalPlayer,
@@ -1921,10 +1933,6 @@ local function init_baby_autofarm() -- optimized
 			print("enqueued: ", k)
 			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
-	end
-	wanr("Currently active")
-	for k,v in StateDB.baby_active_ailments do
-		print(k,v)
 	end
 end
 
@@ -2367,14 +2375,8 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         if now >= t.next then
             t.running = true
             task.spawn(function()
-				local ok, err = pcall(function()
-					print("called:", name)
-					if type(t.cb) == "function" then
-						t.cb()
-					else
-						error("Invalid cb type: " .. typeof(t.cb))
-					end
-				end)
+				local ok, err = pcall(t.cb)
+				if not ok then warn("Scheduler error t: ", name, err) end
                 if Scheduler.tasks[name] then
                     if t.once then
                         Scheduler.tasks[name] = nil
