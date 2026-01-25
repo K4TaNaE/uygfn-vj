@@ -1418,23 +1418,25 @@ baby_ailments = {
 		end
 		Scheduler:add("ailemnt_baby_hungry_eat", 1, function() 
 			if not Scheduler:exists("ailment_baby_hungry_check") then
-				Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
-						return not has_ailment_baby("hungry")
-					end,
-					function(success) 
-						if not success then
+				task.defer(function() 
+					Scheduler:waitForCondition("ailment_baby_hungry_check", function() 
+							return not has_ailment_baby("hungry")
+						end,
+						function(success) 
+							if not success then
+								Scheduler:remove("ailemnt_baby_hungry_eat")
+								Scheduler:remove("ailment_baby_hungry_check")
+								done(false)
+								return
+							end
+							enstat_baby(money, "hungry")  
+							done(true)
 							Scheduler:remove("ailemnt_baby_hungry_eat")
 							Scheduler:remove("ailment_baby_hungry_check")
-							done(false)
-							return
-						end
-						enstat_baby(money, "hungry")  
-						done(true)
-						Scheduler:remove("ailemnt_baby_hungry_eat")
-						Scheduler:remove("ailment_baby_hungry_check")
-					end,
-					10
-				)
+						end,
+						10
+					)
+				end)
 				safeFire("ToolAPI/ServerUseTool",
 					inv_get_category_unique("food", "apple"),
 					"END"
@@ -1474,23 +1476,25 @@ baby_ailments = {
 		end
 		Scheduler:add("ailemnt_baby_thirsty_eat", 1, function() 
 			if not Scheduler:exists("ailment_baby_thirsty_check") then
-				Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
-						return not has_ailment_baby("thirsty")
-					end,
-					function(success) 
-						if not success then
+				task.defer(function() 
+					Scheduler:waitForCondition("ailment_baby_thirsty_check", function() 
+							return not has_ailment_baby("thirsty")
+						end,
+						function(success) 
+							if not success then
+								Scheduler:remove("ailemnt_baby_thirsty_eat")
+								Scheduler:remove("ailment_baby_thirsty_check")
+								done(false)
+								return
+							end
+							enstat_baby(money, "thirsty")  
+							done(true)
 							Scheduler:remove("ailemnt_baby_thirsty_eat")
 							Scheduler:remove("ailment_baby_thirsty_check")
-							done(false)
-							return
-						end
-						enstat_baby(money, "thirsty")  
-						done(true)
-						Scheduler:remove("ailemnt_baby_thirsty_eat")
-						Scheduler:remove("ailment_baby_thirsty_check")
-					end,
-					10
-				)
+						end,
+						10
+					)
+				end)
 				safeFire("ToolAPI/ServerUseTool",
 					inv_get_category_unique("food", "water"),
 					"END"
@@ -1634,25 +1638,27 @@ baby_ailments = {
 			local money = ClientData.get("money")
 			Scheduler:add("ailment_baby_dirty", 2, function()
 				if not Scheduler:exists("ailment_baby_dirty_check") then
-					Scheduler:waitForCondition("ailment_baby_dirty_check", function()
-						return not has_ailment_baby("dirty")
-					end, 
-					function(success)
-						if not success then
+					task.defer(function() 
+						Scheduler:waitForCondition("ailment_baby_dirty_check", function()
+							return not has_ailment_baby("dirty")
+						end, 
+						function(success)
+							if not success then
+								Scheduler:remove("ailment_baby_dirty")
+								Scheduler:remove("ailment_baby_dirty_check")
+								StateManagerClient.exit_seat_states()
+								done(false)
+								return
+							end
+							enstat_baby(money, "dirty")
+							StateManagerClient.exit_seat_states()
 							Scheduler:remove("ailment_baby_dirty")
 							Scheduler:remove("ailment_baby_dirty_check")
-							StateManagerClient.exit_seat_states()
-							done(false)
-							return
-						end
-						enstat_baby(money, "dirty")
-						StateManagerClient.exit_seat_states()
-						Scheduler:remove("ailment_baby_dirty")
-						Scheduler:remove("ailment_baby_dirty_check")
-						done(true)
-					end,
-					20
-				)
+							done(true)
+						end,
+						20
+						)
+					end)
 				end
 				safeInvoke('HousingAPI/ActivateFurniture',
 					LocalPlayer,
@@ -1705,25 +1711,27 @@ baby_ailments = {
 			local money = ClientData.get("money")
 			Scheduler:add("ailment_baby_sleepy", 2, function()
 				if not Scheduler:exists("ailment_baby_sleepy_check") then
-					Scheduler:waitForCondition("ailment_baby_sleepy_check", function()
-						return not has_ailment_baby("sleepy")
-					end, 
-					function(success)
-						if not success then
+					task.defer(function()
+						Scheduler:waitForCondition("ailment_baby_sleepy_check", function()
+							return not has_ailment_baby("sleepy")
+						end, 
+						function(success)
+							if not success then
+								Scheduler:remove("ailment_baby_sleepy")
+								Scheduler:remove("ailment_baby_sleepy_check")
+								StateManagerClient.exit_seat_states()
+								done(false)
+								return
+							end
+							enstat_baby(money, "sleepy")
+							StateManagerClient.exit_seat_states()
 							Scheduler:remove("ailment_baby_sleepy")
 							Scheduler:remove("ailment_baby_sleepy_check")
-							StateManagerClient.exit_seat_states()
-							done(false)
-							return
-						end
-						enstat_baby(money, "sleepy")
-						StateManagerClient.exit_seat_states()
-						Scheduler:remove("ailment_baby_sleepy")
-						Scheduler:remove("ailment_baby_sleepy_check")
-						done(true)
-					end,
-					20
-				)
+							done(true)
+						end,
+						20
+					)
+				end)
 				end
 				safeInvoke('HousingAPI/ActivateFurniture',
 					LocalPlayer,
