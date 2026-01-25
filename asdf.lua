@@ -1922,10 +1922,6 @@ local function init_baby_autofarm() -- optimized
 			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
 	end
-	wanr("Currently active")
-	for k,v in StateDB.baby_active_ailments do
-		print(k,v)
-	end
 end
 
 local function async_auto_buy() -- optimized
@@ -2367,14 +2363,8 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         if now >= t.next then
             t.running = true
             task.spawn(function()
-				local ok, err = pcall(function()
-					print("called:", name)
-					if type(t.cb) == "function" then
-						t.cb()
-					else
-						error("Invalid cb type: " .. typeof(t.cb))
-					end
-				end)
+				local ok, err = pcall(t.cb)
+				if not ok then warn("Scheduler error t: ", name, err) end
                 if Scheduler.tasks[name] then
                     if t.once then
                         Scheduler.tasks[name] = nil
