@@ -83,7 +83,10 @@ Scheduler.tasks = {}
 	**fallback**: function that will be called on error.
 ]]
 function Scheduler:add(name, interval, callback, once, now, fallback)
-    self.tasks[name] = {
+    assert(type(name) == "string", "Scheduler task name must be a string")
+    assert(type(callback) == "function", "Scheduler callback must be a function")
+
+	self.tasks[name] = {
         interval = interval,
         cb = callback,
         once = once == true,
@@ -283,7 +286,7 @@ local function goto(destId, door, ops, onArrived)
 		return
 	end
 	temp_platform()
-	InteriorsM.enter(destId, door, ops or {})
+	pcall(InteriorsM.enter, destId, door, ops or {})
 	Scheduler:waitForCondition(
 		"goto_await",
 		function()
@@ -584,12 +587,8 @@ local function gotovec(x, y, z, onArrived)
 			return (root.Position - Vector3.new(x, y, z)).Magnitude < 4
 		end,
 		function(success)
-			if success then
-				if onArrived then
-					onArrived()
-				end
-			else
-				warn("gotovec timeout")
+			if onArrived then
+				onArrived()
 			end
 		end,
 		5
@@ -1904,27 +1903,35 @@ local function init_autofarm() -- optimized
 end
 	
 local function init_baby_autofarm() -- optimized
-	if ClientData.get("team") ~= "Babies" then
-		safeInvoke("TeamAPI/ChooseTeam",
-			"Babies",
-			{
-				dont_respawn = true,
-				source_for_logging = "avatar_editor"
-			}
-		)
-	end	
-	if not _G.InternalConfig.FarmPriority then
+	Scheduler:waitForCondition("baby_autofarm_wait_condition", function() 
+		return LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and LocalPlayer.Character.Humanoid and ClientData.get
+	end,
+	function(success)
+		local team = ClientData.get("team")
 		local pet = ClientData.get("pet_char_wrappers")[1]
-		if pet then
-			safeInvoke("ToolAPI/Unequip",
-				pet.pet_unique,
+		if team == "Babies" and not pet then return end
+		if team ~= "Babies" then
+			safeInvoke("TeamAPI/ChooseTeam",
+				"Babies",
 				{
-					use_sound_delay = true,
-					equip_as_last = false
+					dont_respawn = true,
+					source_for_logging = "avatar_editor"
 				}
 			)
+		end	
+		if not _G.InternalConfig.FarmPriority then
+			if pet then
+				safeInvoke("ToolAPI/Unequip",
+					pet.pet_unique,
+					{
+						use_sound_delay = true,
+						equip_as_last = false
+					}
+				)
+			end
 		end
-	end
+	end,
+	10)
 	local active_ailments = get_baby_ailments()
 	for k,_ in pairs(active_ailments) do
 		if StateDB.baby_active_ailments[k] then continue end
@@ -2358,9 +2365,53 @@ end
 	print("[+] API dehashed.")
 end)()
 
+-- _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
+--     local now = os.clock()
+--     for name, t in pairs(Scheduler.tasks) do
+--         if t.paused then
+--             if t.pause_until and now >= t.pause_until then
+--                 t.paused = false
+--                 t.pause_until = nil
+--             else
+--                 continue
+--             end
+--         end
+--         if t.running then
+--             continue
+--         end
+--         if now >= t.next then
+--             t.running = true
+--             task.spawn(function()
+-- 				local ok, err = pcall(t.cb)
+-- 				if not ok then warn("Scheduler error t: ", name, err) end
+--                 if Scheduler.tasks[name] then
+--                     if t.once then
+--                         Scheduler.tasks[name] = nil
+--                     else
+--                         t.next = os.clock() + t.interval
+--                         t.running = false
+--                     end
+--                 end
+--             end)
+--         end
+--     end
+-- end)
 _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
     local now = os.clock()
-    for name, t in pairs(Scheduler.tasks) do
+
+    -- создаём снимок таблицы, чтобы изменения не ломали pairs()
+    local snapshot = {}
+    for k, v in pairs(Scheduler.tasks) do
+        snapshot[k] = v
+    end
+
+    for name, t in pairs(snapshot) do
+        -- задача могла быть удалена после создания snapshot
+        t = Scheduler.tasks[name]
+        if not t then
+            continue
+        end
+
         if t.paused then
             if t.pause_until and now >= t.pause_until then
                 t.paused = false
@@ -2369,17 +2420,27 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
                 continue
             end
         end
+
         if t.running then
             continue
         end
+
         if now >= t.next then
             t.running = true
+
             task.spawn(function()
-				local ok, err = pcall(t.cb)
-				if not ok then warn("Scheduler error t: ", name, err) end
+                local ok, err = pcall(t.cb)
+                if not ok then
+                    warn("Scheduler error t:", name, err)
+                end
+
+                -- задача могла быть удалена внутри cb
                 if Scheduler.tasks[name] then
                     if t.once then
-                        Scheduler.tasks[name] = nil
+                        -- удаляем в следующий кадр, чтобы не ломать таблицу
+                        task.defer(function()
+                            Scheduler.tasks[name] = nil
+                        end)
                     else
                         t.next = os.clock() + t.interval
                         t.running = false
