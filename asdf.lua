@@ -212,7 +212,9 @@ Queue.new = function()
 		if self.running then return end
 		self.running = true
 		local function process_next()
+				print("process_next started")
 			if self:empty() then
+				print("empty")
 				self.running = false
 				return
 			end
@@ -221,20 +223,24 @@ Queue.new = function()
 			local fn = task[2]
 			local ailment = task[3]
 			task.spawn(function()
+				print("task spawn with name and ailment: ", name, ailment)
 				local ok, err = pcall(function()
 					fn(function(success)
-
+						print("needed function started")
 						if success == false then
+							print("succes: false")
 							if name == "ailment baby" then
 								StateDB.baby_active_ailments[ailment] = nil
 							elseif name == "ailment pet" then
 								StateDB.active_ailments[ailment] = nil
 							end
 						end
+						print("succces, calling process_next")
 						process_next()
 					end)
 				end)
 				if not ok then
+					print("not ok")
 					warn("Queue error:", name, err)
 					if name == "ailment baby" then
 						StateDB.baby_active_ailments[ailment] = nil
@@ -245,6 +251,7 @@ Queue.new = function()
 				end
 			end)
 		end
+		print('process_next')
 		process_next()
 	end
     }
@@ -1911,8 +1918,13 @@ local function init_baby_autofarm() -- optimized
 		if StateDB.baby_active_ailments[k] then continue end
 		if baby_ailments[k] then
 			StateDB.baby_active_ailments[k] = true
+			print("enqueued: ", k)
 			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
+	end
+	wanr("Currently active")
+	for k,v in StateDB.baby_active_ailments do
+		print(k,v)
 	end
 end
 
@@ -2848,7 +2860,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then license() __init() return end	
 	to_home(function()
 		local furniture = {}
 		local filter = {
@@ -3051,6 +3063,8 @@ end)
 			HouseClient.lock_door()
 		end
 		print("[+] Furniture init done. Door locked.")
+		license()
+		__init()
 	end)
 end)()
 
@@ -3064,5 +3078,3 @@ task.spawn(function() -- optimized
 	part.Parent = game.Workspace
 end)
 
-license()
-__init()
