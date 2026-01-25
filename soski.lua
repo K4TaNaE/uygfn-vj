@@ -212,39 +212,46 @@ Queue.new = function()
 		if self.running then return end
 		self.running = true
 		local function process_next()
+				print("process_next started")
 			if self:empty() then
+				print("empty")
 				self.running = false
 				return
 			end
-			local task = self:dequeue()
-			local name = task[1]
-			local fn = task[2]
-			local ailment = task[3]
+			local dtask = self:dequeue()
+			local name = dtask[1]
+			local fn = dtask[2]
+			local ailment = dtask[3]
 			task.spawn(function()
+				print("task spawn with name and ailment: ", name, ailment)
 				local ok, err = pcall(function()
 					fn(function(success)
-
+						print("needed function started")
 						if success == false then
+							print("succes: false")
 							if name == "ailment baby" then
 								StateDB.baby_active_ailments[ailment] = nil
 							elseif name == "ailment pet" then
 								StateDB.active_ailments[ailment] = nil
 							end
 						end
+						print("succces, calling process_next")
 						process_next()
 					end)
 				end)
 				if not ok then
+					print("not ok")
 					warn("Queue error:", name, err)
 					if name == "ailment baby" then
 						StateDB.baby_active_ailments[ailment] = nil
 					elseif name == "ailment pet" then
-						StateDB.active_ailments[ailment] = nil
+						StateDB.actiev_ailments[ailment] = nil
 					end
 					process_next()
 				end
 			end)
 		end
+		print('process_next')
 		process_next()
 	end
     }
@@ -1911,8 +1918,13 @@ local function init_baby_autofarm() -- optimized
 		if StateDB.baby_active_ailments[k] then continue end
 		if baby_ailments[k] then
 			StateDB.baby_active_ailments[k] = true
+			print("enqueued: ", k)
 			queue:enqueue({"ailment baby", baby_ailments[k], k})
 		end
+	end
+	wanr("Currently active")
+	for k,v in StateDB.baby_active_ailments do
+		print(k,v)
 	end
 end
 
@@ -2355,11 +2367,14 @@ _G.CONNECTIONS.Scheduler = RunService.Heartbeat:Connect(function()
         if now >= t.next then
             t.running = true
             task.spawn(function()
-                local ok, err = pcall(function() print("called: ", name) t.cb() end)
-                -- local ok, err = pcall(t.cb)
-                if not ok then
-					warn("Error to task: ", name, err)
-                end
+				local ok, err = pcall(function()
+					print("called:", name)
+					if type(t.cb) == "function" then
+						t.cb()
+					else
+						error("Invalid cb type: " .. typeof(t.cb))
+					end
+				end)
                 if Scheduler.tasks[name] then
                     if t.once then
                         Scheduler.tasks[name] = nil
@@ -2845,7 +2860,7 @@ end)
 
 -- furniture init
 ;(function() -- optimized
-	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then return end	
+	if not _G.InternalConfig.FarmPriority and not _G.InternalConfig.BabyAutoFarm and not _G.InternalConfig.LureboxFarm then license() __init() return end	
 	to_home(function()
 		local furniture = {}
 		local filter = {
@@ -3048,6 +3063,8 @@ end)
 			HouseClient.lock_door()
 		end
 		print("[+] Furniture init done. Door locked.")
+		license()
+		__init()
 	end)
 end)()
 
@@ -3061,5 +3078,3 @@ task.spawn(function() -- optimized
 	part.Parent = game.Workspace
 end)
 
-license()
-__init()
