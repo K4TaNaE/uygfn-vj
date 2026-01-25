@@ -280,7 +280,16 @@ local function goto(destId, door, ops, onArrived)
 		return
 	end
 	temp_platform()
-	pcall(InteriorsM.enter, destId, door, ops or {})
+
+	Scheduler:add("goto", .2, function() 
+		local res =	pcall(function()
+			InteriorsM.enter(destId, door, ops or {})
+		end)
+		if res then
+			Scheduler:remove("goto")
+		end
+	end, false, true)
+
 	Scheduler:waitForCondition(
 		"goto_await",
 		function()
