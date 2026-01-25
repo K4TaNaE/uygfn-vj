@@ -222,6 +222,12 @@ Queue.new = function()
 			local name = task[1]
 			local fn = task[2]
 			local ailment = task[3]
+			print("Dequeued:", name, typeof(fn), typeof(ailment))
+			if type(fn) ~= "function" then
+				print("❌ Invalid task callback:", name)
+				process_next()
+				return
+			end
 			task.spawn(function()
 				print("task spawn with name and ailment: ", name, ailment)
 				local ok, err = pcall(function()
