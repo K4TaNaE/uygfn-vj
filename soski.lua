@@ -65,6 +65,7 @@ local Cooldown = {
 	init_lurebox_farm = 0,
 	init_gift_autoopen = 0,
 	init_auto_give_potion = 0,
+	watchdog = 0,
 }
 local PetPotionsNeedRarity = {
 	common = 1,
@@ -77,7 +78,7 @@ local TASKS_BY_RARITY = {
     common = 25,
     uncommon = 36,
     rare = 54,
-    ultra = 107,
+    ultra_rare = 107,
     legendary = 183
 }
 local furn = {}
@@ -88,6 +89,7 @@ _G.flag_if_no_one_to_farm = false
 _G.CONNECTIONS = {}
 _G.CLEANUP_INSTANCES = {}
 _G.kitty_farming = false
+_G.HeadCashed = nil
 
 --[[ Lua Stuff ]]
 local Queue = {} 
@@ -314,6 +316,27 @@ local function get_equiped_pet()
     local age = cdata.properties.age
     local friendship = cdata.properties.friendship_level
     local xp = cdata.properties.xp
+
+    local pet_info = InventoryDB.pets[remote]
+    local rarity = pet_info and pet_info.rarity
+    local name = pet_info and pet_info.name
+
+    return {
+        remote = remote,
+        unique = unique,
+        wrapper = wrapper,
+        age = age,
+        rarity = rarity,
+        friendship = friendship,
+        xp = xp,
+        name = name,
+    }
+
+end
+
+
+local function get_equiped_model() 
+
     local model
 
     for _, v in ipairs(workspace.Pets:GetChildren()) do
@@ -325,21 +348,7 @@ local function get_equiped_pet()
         end
     end
 
-    local pet_info = InventoryDB.pets[remote]
-    local rarity = pet_info and pet_info.rarity
-    local name = pet_info and pet_info.name
-
-    return {
-        remote = remote,
-        unique = unique,
-        model = model,
-        wrapper = wrapper,
-        age = age,
-        rarity = rarity,
-        friendship = friendship,
-        xp = xp,
-        name = name
-    }
+	return model
 
 end
 
@@ -622,23 +631,36 @@ local function count(t)
 end
 
 
+local function shallow_keys_copy(t)
+
+	local r = {}
+
+	for k,_ in pairs(t) do
+        r[k] = true
+    end
+
+	return r
+
+end
+
+
 local function get_potions() 
 
 	local big = {}
 	local tiny = {}
 
 	for k,v in pairs(get_owned_category("food")) do
-		if (v.id:lower()):match("potion") then
-			if (v.id:lower()):match("tiny age up potion") then
+		if (v.remote:lower()):match("potion") then
+			if (v.remote:lower()):match("tiny age up potion") then
 				tiny[k] = true
-			elseif (v.id:lower()):match("age up potion") then
+			elseif (v.remote:lower()):match("age up potion") then
 				big[k] = true
 			end
 		end 
 	end
 	
-	if count(big) > 0 then else big = nil end
-	if count(tiny) > 0 then else tiny = nil end
+	if count(big) == 0 then big = nil end
+	if count(tiny) == 0 then tiny = nil end
 
 	return { big, tiny }
 
@@ -655,8 +677,8 @@ local function calculate_optimal_potions_by_rarity(age, rarity, potions)
         return { {}, {} }
     end
 
-    local _age = potions[1] or {}
-    local _tiny = potions[2] or {}
+	local _age = potions[1] and shallow_keys_copy(potions[1]) or {}  
+	local _tiny = potions[2] and shallow_keys_copy(potions[2]) or {}
 
     local big_up = count(_age)
     local tiny_up = count(_tiny)
@@ -754,28 +776,61 @@ local function gotovec(x, y, z)
 end
 
 
+local function Avatar()
+
+    local success, response = pcall(function()
+        return request({
+            Url = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="
+                .. LocalPlayer.UserId
+                .. "&size=420x420&format=Png&isCircular=false",
+            Method = "GET",
+        })
+    end)
+
+    if not success or not response or not response.Body then
+        warn("[-] Failed to fetch avatar.")
+        return
+    end
+
+    local decoded
+    
+    pcall(function()
+        decoded = HttpService:JSONDecode(response.Body)
+    end)
+
+    _G.HeadCashed = decoded.data[1].imageUrl
+
+end
+
+
 local function webhook(title, description)
 	
     local url = _G.InternalConfig.DiscordWebhookURL
     if not url then return end
 
+	if not _G.HeadCashed then
+		Avatar()
+	end
+
 	local payload = {
+		content = nil,
 		embeds = {
 			{
-				title = title,
+				title = "`              "..title.."              `",				
 				description = description,
 				color = 0,
 				author = {
-					name = "Arcanic",
+					name = LocalPlayer.Name,
 					url = "https://discord.gg/E8BVmZWnHs",
-					icon_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png"
+					icon_url = _G.HeadCashed or "https://i.imageupload.app/936d8d1617445f2a3fbd.png"
 				},
 				footer = {
 					text = os.date("%d.%m.%Y") .. " " .. os.date("%H:%M:%S")
 				}
 			}
 		},
-		username = "Arcanic Farmhook",
+		username = "Arcanic",
+		avatar_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png",
 		attachments = {}
 	}
 
@@ -815,12 +870,14 @@ local function pet_update()
 
 	local pet = get_equiped_pet()
 
-	actual_pet.unique = pet.unique
-	actual_pet.remote = pet.remote
-	actual_pet.model = pet.model
-	actual_pet.wrapper = pet.wrapper
-	actual_pet.rarity = pet.rarity
-	actual_pet.is_egg = (pet.name:lower()):match("egg") ~= nil
+	if pet then
+		actual_pet.unique = pet.unique 
+		actual_pet.remote = pet.remote
+		actual_pet.model = get_equiped_model() 
+		actual_pet.wrapper = pet.wrapper
+		actual_pet.rarity = pet.rarity
+		actual_pet.is_egg = (pet.name:lower()):match("egg") ~= nil
+	end
 
 end
 
@@ -2122,6 +2179,11 @@ local function init_autofarm()
 
     end 
 
+	if not actual_pet.unique then
+		Cooldown.init_autofarm = 15
+		return
+	end 
+
     local eqpetailms = get_equiped_pet_ailments()
 
     for k,_ in pairs(eqpetailms) do 
@@ -2344,6 +2406,14 @@ local function init_auto_trade()
         if pets_to_send[k] then 
             Cooldown.init_auto_trade = _G.InternalConfig.AutoTradeFilter.TradeDelay
 			print(`[-] Trade unsuccessed. Timeout: [{_G.InternalConfig.AutoTradeFilter.TradeDelay}]s.`)
+			webhook(
+				"Trade-Log",
+				"```diff\n- Trade with " 
+					.. user 
+					.. " unsuccessed. Timeout: [" 
+					.. _G.InternalConfig.AutoTradeFilter.TradeDelay 
+					.. "]s.\n```"
+			)
             return
         end
     end
@@ -2351,7 +2421,7 @@ local function init_auto_trade()
 	print("[+] Trade successed.")
 
 	if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
-		webhook("TradeLog", `Trade with {user} successed.`)
+    	webhook("Trade-Log", "```diff\n+ Trade with " .. user .. " succeeded.\n```")		
 		Cooldown.init_auto_trade = 3600
 	end
 
@@ -2570,15 +2640,17 @@ end
 local function init_send_webhook() 
 
     webhook(
-        "AutoFarm Log",
-        `**💸Money Earned :** {farmed.money}\n\
-        **📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-        **🐶Pet Needs Completed :** {farmed.ailments}\n\
-        **🧪Potions Farmed :** {farmed.potions}\n\
-        **🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-        **👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-        **🥚Eggs Hatched :** {farmed.eggs_hatched}`
+        "Farm-Log",
+        `>>> 💸 __Money Earned__ - {farmed.money}\
+        📈 __Pets Full-grown__ - {farmed.pets_fullgrown}\
+        🐶 __Pet Needs Completed__ - {farmed.ailments}\
+        🧪 __Potions Farmed__ - {farmed.potions}\
+        🧸 __Friendship Levels Farmed__ - {farmed.friendship_levels}\
+        👶 __Baby Needs Completed__ - {farmed.baby_ailments}\
+        🥚 __Eggs Hatched__ - {farmed.eggs_hatched}`
     )
+
+	Cooldown.webhook_send_delay = _G.InternalConfig.WebhookSendDelay
 
 end
 
@@ -2614,51 +2686,62 @@ local function __init()
             cd.init_gift_autoopen = math.max(0, cd.init_gift_autoopen - 1)
             cd.init_auto_give_potion = math.max(0, cd.init_auto_give_potion - 1)
             cd.webhook_send_delay = math.max(0, cd.webhook_send_delay - 1)
+			cd.watchdog = math.max(0, cd.watchdog - 1)
 
             if _G.InternalConfig.FarmPriority and cd.init_autofarm == 0 then
-                task.defer(init_autofarm)
+				print("init_autotrade runned with Cooldown: ", cd.init_autofarm)
                 cd.init_autofarm = -1 
+                task.defer(init_autofarm)
             end
 
             if _G.InternalConfig.BabyAutoFarm and cd.init_baby_autofarm == 0 then
-                task.defer(init_baby_autofarm)
+				print("baby runned with Cooldown: ", cd.init_baby_autofarm)
                 cd.init_baby_autofarm = -1
+                task.defer(init_baby_autofarm)
             end
 
             if _G.InternalConfig.AutoFarmFilter.AutoBuyEgg and cd.init_auto_buy == 0 then
-                task.defer(init_auto_buy)
                 cd.init_auto_buy = -1
+                task.defer(init_auto_buy)
             end
 
             if _G.InternalConfig.GiftsAutoOpen and cd.init_gift_autoopen == 0 then
-                task.defer(init_gift_autoopen)
                 cd.init_gift_autoopen = -1
+                task.defer(init_gift_autoopen)
             end
 
             if _G.InternalConfig.LureboxFarm and cd.init_lurebox_farm == 0 then
-                task.defer(init_lurebox_farm)
                 cd.init_lurebox_farm = -1
+                task.defer(init_lurebox_farm)
             end
 
             if _G.InternalConfig.AutoGivePotion and cd.init_auto_give_potion == 0 then
-                task.defer(init_auto_give_potion)
                 cd.init_auto_give_potion = -1
+                task.defer(init_auto_give_potion)
             end
 
             if _G.InternalConfig.AutoRecyclePet and cd.init_auto_recycle == 0 then
-                task.defer(init_auto_recycle)
                 cd.init_auto_recycle = -1
+                task.defer(init_auto_recycle)
             end
 
             if _G.InternalConfig.PetAutoTrade and cd.init_auto_trade == 0 then
-                task.defer(init_auto_trade)
                 cd.init_auto_recycle = -1
+                task.defer(init_auto_trade)
             end
 
             if _G.InternalConfig.DiscordWebhookURL and cd.webhook_send_delay == 0 then
-                task.defer(init_send_webhook)
                 cd.webhook_send_delay = -1
+                task.defer(init_send_webhook)
             end
+
+			if cd.watchdog == 0 then
+				task.defer(function()
+					print("LuaVM Memory Usage: ", gcinfo() / 1024, "Mb")
+					Cooldown.watchdog = 60
+				end)
+				cd.watchdog = -1
+			end
         end
     end)
 
@@ -2701,6 +2784,7 @@ end
 	end
 
 	print("[+] API dehashed.")
+	task.spawn(Avatar)
 
 end)()
 
