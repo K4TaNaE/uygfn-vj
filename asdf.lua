@@ -89,6 +89,7 @@ _G.flag_if_no_one_to_farm = false
 _G.CONNECTIONS = {}
 _G.CLEANUP_INSTANCES = {}
 _G.kitty_farming = false
+_G.HeadCashed = nil
 
 --[[ Lua Stuff ]]
 local Queue = {} 
@@ -658,8 +659,8 @@ local function get_potions()
 		end 
 	end
 	
-	if count(big) > 0 then else big = nil end
-	if count(tiny) > 0 then else tiny = nil end
+	if count(big) == 0 then big = nil end
+	if count(tiny) == 0 then tiny = nil end
 
 	return { big, tiny }
 
@@ -775,28 +776,61 @@ local function gotovec(x, y, z)
 end
 
 
+local function Avatar()
+
+    local success, response = pcall(function()
+        return request({
+            Url = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="
+                .. LocalPlayer.UserId
+                .. "&size=420x420&format=Png&isCircular=false",
+            Method = "GET",
+        })
+    end)
+
+    if not success or not response or not response.Body then
+        warn("[-] Failed to fetch avatar.")
+        return
+    end
+
+    local decoded
+    
+    pcall(function()
+        decoded = HttpService:JSONDecode(response.Body)
+    end)
+
+    _G.HeadCashed = decoded.data[1].imageUrl
+
+end
+
+
 local function webhook(title, description)
 	
     local url = _G.InternalConfig.DiscordWebhookURL
     if not url then return end
 
+	if not _G.HeadCashed then
+		Avatar()
+	end
+
 	local payload = {
+		content = nil,
 		embeds = {
 			{
-				title = title,
+				title = "`              "..title.."              `",				
 				description = description,
 				color = 0,
 				author = {
-					name = "Arcanic",
+					name = LocalPlayer.Name,
 					url = "https://discord.gg/E8BVmZWnHs",
-					icon_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png"
+					icon_url = _G.HeadCashed or "https://i.imageupload.app/936d8d1617445f2a3fbd.png"
 				},
 				footer = {
-					text = os.date("%d.%m.%Y") .. " " .. os.date("%H:%M:%S") .. `\n{LocalPlayer.Name}`
+					text = os.date("%d.%m.%Y") .. " " .. os.date("%H:%M:%S")
 				}
 			}
 		},
-		username = "Arcanic Farmhook",
+		username = "Arcanic",
+		avatar_url = "https://i.imageupload.app/936d8d1617445f2a3fbd.png",
 		attachments = {}
 	}
 
@@ -2372,6 +2406,14 @@ local function init_auto_trade()
         if pets_to_send[k] then 
             Cooldown.init_auto_trade = _G.InternalConfig.AutoTradeFilter.TradeDelay
 			print(`[-] Trade unsuccessed. Timeout: [{_G.InternalConfig.AutoTradeFilter.TradeDelay}]s.`)
+			webhook(
+				"Trade-Log",
+				"```diff\n- Trade with " 
+					.. user 
+					.. " unsuccessed. Timeout: [" 
+					.. _G.InternalConfig.AutoTradeFilter.TradeDelay 
+					.. "]s.\n```"
+			)
             return
         end
     end
@@ -2379,7 +2421,7 @@ local function init_auto_trade()
 	print("[+] Trade successed.")
 
 	if _G.InternalConfig.AutoTradeFilter.WebhookEnabled then
-		webhook("TradeLog", `Trade with {user} successed.`)
+    	webhook("Trade-Log", "```diff\n+ Trade with " .. user .. " succeeded.\n```")		
 		Cooldown.init_auto_trade = 3600
 	end
 
@@ -2598,14 +2640,14 @@ end
 local function init_send_webhook() 
 
     webhook(
-        "AutoFarm Log",
-        `**💸Money Earned :** {farmed.money}\n\
-        **📈Pets Full-grown :** {farmed.pets_fullgrown}\n\
-        **🐶Pet Needs Completed :** {farmed.ailments}\n\
-        **🧪Potions Farmed :** {farmed.potions}\n\
-        **🧸Friendship Levels Farmed :** {farmed.friendship_levels}\n\
-        **👶Baby Needs Completed :** {farmed.baby_ailments}\n\
-        **🥚Eggs Hatched :** {farmed.eggs_hatched}`
+        "Farm-Log",
+        `>>> 💸 __Money Earned__ - {farmed.money}\
+        📈 __Pets Full-grown__ - {farmed.pets_fullgrown}\
+        🐶 __Pet Needs Completed__ - {farmed.ailments}\
+        🧪 __Potions Farmed__ - {farmed.potions}\
+        🧸 __Friendship Levels Farmed__ - {farmed.friendship_levels}\
+        👶 __Baby Needs Completed__ - {farmed.baby_ailments}\
+        🥚 __Eggs Hatched__ - {farmed.eggs_hatched}`
     )
 
 	Cooldown.webhook_send_delay = _G.InternalConfig.WebhookSendDelay
@@ -2740,6 +2782,7 @@ end
 	end
 
 	print("[+] API dehashed.")
+	task.spawn(Avatar)
 
 end)()
 
