@@ -2131,6 +2131,7 @@ local function init_autofarm()
 							end
 							flag = true		
 							_G.flag_if_no_one_to_farm = false
+							pet_update()
 							break				
 						end
 					end
@@ -2149,6 +2150,7 @@ local function init_autofarm()
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
+							pet_update()
 							break
 						end
 					end
@@ -2166,6 +2168,7 @@ local function init_autofarm()
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
+							pet_update()
 							break
 						end
 					end
@@ -2186,6 +2189,7 @@ local function init_autofarm()
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
+							pet_update()
 							break
 						end
 					end
@@ -2204,6 +2208,7 @@ local function init_autofarm()
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
+							pet_update()
 							break
 						end
 					end
@@ -2227,6 +2232,7 @@ local function init_autofarm()
 									flag = true
 									_G.flag_if_no_one_to_farm = true
 									_G.random_farm = true
+									pet_update()
 									break
 								end
 							end
@@ -2249,6 +2255,7 @@ local function init_autofarm()
 							flag = true
 							_G.flag_if_no_one_to_farm = true
 							_G.random_farm = true
+							pet_update()
 							break
 						end
 					end
