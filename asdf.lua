@@ -62,7 +62,7 @@ local Cooldown = {
 	init_auto_buy = 0,
 	init_auto_recycle = 0,
 	init_auto_trade = 0,
-	async_lurebox_farm = 0,
+	init_lurebox_farm = 0,
 	init_gift_autoopen = 0,
 	init_auto_give_potion = 0,
 }
@@ -3198,6 +3198,12 @@ task.spawn(function()
 
 	local gui = Instance.new("ScreenGui") 
     local frame = Instance.new("Frame")
+
+	if LocalPlayer.PlayerGui 
+		if CoreGui:FindFirstChild("StatsOverlay") then
+			return
+		end
+	end
 
 	gui.Name = "StatsOverlay" 
 	gui.ResetOnSpawn = false 
