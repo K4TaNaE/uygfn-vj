@@ -88,7 +88,6 @@ _G.InternalConfig = {}
 _G.flag_if_no_one_to_farm = false
 _G.CONNECTIONS = {}
 _G.CLEANUP_INSTANCES = {}
-_G.kitty_farming = false
 _G.HeadCashed = nil
 
 --[[ Lua Stuff ]]
@@ -2074,97 +2073,195 @@ local function init_autofarm()
     
     local flag = false
     local pet = ClientData.get("pet_char_wrappers")[1]
+	local kitty_exist = check_pet_owned("2d_kitty")
+	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
 
-    if pet and not _G.flag_if_no_one_to_farm and not _G.kitty_farming then
+    if pet and not _G.flag_if_no_one_to_farm and not kitty_exist then
         safeInvoke("ToolAPI/Unequip",
-            pet.pet_unique,
-            {
-                use_sound_delay = true,
-                equip_as_last = false
-            }
-        )
-    end
-    
-    if not _G.kitty_farming then 
-        if check_pet_owned("2d_kitty") then
-            safeInvoke("ToolAPI/Equip",
-                inv_get_category_unique("pets", "d2kitty"),
-                {
-                    use_sound_delay = true,
-                    equip_as_last = false
-                }
-            )
+			pet.pet_unique,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
+	end
 
-            flag = true
-            _G.flag_if_no_one_to_farm = false
-            _G.kitty_farming = true
+	if kitty_exist and kitty_unique ~= actual_pet.unique or kitty_unique ~= cur_unique() then
+		safeInvoke("ToolAPI/Equip",
+			kitty_unique,
+			{
+				use_sound_delay = true,
+				equip_as_last = false
+			}
+		)
 
-            task.wait(1)
+		flag = true
+		_G.flag_if_no_one_to_farm = false
 
-            pet_update()
-        end
-    end
-        
+		task.wait(1)
 
-    local function try_equip(check, op)
+		pet_update()
+	end
 
-        for k,v in pairs(op) do
-            if check(k,v) then
-                safeInvoke("ToolAPI/Equip", k, { use_sound_delay = true, equip_as_last = false, })
-                if equiped() then
-                    flag = true
-                    _G.flag_if_no_one_to_farm = false
-                    _G.kitty_farming = false
+	if actual_pet.unique ~= cur_unique() then
+		actual_pet.unique = nil
+	end
 
-                    task.wait(1)
-                    pet_update()
-
-                    return true
-                end
-            end
-        end
-
-        return false
-
-    end
-
-
-    if actual_pet.unique ~= cur_unique() or not equiped() then
-        actual_pet.unique = nil
-    end
+	if not equiped() then
+		actual_pet.unique = nil
+	end
 
     if not actual_pet.unique or _G.flag_if_no_one_to_farm or not equiped() then
-        local owned_pets = get_owned_pets()
+		local owned_pets = get_owned_pets()
 
-        if _G.InternalConfig.PotionFarm then
-            if _G.InternalConfig.FarmPriority == "pets" then
-                try_equip(function(k,v) return v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] end, owned_pets)
-            else
-                local found = try_equip(function(k,v) return (v.name:lower()):find("egg") end, owned_pets)
-                
-				if not found then
-                    try_equip(function(k,v) return true end, owned_pets) 
-                end
-            end
-        else
-            if _G.InternalConfig.FarmPriority == "pets" then
-                try_equip(function(k,v) return v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") end, owned_pets)
-            else
-                try_equip(function(k,v) return not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") end, owned_pets)
-            end
-
-            if not flag and _G.InternalConfig.OppositeFarmEnabled and not _G.flag_if_no_one_to_farm then
-                print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
-                
-				local legendary = try_equip(function(k,v) return v.rarity == "legendary" end, owned_pets)
-                
-				if not legendary then
-                    try_equip(function(k,v) return true end, owned_pets)
-                    _G.random_farm = true
-                    _G.flag_if_no_one_to_farm = true
-                end
-            end
-        end
+		if not kitty_exist then
+			if _G.InternalConfig.PotionFarm then
+				if _G.InternalConfig.FarmPriority == "pets" then
+					for k,v in pairs(owned_pets) do
+						if v.age == 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] then
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true		
+							_G.flag_if_no_one_to_farm = false
+							pet_update()
+							break				
+						end
+					end
+				else 
+					for k,v in pairs(owned_pets) do
+						if (v.name:lower()):find("egg") then
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = false
+							pet_update()
+							break
+						end
+					end
+					if not flag then
+						for k, _ in pairs(owned_pets) do
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = false
+							pet_update()
+							break
+						end
+					end
+				end
+			else
+				if _G.InternalConfig.FarmPriority == "pets" then			
+					for k,v in pairs(owned_pets) do
+						if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = false
+							pet_update()
+							break
+						end
+					end
+				else 
+					for k,v in pairs(owned_pets) do
+						if not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and (v.name:lower()):match("egg") then
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = false
+							pet_update()
+							break
+						end
+					end
+				end
+				if not flag then
+					if _G.InternalConfig.OppositeFarmEnabled then
+						if not _G.flag_if_no_one_to_farm then  
+						print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+							for k, v in pairs(owned_pets) do
+								if v.rarity == "legendary" then
+									safeInvoke("ToolAPI/Equip",
+										k,
+										{
+											use_sound_delay = true,
+											equip_as_last = false
+										}
+									)
+									if not equiped() then
+										continue
+									end
+									flag = true
+									_G.flag_if_no_one_to_farm = true
+									_G.random_farm = true
+									pet_update()
+									break
+								end
+							end
+						end
+					end
+				end
+				if not flag then
+					if not _G.flag_if_no_one_to_farm then  
+						for k, _ in pairs(owned_pets) do
+							safeInvoke("ToolAPI/Equip",
+								k,
+								{
+									use_sound_delay = true,
+									equip_as_last = false
+								}
+							)
+							if not equiped() then
+								continue
+							end
+							flag = true
+							_G.flag_if_no_one_to_farm = true
+							_G.random_farm = true
+							pet_update()
+							break
+						end
+					end
+				end
+			end 
+		end
         
         if not _G.flag_if_no_one_to_farm and _G.random_farm then
             table.clear(StateDB.active_ailments)
@@ -2677,61 +2774,61 @@ local function __init()
             accumulator -= 1
             local cd = Cooldown
 
-            cd.init_autofarm = math.max(0, cd.init_autofarm - 1)
-            cd.init_baby_autofarm = math.max(0, cd.init_baby_autofarm - 1)
-            cd.init_auto_buy = math.max(0, cd.init_auto_buy - 1)
-            cd.init_auto_recycle = math.max(0, cd.init_auto_recycle - 1)
-            cd.init_auto_trade = math.max(0, cd.init_auto_trade - 1)
-            cd.init_lurebox_farm = math.max(0, cd.init_lurebox_farm - 1)
-            cd.init_gift_autoopen = math.max(0, cd.init_gift_autoopen - 1)
-            cd.init_auto_give_potion = math.max(0, cd.init_auto_give_potion - 1)
-            cd.webhook_send_delay = math.max(0, cd.webhook_send_delay - 1)
-			cd.watchdog = math.max(0, cd.watchdog - 1)
+            cd.init_autofarm = cd.init_autofarm and math.max(0, cd.init_autofarm - 1)
+            cd.init_baby_autofarm = cd.init_baby_autofarm and math.max(0, cd.init_baby_autofarm - 1)
+            cd.init_auto_buy = cd.init_auto_buy and math.max(0, cd.init_auto_buy - 1)
+            cd.init_auto_recycle = cd.init_auto_recycle and math.max(0, cd.init_auto_recycle - 1)
+            cd.init_auto_trade = cd.init_auto_trade and math.max(0, cd.init_auto_trade - 1)
+            cd.init_lurebox_farm = cd.init_lurebox_farm and math.max(0, cd.init_lurebox_farm - 1)
+            cd.init_gift_autoopen = cd.init_gift_autoopen and math.max(0, cd.init_gift_autoopen - 1)
+            cd.init_auto_give_potion = cd.init_auto_give_potion and math.max(0, cd.init_auto_give_potion - 1)
+            cd.webhook_send_delay = cd.webhook_send_delay and math.max(0, cd.webhook_send_delay - 1)
+			cd.watchdog = cd.watchdog and math.max(0, cd.watchdog - 1)
 
             if _G.InternalConfig.FarmPriority and cd.init_autofarm == 0 then
-				print("init_autotrade runned with Cooldown: ", cd.init_autofarm)
-                cd.init_autofarm = -1 
+				print("init_autofarm runned with Cooldown: ", cd.init_autofarm)
+                cd.init_autofarm = nil
                 task.defer(init_autofarm)
             end
 
             if _G.InternalConfig.BabyAutoFarm and cd.init_baby_autofarm == 0 then
 				print("baby runned with Cooldown: ", cd.init_baby_autofarm)
-                cd.init_baby_autofarm = -1
+                cd.init_baby_autofarm = nil
                 task.defer(init_baby_autofarm)
             end
 
             if _G.InternalConfig.AutoFarmFilter.AutoBuyEgg and cd.init_auto_buy == 0 then
-                cd.init_auto_buy = -1
+                cd.init_auto_buy = nil
                 task.defer(init_auto_buy)
             end
 
             if _G.InternalConfig.GiftsAutoOpen and cd.init_gift_autoopen == 0 then
-                cd.init_gift_autoopen = -1
+                cd.init_gift_autoopen = nil
                 task.defer(init_gift_autoopen)
             end
 
             if _G.InternalConfig.LureboxFarm and cd.init_lurebox_farm == 0 then
-                cd.init_lurebox_farm = -1
+                cd.init_lurebox_farm = nil
                 task.defer(init_lurebox_farm)
             end
 
             if _G.InternalConfig.AutoGivePotion and cd.init_auto_give_potion == 0 then
-                cd.init_auto_give_potion = -1
+                cd.init_auto_give_potion = nil
                 task.defer(init_auto_give_potion)
             end
 
             if _G.InternalConfig.AutoRecyclePet and cd.init_auto_recycle == 0 then
-                cd.init_auto_recycle = -1
+                cd.init_auto_recycle = nil
                 task.defer(init_auto_recycle)
             end
 
             if _G.InternalConfig.PetAutoTrade and cd.init_auto_trade == 0 then
-                cd.init_auto_recycle = -1
+                cd.init_auto_trade = nil
                 task.defer(init_auto_trade)
             end
 
             if _G.InternalConfig.DiscordWebhookURL and cd.webhook_send_delay == 0 then
-                cd.webhook_send_delay = -1
+                cd.webhook_send_delay = nil
                 task.defer(init_send_webhook)
             end
 
