@@ -814,8 +814,7 @@ end
 local function pet_update()
 
 	local pet = get_equiped_pet()
-
-	actual_pet.unique = pet.unique
+	actual_pet.unique = pet.unique or cur_unique()
 	actual_pet.remote = pet.remote
 	actual_pet.model = pet.model
 	actual_pet.wrapper = pet.wrapper
@@ -3199,7 +3198,7 @@ task.spawn(function()
 	local gui = Instance.new("ScreenGui") 
     local frame = Instance.new("Frame")
 
-	if LocalPlayer.PlayerGui 
+	if LocalPlayer.PlayerGui then 
 		if CoreGui:FindFirstChild("StatsOverlay") then
 			return
 		end
