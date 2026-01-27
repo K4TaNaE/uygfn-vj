@@ -2162,6 +2162,9 @@ local function init_autofarm()
                     try_equip(function(k,v) return true end, owned_pets)
                     _G.random_farm = true
                     _G.flag_if_no_one_to_farm = true
+				else
+					_G.random_farm = true
+                    _G.flag_if_no_one_to_farm = true
                 end
             end
         end
@@ -2677,60 +2680,62 @@ local function __init()
             accumulator -= 1
             local cd = Cooldown
 
-            cd.init_autofarm = math.max(0, cd.init_autofarm - 1)
-            cd.init_baby_autofarm = math.max(0, cd.init_baby_autofarm - 1)
-            cd.init_auto_buy = math.max(0, cd.init_auto_buy - 1)
-            cd.init_auto_recycle = math.max(0, cd.init_auto_recycle - 1)
-            cd.init_auto_trade = math.max(0, cd.init_auto_trade - 1)
-            cd.init_lurebox_farm = math.max(0, cd.init_lurebox_farm - 1)
-            cd.init_gift_autoopen = math.max(0, cd.init_gift_autoopen - 1)
-            cd.init_auto_give_potion = math.max(0, cd.init_auto_give_potion - 1)
-            cd.webhook_send_delay = math.max(0, cd.webhook_send_delay - 1)
-			cd.watchdog = math.max(0, cd.watchdog - 1)
+            cd.init_autofarm = cd.init_autofarm and math.max(0, cd.init_autofarm - 1)
+            cd.init_baby_autofarm = cd.init_baby_autofarm and math.max(0, cd.init_baby_autofarm - 1)
+            cd.init_auto_buy = cd.init_auto_buy and math.max(0, cd.init_auto_buy - 1)
+            cd.init_auto_recycle = cd.init_auto_recycle and math.max(0, cd.init_auto_recycle - 1)
+            cd.init_auto_trade = cd.init_auto_trade and math.max(0, cd.init_auto_trade - 1)
+            cd.init_lurebox_farm = cd.init_lurebox_farm and math.max(0, cd.init_lurebox_farm - 1)
+            cd.init_gift_autoopen = cd.init_gift_autoopen and math.max(0, cd.init_gift_autoopen - 1)
+            cd.init_auto_give_potion = cd.init_auto_give_potion and math.max(0, cd.init_auto_give_potion - 1)
+            cd.webhook_send_delay = cd.webhook_send_delay and math.max(0, cd.webhook_send_delay - 1)
+			cd.watchdog = cd.watchdog and math.max(0, cd.watchdog - 1)
 
             if _G.InternalConfig.FarmPriority and cd.init_autofarm == 0 then
+				print("init_autofarm runned with Cooldown: ", cd.init_autofarm)
+                cd.init_autofarm = nil
                 task.defer(init_autofarm)
-                cd.init_autofarm = -1 
             end
 
             if _G.InternalConfig.BabyAutoFarm and cd.init_baby_autofarm == 0 then
+				print("baby runned with Cooldown: ", cd.init_baby_autofarm)
+                cd.init_baby_autofarm = nil
                 task.defer(init_baby_autofarm)
-                cd.init_baby_autofarm = -1
             end
 
             if _G.InternalConfig.AutoFarmFilter.AutoBuyEgg and cd.init_auto_buy == 0 then
+                cd.init_auto_buy = nil
                 task.defer(init_auto_buy)
-                cd.init_auto_buy = -1
             end
 
             if _G.InternalConfig.GiftsAutoOpen and cd.init_gift_autoopen == 0 then
+                cd.init_gift_autoopen = nil
                 task.defer(init_gift_autoopen)
-                cd.init_gift_autoopen = -1
             end
 
             if _G.InternalConfig.LureboxFarm and cd.init_lurebox_farm == 0 then
+                cd.init_lurebox_farm = nil
                 task.defer(init_lurebox_farm)
-                cd.init_lurebox_farm = -1
             end
 
             if _G.InternalConfig.AutoGivePotion and cd.init_auto_give_potion == 0 then
+                cd.init_auto_give_potion = nil
                 task.defer(init_auto_give_potion)
-                cd.init_auto_give_potion = -1
             end
 
             if _G.InternalConfig.AutoRecyclePet and cd.init_auto_recycle == 0 then
+                cd.init_auto_recycle = nil
                 task.defer(init_auto_recycle)
-                cd.init_auto_recycle = -1
             end
 
             if _G.InternalConfig.PetAutoTrade and cd.init_auto_trade == 0 then
+                cd.init_auto_trade = nil
                 task.defer(init_auto_trade)
-                cd.init_auto_recycle = -1
             end
 
             if _G.InternalConfig.DiscordWebhookURL and cd.webhook_send_delay == 0 then
+                cd.webhook_send_delay = nil
                 task.defer(init_send_webhook)
-                cd.webhook_send_delay = -1
             end
 
 			if cd.watchdog == 0 then
