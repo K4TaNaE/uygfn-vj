@@ -19,6 +19,7 @@ local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
+local ev = Instance.new("BindableEvent")
 
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
@@ -209,21 +210,30 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				local ok, err = xpcall(callback, debug.traceback)
+				
+				task.spawn(function()
+
+					local ok, err = xpcall(callback, debug.traceback)
+
+					if not ok then
+						print("Task failed:", err)
+
+						local spl = name:split(": ")
+
+						if spl[1]:match("ailment pet") then
+							StateDB.active_ailments[spl[2]] = nil
+						elseif spl[1]:match("ailment baby") then
+							StateDB.baby_active_ailments[spl[2]] = nil
+						end
+					end					
+					
+					ev:Fire()
+
+				end)
+
+				ev.Event:Wait() 
 
 				self:dequeue(true)
-
-				if not ok then
-					print("Task failed:", err)
-
-					local spl = name:split(": ")
-
-					if spl[1]:match("ailment pet") then
-						StateDB.active_ailments[spl[2]] = nil
-					elseif spl[1]:match("ailment baby") then
-						StateDB.baby_active_ailments[spl[2]] = nil
-					end
-				end
 			end
 
 			self.running = false
