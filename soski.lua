@@ -2086,7 +2086,6 @@ local function init_autofarm()
 	end
     
     local flag = false
-    local pet = ClientData.get("pet_char_wrappers")[1]
 	local kitty_exist = check_pet_owned("2d_kitty")
 	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
 
@@ -2796,13 +2795,11 @@ local function __init()
 			cd.watchdog = cd.watchdog and math.max(0, cd.watchdog - 1)
 
             if _G.InternalConfig.FarmPriority and cd.init_autofarm == 0 then
-				print("init_autofarm runned with Cooldown: ", cd.init_autofarm)
                 cd.init_autofarm = nil
                 task.defer(init_autofarm)
             end
 
             if _G.InternalConfig.BabyAutoFarm and cd.init_baby_autofarm == 0 then
-				print("baby runned with Cooldown: ", cd.init_baby_autofarm)
                 cd.init_baby_autofarm = nil
                 task.defer(init_baby_autofarm)
             end
