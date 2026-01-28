@@ -234,6 +234,7 @@ Queue.new = function()
 				ev.Event:Wait() 
 
 				self:dequeue(true)
+				dtask = nil
 			end
 
 			self.running = false
@@ -905,9 +906,11 @@ end
 
 
 local function enstat(age, friendship, money, ailment, baby_has_ailment)  
-	
-	while money == ClientData.get("money") do
-		task.wait(.05)
+
+	local deadline = os.clock() + 5
+
+	while money == ClientData.get("money") and os.clock() < deadline do
+		task.wait(.1)
 	end
 
 	if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby(ailment) then
@@ -1014,8 +1017,10 @@ end
 
 local function enstat_baby(money, ailment, pet_has_ailment, petData) 
 	
-	while money == ClientData.get("money") do
-		task.wait(.05)
+	local deadline = os.clock() + 5
+
+	while money == ClientData.get("money") and os.clock() < deadline do
+		task.wait(.1)
 	end
 
 	farmed.money += ClientData.get("money") - money 
@@ -2288,9 +2293,7 @@ local function init_autofarm()
 
     end 
 
-    local eqpetailms = get_equiped_pet_ailments()
-
-    for k,_ in pairs(eqpetailms) do 
+    for k,_ in pairs(get_equiped_pet_ailments()) do 
         if StateDB.active_ailments[k] then continue end
         if pet_ailments[k] then
             StateDB.active_ailments[k] = true
