@@ -2103,15 +2103,11 @@ local function init_autofarm()
 		pet_update()
 	end
 
-	if actual_pet.unique ~= cur_unique() then
+	if actual_pet.unique ~= cur_unique() or not equiped() then
 		actual_pet.unique = nil
 	end
 
-	if not equiped() then
-		actual_pet.unique = nil
-	end
-
-    if not actual_pet.unique or _G.flag_if_no_one_to_farm or not equiped() then
+    if not actual_pet.unique or _G.flag_if_no_one_to_farm or not then
 		local owned_pets = get_owned_pets()
 
 		if not kitty_exist then
@@ -2214,9 +2210,9 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
-					if _G.InternalConfig.OppositeFarmEnabled then
+					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
 						if not _G.flag_if_no_one_to_farm then  
-						print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+						    print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
 							for k, v in pairs(owned_pets) do
 								if v.rarity == "legendary" then
 									safeInvoke("ToolAPI/Equip",
@@ -2240,24 +2236,26 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
-					if not _G.flag_if_no_one_to_farm then  
-						for k, _ in pairs(owned_pets) do
-							safeInvoke("ToolAPI/Equip",
-								k,
-								{
-									use_sound_delay = true,
-									equip_as_last = false
-								}
-							)
-							if not equiped() then
-								continue
-							end
-							flag = true
-							_G.flag_if_no_one_to_farm = true
-							_G.random_farm = true
-							pet_update()
-							break
-						end
+					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
+					    if not _G.flag_if_no_one_to_farm then  
+						    for k, _ in pairs(owned_pets) do
+							    safeInvoke("ToolAPI/Equip",
+								    k,
+								    {
+							        	use_sound_delay = true,
+								    	equip_as_last = false
+								    }
+						    	)
+							    if not equiped() then
+					     			continue
+						    	end
+						    	flag = true
+					    		_G.flag_if_no_one_to_farm = true
+						    	_G.random_farm = true
+							    pet_update()
+						    	break
+					    	end
+				    	end
 					end
 				end
 			end 
