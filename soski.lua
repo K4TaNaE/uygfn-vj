@@ -1499,7 +1499,7 @@ local pet_ailments = {
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		local age = pet[1].pet_progression.age
+		local age = pet.pet_progression.age
 		local deadline = os.clock() + 60
 
 		gotovec(1000,25,1000)
