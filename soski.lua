@@ -2748,13 +2748,13 @@ local function init_send_webhook()
 
     webhook(
         "Farm-Log",
-        `>>> 💸 __Money Earned__ - {farmed.money}\
-        📈 __Pets Full-grown__ - {farmed.pets_fullgrown}\
-        🐶 __Pet Needs Completed__ - {farmed.ailments}\
-        🧪 __Potions Farmed__ - {farmed.potions}\
-        🧸 __Friendship Levels Farmed__ - {farmed.friendship_levels}\
-        👶 __Baby Needs Completed__ - {farmed.baby_ailments}\
-        🥚 __Eggs Hatched__ - {farmed.eggs_hatched}`
+        `>>> 💸 __Money Earned__ - [ {farmed.money} ]\
+        📈 __Pets Full-grown__ - [ {farmed.pets_fullgrown} ]\
+        🐶 __Pet Needs Completed__ - [ {farmed.ailments} ]\
+        🧪 __Potions Farmed__ - [ {farmed.potions} ]\
+        🧸 __Friendship Levels Farmed__ - [ {farmed.friendship_levels} ]\
+        👶 __Baby Needs Completed__ - [ {farmed.baby_ailments} ]\
+        🥚 __Eggs Hatched__ - [ {farmed.eggs_hatched} ]`
     )
 
 	Cooldown.webhook_send_delay = _G.InternalConfig.WebhookSendDelay
