@@ -2063,7 +2063,6 @@ baby_ailments = {
 
 }
 
-
 local function init_autofarm() 
 
 	if count(get_owned_pets()) == 0 then
@@ -2075,17 +2074,6 @@ local function init_autofarm()
     local pet = ClientData.get("pet_char_wrappers")[1]
 	local kitty_exist = check_pet_owned("2d_kitty")
 	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
-
-    if pet and not _G.flag_if_no_one_to_farm and not kitty_exist then
-		warn("unequiped, pet, _G, kitty", pet, _G.flag_if_no_one_to_farm, kitty_exist)
-        safeInvoke("ToolAPI/Unequip",
-			pet.pet_unique,
-			{
-				use_sound_delay = true,
-				equip_as_last = false
-			}
-		)
-	end
 
 	if kitty_exist and kitty_unique ~= actual_pet.unique or kitty_unique ~= cur_unique() then
 		safeInvoke("ToolAPI/Equip",
@@ -2110,7 +2098,7 @@ local function init_autofarm()
 	end
 
     if not actual_pet.unique or _G.flag_if_no_one_to_farm then
-		warn("pet selection")
+		warn("pet selection, cuz actual_pet.unique:", actual_pet.unique, "_G.flag_no..:", _G.flag_if_no_one_to_farm)
 		local owned_pets = get_owned_pets()
 
 		if not kitty_exist then
