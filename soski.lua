@@ -2107,7 +2107,7 @@ local function init_autofarm()
 		actual_pet.unique = nil
 	end
 
-    if not actual_pet.unique or _G.flag_if_no_one_to_farm or not then
+    if not actual_pet.unique or _G.flag_if_no_one_to_farm then
 		local owned_pets = get_owned_pets()
 
 		if not kitty_exist then
