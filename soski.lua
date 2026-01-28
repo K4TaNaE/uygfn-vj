@@ -1517,7 +1517,7 @@ local pet_ailments = {
 		safeFire("AdoptAPI/HoldBaby", actual_pet.model)
 
 		repeat
-			MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()				
@@ -2097,7 +2097,7 @@ local function init_autofarm()
 		flag = true
 		_G.flag_if_no_one_to_farm = false
 
-		task.wait(1)
+		task.wait(.3)
 
 		pet_update()
 	end
