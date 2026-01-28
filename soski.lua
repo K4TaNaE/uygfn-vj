@@ -2077,6 +2077,7 @@ local function init_autofarm()
 	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
 
     if pet and not _G.flag_if_no_one_to_farm and not kitty_exist then
+		warn("unequiped, pet, _G, kitty", pet, _G.flag_if_no_one_to_farm, kitty_exist)
         safeInvoke("ToolAPI/Unequip",
 			pet.pet_unique,
 			{
@@ -2104,10 +2105,12 @@ local function init_autofarm()
 	end
 
 	if actual_pet.unique ~= cur_unique() or not equiped() then
+		warn("actual_pet.unique = nil because: actual_pet.unique ~= cur_unique()",actual_pet.unique ~= cur_unique(), "equiped:", equiped())
 		actual_pet.unique = nil
 	end
 
     if not actual_pet.unique or _G.flag_if_no_one_to_farm then
+		warn("pet selection")
 		local owned_pets = get_owned_pets()
 
 		if not kitty_exist then
@@ -2170,7 +2173,9 @@ local function init_autofarm()
 					end
 				end
 			else
-				if _G.InternalConfig.FarmPriority == "pets" then			
+				if _G.InternalConfig.FarmPriority == "pets" then	
+					warn("section i need (pets)")		
+					warn("Check [1]")
 					for k,v in pairs(owned_pets) do
 						if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
 							safeInvoke("ToolAPI/Equip",
@@ -2181,11 +2186,13 @@ local function init_autofarm()
 								}
 							)
 							if not equiped() then
+								warn("Check [1] : not equiped")
 								continue
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
 							pet_update()
+							warn("Check [1] : success. flag and unique:", flag, actual_pet.unique)
 							break
 						end
 					end
@@ -2210,9 +2217,10 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
+					warn("Check [2] : no flag. flag:", flag)
 					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
 						if not _G.flag_if_no_one_to_farm then  
-						    print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+						    warn("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
 							for k, v in pairs(owned_pets) do
 								if v.rarity == "legendary" then
 									safeInvoke("ToolAPI/Equip",
@@ -2222,13 +2230,17 @@ local function init_autofarm()
 											equip_as_last = false
 										}
 									)
+
 									if not equiped() then
+										warn("Check [2] leg : not equiped")
 										continue
 									end
+
 									flag = true
 									_G.flag_if_no_one_to_farm = true
 									_G.random_farm = true
 									pet_update()
+									warn("Check [2] leg : successed. flag and unique:", flag, actual_pet.unique)
 									break
 								end
 							end
@@ -2236,6 +2248,7 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
+					warn("Check [3] : still no flag. flag:", flag)
 					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
 					    if not _G.flag_if_no_one_to_farm then  
 						    for k, _ in pairs(owned_pets) do
@@ -2247,12 +2260,14 @@ local function init_autofarm()
 								    }
 						    	)
 							    if not equiped() then
+									warn("Check [3] : not equiped")
 					     			continue
 						    	end
 						    	flag = true
 					    		_G.flag_if_no_one_to_farm = true
 						    	_G.random_farm = true
 							    pet_update()
+								warn("Check [3] : successed. flag and unique:", flag, actual_pet.unique)
 						    	break
 					    	end
 				    	end
@@ -2268,16 +2283,12 @@ local function init_autofarm()
         end
         
         if not flag or not equiped() then 
+			print("Check after pet selection: flag and equiped:", flag, equiped())
             Cooldown.init_autofarm = 15 
             return 
         end
 
     end 
-
-	if not actual_pet.unique then
-		Cooldown.init_autofarm = 15
-		return
-	end 
 
     local eqpetailms = get_equiped_pet_ailments()
 
