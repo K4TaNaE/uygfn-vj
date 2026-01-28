@@ -19,6 +19,7 @@ local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
+local ev = Instance.new("BindableEvent")
 
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
@@ -209,21 +210,31 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				local ok, err = xpcall(callback, debug.traceback)
+				
+				task.spawn(function()
+
+					local ok, err = xpcall(callback, debug.traceback)
+
+					if not ok then
+						print("Task failed:", err)
+
+						local spl = name:split(": ")
+
+						if spl[1]:match("ailment pet") then
+							StateDB.active_ailments[spl[2]] = nil
+						elseif spl[1]:match("ailment baby") then
+							StateDB.baby_active_ailments[spl[2]] = nil
+						end
+					end					
+					
+					ev:Fire()
+
+				end)
+
+				ev.Event:Wait() 
 
 				self:dequeue(true)
-
-				if not ok then
-					print("Task failed:", err)
-
-					local spl = name:split(": ")
-
-					if spl[1]:match("ailment pet") then
-						StateDB.active_ailments[spl[2]] = nil
-					elseif spl[1]:match("ailment baby") then
-						StateDB.baby_active_ailments[spl[2]] = nil
-					end
-				end
+				dtask = nil
 			end
 
 			self.running = false
@@ -895,9 +906,11 @@ end
 
 
 local function enstat(age, friendship, money, ailment, baby_has_ailment)  
-	
-	while money == ClientData.get("money") do
-		task.wait(.05)
+
+	local deadline = os.clock() + 5
+
+	while money == ClientData.get("money") and os.clock() < deadline do
+		task.wait(.1)
 	end
 
 	if baby_has_ailment and ClientData.get("team") == "Babies" and not has_ailment_baby(ailment) then
@@ -1004,8 +1017,10 @@ end
 
 local function enstat_baby(money, ailment, pet_has_ailment, petData) 
 	
-	while money == ClientData.get("money") do
-		task.wait(.05)
+	local deadline = os.clock() + 5
+
+	while money == ClientData.get("money") and os.clock() < deadline do
+		task.wait(.1)
 	end
 
 	farmed.money += ClientData.get("money") - money 
@@ -1499,7 +1514,7 @@ local pet_ailments = {
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
 		local friendship = cdata.properties.friendship_level
 		local money = ClientData.get("money")
-		local age = pet[1].pet_progression.age
+		local age = pet.pet_progression.age
 		local deadline = os.clock() + 60
 
 		gotovec(1000,25,1000)
@@ -1507,7 +1522,7 @@ local pet_ailments = {
 		safeFire("AdoptAPI/HoldBaby", actual_pet.model)
 
 		repeat
-			MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
+			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position + LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()
 			LocalPlayer.Character.Humanoid:MoveTo(LocalPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 50)
 			LocalPlayer.Character.Humanoid.MoveToFinished:Wait()				
@@ -2063,7 +2078,6 @@ baby_ailments = {
 
 }
 
-
 local function init_autofarm() 
 
 	if count(get_owned_pets()) == 0 then
@@ -2075,16 +2089,6 @@ local function init_autofarm()
     local pet = ClientData.get("pet_char_wrappers")[1]
 	local kitty_exist = check_pet_owned("2d_kitty")
 	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
-
-    if pet and not _G.flag_if_no_one_to_farm and not kitty_exist then
-        safeInvoke("ToolAPI/Unequip",
-			pet.pet_unique,
-			{
-				use_sound_delay = true,
-				equip_as_last = false
-			}
-		)
-	end
 
 	if kitty_exist and kitty_unique ~= actual_pet.unique or kitty_unique ~= cur_unique() then
 		safeInvoke("ToolAPI/Equip",
@@ -2098,16 +2102,18 @@ local function init_autofarm()
 		flag = true
 		_G.flag_if_no_one_to_farm = false
 
-		task.wait(1)
+		task.wait(.3)
 
 		pet_update()
 	end
 
 	if actual_pet.unique ~= cur_unique() or not equiped() then
+		warn("actual_pet.unique = nil because: actual_pet.unique ~= cur_unique()",actual_pet.unique ~= cur_unique(), "equiped:", equiped())
 		actual_pet.unique = nil
 	end
 
     if not actual_pet.unique or _G.flag_if_no_one_to_farm then
+		warn("pet selection, cuz actual_pet.unique:", actual_pet.unique, "_G.flag_no..:", _G.flag_if_no_one_to_farm)
 		local owned_pets = get_owned_pets()
 
 		if not kitty_exist then
@@ -2170,7 +2176,9 @@ local function init_autofarm()
 					end
 				end
 			else
-				if _G.InternalConfig.FarmPriority == "pets" then			
+				if _G.InternalConfig.FarmPriority == "pets" then	
+					warn("section i need (pets)")		
+					warn("Check [1]")
 					for k,v in pairs(owned_pets) do
 						if v.age < 6 and not _G.InternalConfig.AutoFarmFilter.PetsToExclude[v.remote] and not (v.name:lower()):match("egg") then
 							safeInvoke("ToolAPI/Equip",
@@ -2181,11 +2189,13 @@ local function init_autofarm()
 								}
 							)
 							if not equiped() then
+								warn("Check [1] : not equiped")
 								continue
 							end
 							flag = true
 							_G.flag_if_no_one_to_farm = false
 							pet_update()
+							warn("Check [1] : success. flag and unique:", flag, actual_pet.unique)
 							break
 						end
 					end
@@ -2210,9 +2220,10 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
-					if _G.InternalConfig.OppositeFarmEnabled then
+					warn("Check [2] : no flag. flag:", flag)
+					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
 						if not _G.flag_if_no_one_to_farm then  
-						print("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
+						    warn("No pets to farm depending on config. Trying to detect legendary pet to farm or any..")
 							for k, v in pairs(owned_pets) do
 								if v.rarity == "legendary" then
 									safeInvoke("ToolAPI/Equip",
@@ -2222,13 +2233,17 @@ local function init_autofarm()
 											equip_as_last = false
 										}
 									)
+
 									if not equiped() then
+										warn("Check [2] leg : not equiped")
 										continue
 									end
+
 									flag = true
 									_G.flag_if_no_one_to_farm = true
 									_G.random_farm = true
 									pet_update()
+									warn("Check [2] leg : successed. flag and unique:", flag, actual_pet.unique)
 									break
 								end
 							end
@@ -2236,24 +2251,29 @@ local function init_autofarm()
 					end
 				end
 				if not flag then
-					if not _G.flag_if_no_one_to_farm then  
-						for k, _ in pairs(owned_pets) do
-							safeInvoke("ToolAPI/Equip",
-								k,
-								{
-									use_sound_delay = true,
-									equip_as_last = false
-								}
-							)
-							if not equiped() then
-								continue
-							end
-							flag = true
-							_G.flag_if_no_one_to_farm = true
-							_G.random_farm = true
-							pet_update()
-							break
-						end
+					warn("Check [3] : still no flag. flag:", flag)
+					if _G.InternalConfig.AutoFarmFilter.OppositeFarmEnabled then
+					    if not _G.flag_if_no_one_to_farm then  
+						    for k, _ in pairs(owned_pets) do
+							    safeInvoke("ToolAPI/Equip",
+								    k,
+								    {
+							        	use_sound_delay = true,
+								    	equip_as_last = false
+								    }
+						    	)
+							    if not equiped() then
+									warn("Check [3] : not equiped")
+					     			continue
+						    	end
+						    	flag = true
+					    		_G.flag_if_no_one_to_farm = true
+						    	_G.random_farm = true
+							    pet_update()
+								warn("Check [3] : successed. flag and unique:", flag, actual_pet.unique)
+						    	break
+					    	end
+				    	end
 					end
 				end
 			end 
@@ -2266,20 +2286,14 @@ local function init_autofarm()
         end
         
         if not flag or not equiped() then 
+			print("Check after pet selection: flag and equiped:", flag, equiped())
             Cooldown.init_autofarm = 15 
             return 
         end
 
     end 
 
-	if not actual_pet.unique then
-		Cooldown.init_autofarm = 15
-		return
-	end 
-
-    local eqpetailms = get_equiped_pet_ailments()
-
-    for k,_ in pairs(eqpetailms) do 
+    for k,_ in pairs(get_equiped_pet_ailments()) do 
         if StateDB.active_ailments[k] then continue end
         if pet_ailments[k] then
             StateDB.active_ailments[k] = true
@@ -2734,13 +2748,13 @@ local function init_send_webhook()
 
     webhook(
         "Farm-Log",
-        `>>> 💸 __Money Earned__ - {farmed.money}\
-        📈 __Pets Full-grown__ - {farmed.pets_fullgrown}\
-        🐶 __Pet Needs Completed__ - {farmed.ailments}\
-        🧪 __Potions Farmed__ - {farmed.potions}\
-        🧸 __Friendship Levels Farmed__ - {farmed.friendship_levels}\
-        👶 __Baby Needs Completed__ - {farmed.baby_ailments}\
-        🥚 __Eggs Hatched__ - {farmed.eggs_hatched}`
+        `>>> 💸 __Money Earned__ - [ {farmed.money} ]\
+        📈 __Pets Full-grown__ - [ {farmed.pets_fullgrown} ]\
+        🐶 __Pet Needs Completed__ - [ {farmed.ailments} ]\
+        🧪 __Potions Farmed__ - [ {farmed.potions} ]\
+        🧸 __Friendship Levels Farmed__ - [ {farmed.friendship_levels} ]\
+        👶 __Baby Needs Completed__ - [ {farmed.baby_ailments} ]\
+        🥚 __Eggs Hatched__ - [ {farmed.eggs_hatched} ]`
     )
 
 	Cooldown.webhook_send_delay = _G.InternalConfig.WebhookSendDelay
