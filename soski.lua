@@ -19,7 +19,6 @@ local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
-local ev = Instance.new("BindableEvent")
 
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
@@ -210,10 +209,12 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				
+				local ev = Instance.new("BindableEvent")
+
 				task.spawn(function()
-					print("task: "..name)
-					local ok, err = xpcall(callback, debug.traceback)
+					local ok, err = xpcall(function()
+						callback(ev)
+					end, debug.traceback)
 
 					if not ok then
 						print("Task failed:", err)
@@ -225,18 +226,15 @@ Queue.new = function()
 						elseif spl[1]:match("ailment baby") then
 							StateDB.baby_active_ailments[spl[2]] = nil
 						end
-					end					
 
-					print("task: "..name.." completed")
-					ev:Fire()
-
+						ev:Fire() 
+					end
 				end)
 
-				ev.Event:Wait() 
-				print("After event fire")
+				ev.Event:Wait()
+				ev:Destroy() 
 
 				self:dequeue(true)
-				dtask = nil
 			end
 
 			self.running = false
@@ -909,6 +907,8 @@ end
 
 local function enstat(age, friendship, money, ailment, baby_has_ailment)  
 
+	ev:Fire()
+
 	local deadline = os.clock() + 5
 
 	while money == ClientData.get("money") and os.clock() < deadline do
@@ -1019,6 +1019,8 @@ end
 
 local function enstat_baby(money, ailment, pet_has_ailment, petData) 
 	
+	ev:Fire()
+
 	local deadline = os.clock() + 5
 
 	while money == ClientData.get("money") and os.clock() < deadline do
@@ -1093,7 +1095,7 @@ local pet_ailments = {
 		if count_of_product("food", "apple") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return
+				error() 
 			end
 
 			if money > 20 then
@@ -1158,7 +1160,7 @@ local pet_ailments = {
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return
+				error() 
 			end
 
 			if money > 20 then
@@ -1682,7 +1684,7 @@ baby_ailments = {
 	["camping"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("camping") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1714,7 +1716,7 @@ baby_ailments = {
 	["hungry"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1722,7 +1724,7 @@ baby_ailments = {
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
 				print("[-] No money to buy food.") 
-				return 
+				error() 
 			end
 
 			if money > 20 then
@@ -1766,7 +1768,7 @@ baby_ailments = {
 	["thirsty"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1774,7 +1776,7 @@ baby_ailments = {
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return 
+				error() 
 			end			
 
 			if money > 20 then
@@ -1818,7 +1820,7 @@ baby_ailments = {
 	["sick"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sick") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1831,6 +1833,7 @@ baby_ailments = {
 		end
 
 		goto("Hospital", "MainDoor")
+		
 		safeInvoke("HousingAPI/ActivateInteriorFurniture",
 			"f-14",
 			"UseBlock",
@@ -1845,7 +1848,7 @@ baby_ailments = {
 	["bored"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("bored") then
-			return 
+			error() 
 		end
 		
 		local money = ClientData.get("money")
@@ -1877,7 +1880,7 @@ baby_ailments = {
 	["salon"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("salon") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1908,7 +1911,7 @@ baby_ailments = {
 	["beach_party"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("beach_party") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1940,7 +1943,7 @@ baby_ailments = {
 	["dirty"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("dirty") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1980,7 +1983,7 @@ baby_ailments = {
 	["school"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("school") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -2011,7 +2014,7 @@ baby_ailments = {
 	["sleepy"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -2051,7 +2054,7 @@ baby_ailments = {
 	["pizza_party"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("pizza_party") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
