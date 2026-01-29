@@ -34,7 +34,7 @@ local StateManagerClient = loader("StateManagerClient")
 local LureBaitHelper = loader("LureBaitHelper")
 local API = ReplicatedStorage.API
 
-getgenv().StateDB = {
+local StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {},
 	total_fullgrowned = {},
@@ -199,7 +199,7 @@ Queue.new = function()
 			end)
 
 		end,
-
+		
 
 		__run = function(self)
 
@@ -212,7 +212,7 @@ Queue.new = function()
 				local callback = dtask[2]
 				
 				task.spawn(function()
-
+					print("task: "..name)
 					local ok, err = xpcall(callback, debug.traceback)
 
 					if not ok then
@@ -226,7 +226,8 @@ Queue.new = function()
 							StateDB.baby_active_ailments[spl[2]] = nil
 						end
 					end					
-					
+
+					print("task: "..name.." completed")
 					ev:Fire()
 
 				end)
