@@ -232,6 +232,7 @@ Queue.new = function()
 				end)
 
 				ev.Event:Wait() 
+				print("After event fire")
 
 				self:dequeue(true)
 				dtask = nil
