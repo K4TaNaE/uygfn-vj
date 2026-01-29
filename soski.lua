@@ -2597,7 +2597,7 @@ end
 
 local function init_lurebox_farm() 
 
-	queue:enqueue({"lurebox_check", function() 
+	queue:enqueue({"lurebox_check", function(ev) 
 
 		to_home()
 		
@@ -2634,6 +2634,8 @@ local function init_lurebox_farm()
 		end
 
 		Cooldown.init_lurebox_farm = 3600
+
+		ev:Fire()
 
 	end})
 
