@@ -213,7 +213,7 @@ Queue.new = function()
 
 				task.spawn(function()
 					local ok, err = xpcall(function()
-						callback(ev)
+						callback()
 					end, debug.traceback)
 
 					if not ok then
