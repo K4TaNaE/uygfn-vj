@@ -2134,7 +2134,7 @@ baby_ailments = {
 }
 
 local function init_autofarm() 
-
+	print("initautofarm runned")
 	if count(get_owned_pets()) == 0 then
 		Cooldown.init_autofarm = 50
         return
@@ -2355,6 +2355,7 @@ local function init_autofarm()
                 queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
                 continue 
             end
+			print("ailment pet "..k.." enqueued")
             queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
         end
     end
@@ -2365,6 +2366,7 @@ end
 	
 
 local function init_baby_autofarm() 
+	print("baby runned")
 
     if ClientData.get("team") ~= "Babies" then
         safeInvoke("TeamAPI/ChooseTeam",
@@ -2398,6 +2400,7 @@ local function init_baby_autofarm()
         if StateDB.baby_active_ailments[k] then continue end
         if baby_ailments[k] then
             StateDB.baby_active_ailments[k] = true
+			print("ailment baby "..k.." enqueued")
             queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
         end
     end
