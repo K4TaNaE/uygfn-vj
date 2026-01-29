@@ -19,7 +19,6 @@ local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local Stats = game:GetService("Stats")
-local ev = Instance.new("BindableEvent")
 
 --[[ Adopt stuff ]]--
 local loader = require(ReplicatedStorage.Fsys).load
@@ -199,7 +198,7 @@ Queue.new = function()
 			end)
 
 		end,
-
+		
 
 		__run = function(self)
 
@@ -210,10 +209,12 @@ Queue.new = function()
 
 				local name = dtask[1]
 				local callback = dtask[2]
-				
-				task.spawn(function()
+				local ev = Instance.new("BindableEvent")
 
-					local ok, err = xpcall(callback, debug.traceback)
+				task.spawn(function()
+					local ok, err = xpcall(function()
+						callback(ev)
+					end, debug.traceback)
 
 					if not ok then
 						print("Task failed:", err)
@@ -225,16 +226,15 @@ Queue.new = function()
 						elseif spl[1]:match("ailment baby") then
 							StateDB.baby_active_ailments[spl[2]] = nil
 						end
-					end					
-					
-					ev:Fire()
 
+						ev:Fire() 
+					end
 				end)
 
-				ev.Event:Wait() 
+				ev.Event:Wait()
+				ev:Destroy() 
 
 				self:dequeue(true)
-				dtask = nil
 			end
 
 			self.running = false
@@ -1016,7 +1016,7 @@ end
 
 
 local function enstat_baby(money, ailment, pet_has_ailment, petData) 
-	
+
 	local deadline = os.clock() + 5
 
 	while money == ClientData.get("money") and os.clock() < deadline do
@@ -1038,7 +1038,7 @@ end
 
 
 local pet_ailments = { 
-	["camping"] = function()
+	["camping"] = function(ev)
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1070,9 +1070,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "camping", baby_has_ailment)
 
+		ev:Fire()
+
 	end,
 
-	["hungry"] = function() -- healing_apple в прошлый раз не работало
+	["hungry"] = function(ev) -- healing_apple в прошлый раз не работало
 		
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1091,7 +1093,7 @@ local pet_ailments = {
 		if count_of_product("food", "apple") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return
+				error() 
 			end
 
 			if money > 20 then
@@ -1135,9 +1137,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "hungry")  
 
+		ev:Fire()
+
 	end,
 
-	["thirsty"] = function() 
+	["thirsty"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1156,7 +1160,7 @@ local pet_ailments = {
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return
+				error() 
 			end
 
 			if money > 20 then
@@ -1200,9 +1204,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "thirsty")  
 
+		ev:Fire()
+
 	end,
 
-	["sick"] = function() 
+	["sick"] = function(ev) 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sick") then
@@ -1229,9 +1235,11 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "sick", baby_has_ailment)
 
+		ev:Fire()
+
 	end,
 
-	["bored"] = function() 
+	["bored"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1263,9 +1271,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "bored", baby_has_ailment)  
 
+		ev:Fire()
+
 	end,
 
-	["salon"] = function() 
+	["salon"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1296,9 +1306,11 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "salon", baby_has_ailment)
 		
+		ev:Fire()
+
 	end,
 
-	["play"] = function() 
+	["play"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1342,9 +1354,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "play") 
 
+		ev:Fire()
+
 	end,
 
-	["toilet"] = function() 
+	["toilet"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1384,9 +1398,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "toilet")
 
+		ev:Fire()
+
 	end,
 
-	["beach_party"] = function() 
+	["beach_party"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1418,9 +1434,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "beach_party", baby_has_ailment)  
 		
+		ev:Fire()
+
 	end,
 
-	["ride"] = function()
+	["ride"] = function(ev)
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1456,9 +1474,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "ride") 
 
+		ev:Fire()
+
 	end,
 
-	["dirty"] = function() 
+	["dirty"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1498,9 +1518,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "dirty")  
 
+		ev:Fire()
+
 	end,
 
-	["walk"] = function() 
+	["walk"] = function(ev) 
 		
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1536,9 +1558,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "walk") 
 
+		ev:Fire()
+
 	end,
 
-	["school"] = function() 
+	["school"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1569,9 +1593,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "school", baby_has_ailment)
 		
+		ev:Fire()
+
 	end,
 
-	["sleepy"] = function()
+	["sleepy"] = function(ev)
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1611,9 +1637,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "sleepy")  
 
+		ev:Fire()
+
 	end,
 
-	["mystery"] = function() 
+	["mystery"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1636,9 +1664,11 @@ local pet_ailments = {
 
 		StateDB.active_ailments.mystery = nil
 
+		ev:Fire()
+
 	end,
 
-	["pizza_party"] = function() 
+	["pizza_party"] = function(ev) 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1669,6 +1699,8 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "pizza_party", baby_has_ailment)  
 		
+		ev:Fire()
+
 	end,
 	
 	["pet_me"] = function() end,
@@ -1677,10 +1709,10 @@ local pet_ailments = {
 
 baby_ailments = {
 
-	["camping"] = function() 
+	["camping"] = function(ev) 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("camping") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1707,12 +1739,14 @@ baby_ailments = {
 
 		enstat_baby(money, "camping", pet_has_ailment, { age, friendship, })
 	
+		ev:Fire()
+
 	end,
 
-	["hungry"] = function() 
+	["hungry"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1720,7 +1754,7 @@ baby_ailments = {
 		if count_of_product("food", "apple") < 3 then
 			if money == 0 then 
 				print("[-] No money to buy food.") 
-				return 
+				error() 
 			end
 
 			if money > 20 then
@@ -1759,12 +1793,14 @@ baby_ailments = {
 
 		enstat_baby(money, "hungry")  
 
+		ev:Fire()
+
 	end,
 
-	["thirsty"] = function() 
+	["thirsty"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1772,7 +1808,7 @@ baby_ailments = {
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
 				print("[!] No money to buy food.") 
-				return 
+				error() 
 			end			
 
 			if money > 20 then
@@ -1811,12 +1847,14 @@ baby_ailments = {
 
 		enstat_baby(money, "thirsty")  
 
+		ev:Fire()
+
 	end,
 
-	["sick"] = function() 
+	["sick"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sick") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1829,6 +1867,7 @@ baby_ailments = {
 		end
 
 		goto("Hospital", "MainDoor")
+		
 		safeInvoke("HousingAPI/ActivateInteriorFurniture",
 			"f-14",
 			"UseBlock",
@@ -1838,12 +1877,14 @@ baby_ailments = {
 
 		enstat_baby(money, "sick", pet_has_ailment, { age, friendship, }) 
 		
+		ev:Fire()
+
 	end,
 
-	["bored"] = function() 
+	["bored"] = function(ev) 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("bored") then
-			return 
+			error() 
 		end
 		
 		local money = ClientData.get("money")
@@ -1870,12 +1911,14 @@ baby_ailments = {
 
 		enstat_baby(money, "bored", pet_has_ailment, { age, friendship, })  
 		
+		ev:Fire()
+
 	end,
 
-	["salon"] = function() 
+	["salon"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("salon") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1901,12 +1944,14 @@ baby_ailments = {
 
 		enstat_baby(money, "salon", pet_has_ailment, { age, friendship, }) 
 		
+		ev:Fire()
+
 	end,
 
-	["beach_party"] = function() 
+	["beach_party"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("beach_party") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1933,12 +1978,14 @@ baby_ailments = {
 
 		enstat_baby(money, "beach_party", pet_has_ailment, { age, friendship, })  
 		
+		ev:Fire()
+
 	end,
 
-	["dirty"] = function() 
+	["dirty"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("dirty") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -1973,12 +2020,14 @@ baby_ailments = {
 		
 		enstat_baby(money, "dirty")  
 
+		ev:Fire()
+
 	end,
 
-	["school"] = function() 
+	["school"] = function(ev) 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("school") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -2004,12 +2053,14 @@ baby_ailments = {
 
 		enstat_baby(money, "school", pet_has_ailment, { age, friendship, })  
 		
+		ev:Fire()
+
 	end,
 
-	["sleepy"] = function() 
+	["sleepy"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -2044,12 +2095,14 @@ baby_ailments = {
 
 		enstat_baby(money, "sleepy")  
 
+		ev:Fire()
+
 	end,
 
-	["pizza_party"] = function() 
+	["pizza_party"] = function(ev) 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("pizza_party") then
-			return 
+			error() 
 		end
 
 		local money = ClientData.get("money")
@@ -2074,19 +2127,20 @@ baby_ailments = {
 		end		
 
 		enstat_baby(money, "pizza_party", pet_has_ailment, { age, friendship, })  
-	end,
+		
+		ev:Fire()
 
+	end,
 }
 
 local function init_autofarm() 
-
+	print("initautofarm runned")
 	if count(get_owned_pets()) == 0 then
 		Cooldown.init_autofarm = 50
         return
 	end
     
     local flag = false
-    local pet = ClientData.get("pet_char_wrappers")[1]
 	local kitty_exist = check_pet_owned("2d_kitty")
 	local kitty_unique = inv_get_category_unique("pets", "d2kitty")
 
@@ -2301,6 +2355,7 @@ local function init_autofarm()
                 queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
                 continue 
             end
+			print("ailment pet "..k.." enqueued")
             queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
         end
     end
@@ -2311,6 +2366,7 @@ end
 	
 
 local function init_baby_autofarm() 
+	print("baby runned")
 
     if ClientData.get("team") ~= "Babies" then
         safeInvoke("TeamAPI/ChooseTeam",
@@ -2344,6 +2400,7 @@ local function init_baby_autofarm()
         if StateDB.baby_active_ailments[k] then continue end
         if baby_ailments[k] then
             StateDB.baby_active_ailments[k] = true
+			print("ailment baby "..k.." enqueued")
             queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
         end
     end
@@ -2796,13 +2853,11 @@ local function __init()
 			cd.watchdog = cd.watchdog and math.max(0, cd.watchdog - 1)
 
             if _G.InternalConfig.FarmPriority and cd.init_autofarm == 0 then
-				print("init_autofarm runned with Cooldown: ", cd.init_autofarm)
                 cd.init_autofarm = nil
                 task.defer(init_autofarm)
             end
 
             if _G.InternalConfig.BabyAutoFarm and cd.init_baby_autofarm == 0 then
-				print("baby runned with Cooldown: ", cd.init_baby_autofarm)
                 cd.init_baby_autofarm = nil
                 task.defer(init_baby_autofarm)
             end
