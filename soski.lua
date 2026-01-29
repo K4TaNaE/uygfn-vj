@@ -34,7 +34,7 @@ local StateManagerClient = loader("StateManagerClient")
 local LureBaitHelper = loader("LureBaitHelper")
 local API = ReplicatedStorage.API
 
-local StateDB = {
+getgenv().StateDB = {
 	active_ailments = {},
 	baby_active_ailments = {},
 	total_fullgrowned = {},
