@@ -221,6 +221,8 @@ Queue.new = function()
 						print("Task failed:", err)
 
 						local spl = name:split(": ")
+						
+						if not spl then ev:Fire() return end
 
 						if spl[1]:match("ailment pet") then
 							pcall(function() StateDB.active_ailments[spl[2]] = nil end)
