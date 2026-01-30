@@ -211,6 +211,7 @@ Queue.new = function()
 
 			while self.__head <= self.__tail do
 				local dtask = self._data[self.__head]
+				print("dtask:", dtask)
 
 				if not dtask then
 					self:dequeue()
@@ -259,11 +260,11 @@ Queue.new = function()
 				end)
 				
 				ev.Event:Wait()
+				self:dequeue()
 				ev:Destroy() 
 
 				print("task ended. Event called", name)
 				
-				self:dequeue()
 			end
 
 			self.running = false
