@@ -1668,7 +1668,7 @@ local pet_ailments = {
 
 	end,
 
-	["mystery"] = function(ev) 
+	["mystery"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1690,8 +1690,6 @@ local pet_ailments = {
 		end
 
 		StateDB.active_ailments.mystery = nil
-
-		ev()
 
 	end,
 
@@ -2384,6 +2382,7 @@ local function init_autofarm()
                 queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
                 continue 
             end
+			print("pet enq:", k)
             queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
         end
     end
@@ -2420,12 +2419,14 @@ local function init_baby_autofarm()
 	end
 
 	task.wait(1)
+
 	local active_ailments = get_baby_ailments()
 
 	for k,_ in pairs(active_ailments) do
 		if StateDB.baby_active_ailments[k] then continue end
 		if baby_ailments[k] then
 			StateDB.baby_active_ailments[k] = true
+			print("baby enq:", k)
 			queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
 		end
 	end
