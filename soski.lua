@@ -110,7 +110,7 @@ Queue.new = function()
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
-				if not self.running then self:__run() end
+				if not self.running then self:__run() print('run started') end
 			end
 
 		end,
@@ -210,10 +210,12 @@ Queue.new = function()
 			self.running = true
 
 			while self.__head <= self.__tail do
+				print("tail:",self.__tail)
 				local dtask = self._data[self.__head]
 				print("dtask:", dtask)
 
 				if not dtask then
+					print("not dtask")
 					self.__head += 1
 					continue
 				end
