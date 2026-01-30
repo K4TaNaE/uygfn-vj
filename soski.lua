@@ -120,14 +120,10 @@ Queue.new = function()
 
 			if self.__head > self.__tail then return end
 
-			self:enqunblock()
-
 			local v = self._data[self.__head]
 
 			self._data[self.__head] = nil
 			self.__head += 1
-
-			self:enqblock()
 
 			return v
 
@@ -277,7 +273,7 @@ Queue.new = function()
 
 end
 
-local queue = Queue.new()
+getgenv().queue = Queue.new()
 
 --[[ Helpers ]]-- 
 local function temp_platform()
