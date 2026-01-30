@@ -110,19 +110,24 @@ Queue.new = function()
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
-				if not self.running then self:__run() end
+				if not self.running then self:__run() print('run started') end
 			end
 
 		end,
 
 
-		dequeue = function(self,raw)
+		dequeue = function(self)
 
 			if self.__head > self.__tail then return end
 
+			self:enqunblock()
+
 			local v = self._data[self.__head]
+
 			self._data[self.__head] = nil
 			self.__head += 1
+
+			self:enqblock()
 
 			return v
 
@@ -205,38 +210,64 @@ Queue.new = function()
 			self.running = true
 
 			while self.__head <= self.__tail do
+				print("tail:",self.__tail)
 				local dtask = self._data[self.__head]
+				print("dtask:", dtask)
 
-				local name = dtask[1]
+				if not dtask then
+					print("not dtask")
+					self.__head += 1
+					continue
+				end
+
+				local name = dtask[1] 
 				local callback = dtask[2]
 				local ev = Instance.new("BindableEvent")
+				local fired = false
+
+
+				local function sfire()
+					
+					if not fired then
+						fired = true
+						ev:Fire()
+					end
+
+				end
+
 
 				task.spawn(function()
 					print("task started", name)
 					local ok, err = xpcall(function()
-						callback(ev)
+						callback(sfire)
 					end, debug.traceback)
 
 					if not ok then
-						print("Task failed:", err)
+						warn("Task failed:", err)
 
 						local spl = name:split(": ")
+						local tag = spl[1]
+						local ail = spl[2]
 
-						if spl[1]:match("ailment pet") then
-							pcall(function() StateDB.active_ailments[spl[2]] = nil end)
-						elseif spl[1]:match("ailment baby") then
-							pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end)
+						if tag and ail then 
+							if tag:match("ailment pet") then
+								StateDB.active_ailments[ail] = nil 
+							elseif tag:match("ailment baby") then
+								StateDB.baby_active_ailments[ail] = nil
+							end
 						end
 
-						ev:Fire() 
+						sfire()
 					end
 				end)
 				
 				ev.Event:Wait()
 				ev:Destroy() 
+				
+				self:dequeue()
+
 				print("task ended. Event called", name)
 				
-				self:dequeue(true)
 			end
 
 			self.running = false
@@ -1072,7 +1103,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "camping", baby_has_ailment)
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1094,8 +1125,7 @@ local pet_ailments = {
 
 		if count_of_product("food", "apple") == 0 then
 			if money == 0 then 
-				print("[!] No money to buy food.") 
-				error() 
+				error("[!] No money to buy food.") 
 			end
 
 			if money > 20 then
@@ -1139,7 +1169,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "hungry")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1161,8 +1191,7 @@ local pet_ailments = {
 
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				print("[!] No money to buy food.") 
-				error() 
+				error("[!] No money to buy food.") 
 			end
 
 			if money > 20 then
@@ -1206,7 +1235,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "thirsty")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1237,7 +1266,7 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "sick", baby_has_ailment)
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1273,7 +1302,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "bored", baby_has_ailment)  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1308,7 +1337,7 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "salon", baby_has_ailment)
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1356,7 +1385,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "play") 
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1400,7 +1429,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "toilet")
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1436,7 +1465,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "beach_party", baby_has_ailment)  
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1476,7 +1505,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "ride") 
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1520,7 +1549,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "dirty")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1560,7 +1589,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "walk") 
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1595,7 +1624,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "school", baby_has_ailment)
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1639,11 +1668,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "sleepy")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
-	["mystery"] = function(ev) 
+	["mystery"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1665,8 +1694,6 @@ local pet_ailments = {
 		end
 
 		StateDB.active_ailments.mystery = nil
-
-		ev:Fire()
 
 	end,
 
@@ -1701,7 +1728,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "pizza_party", baby_has_ailment)  
 		
-		ev:Fire()
+		ev()
 
 	end,
 	
@@ -1741,7 +1768,7 @@ baby_ailments = {
 
 		enstat_baby(money, "camping", pet_has_ailment, { age, friendship, })
 	
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1754,9 +1781,8 @@ baby_ailments = {
 		local money = ClientData.get("money")
 
 		if count_of_product("food", "apple") < 3 then
-			if money == 0 then 
-				print("[-] No money to buy food.") 
-				error() 
+			if money == 0 then  
+				error("[-] No money to buy food.") 
 			end
 
 			if money > 20 then
@@ -1795,7 +1821,7 @@ baby_ailments = {
 
 		enstat_baby(money, "hungry")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1809,8 +1835,7 @@ baby_ailments = {
 
 		if count_of_product("food", "water") == 0 then
 			if money == 0 then 
-				print("[!] No money to buy food.") 
-				error() 
+				error("[-] No money to buy food.") 
 			end			
 
 			if money > 20 then
@@ -1849,7 +1874,7 @@ baby_ailments = {
 
 		enstat_baby(money, "thirsty")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1879,7 +1904,7 @@ baby_ailments = {
 
 		enstat_baby(money, "sick", pet_has_ailment, { age, friendship, }) 
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1913,7 +1938,7 @@ baby_ailments = {
 
 		enstat_baby(money, "bored", pet_has_ailment, { age, friendship, })  
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1946,7 +1971,7 @@ baby_ailments = {
 
 		enstat_baby(money, "salon", pet_has_ailment, { age, friendship, }) 
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -1980,7 +2005,7 @@ baby_ailments = {
 
 		enstat_baby(money, "beach_party", pet_has_ailment, { age, friendship, })  
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -2022,7 +2047,7 @@ baby_ailments = {
 		
 		enstat_baby(money, "dirty")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -2055,7 +2080,7 @@ baby_ailments = {
 
 		enstat_baby(money, "school", pet_has_ailment, { age, friendship, })  
 		
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -2097,7 +2122,7 @@ baby_ailments = {
 
 		enstat_baby(money, "sleepy")  
 
-		ev:Fire()
+		ev()
 
 	end,
 
@@ -2130,7 +2155,7 @@ baby_ailments = {
 
 		enstat_baby(money, "pizza_party", pet_has_ailment, { age, friendship, })  
 		
-		ev:Fire()
+		ev()
 
 	end,
 }
@@ -2138,7 +2163,7 @@ baby_ailments = {
 local function init_autofarm() 
 
 	if count(get_owned_pets()) == 0 then
-		Cooldown.init_autofarm = 50
+		Cooldown.init_autofarm = 49
         return
 	end
     
@@ -2343,13 +2368,17 @@ local function init_autofarm()
         
         if not flag or not equiped() then 
 			print("Check after pet selection: flag and equiped:", flag, equiped())
-            Cooldown.init_autofarm = 15 
+            Cooldown.init_autofarm = 14
             return 
         end
 
     end 
 
-    for k,_ in pairs(get_equiped_pet_ailments()) do 
+	task.wait(1)
+
+	local eqailments = get_equiped_pet_ailments()
+
+    for k,_ in pairs(eqailments) do 
         if StateDB.active_ailments[k] then continue end
         if pet_ailments[k] then
             StateDB.active_ailments[k] = true
@@ -2357,11 +2386,12 @@ local function init_autofarm()
                 queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
                 continue 
             end
+			print("pet enq:", k)
             queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
         end
     end
 
-    Cooldown.init_autofarm = 15
+    Cooldown.init_autofarm = 14
 
 end
 	
@@ -2372,39 +2402,40 @@ local function init_baby_autofarm()
         safeInvoke("TeamAPI/ChooseTeam",
             "Babies",
             {
-                dont_respawn = true,
+				dont_respawn = true,
                 source_for_logging = "avatar_editor"
             }
         )
-
-        task.wait(1)
     end	
-
+	
     if not _G.InternalConfig.FarmPriority then
         local pet = ClientData.get("pet_char_wrappers")[1]
 		
         if pet then
             safeInvoke("ToolAPI/Unequip",
-                pet.pet_unique,
-                {
-                    use_sound_delay = true,
-                    equip_as_last = false
-                }
-            )
-        end
-    end
+				pet.pet_unique,
+				{
+					use_sound_delay = true,
+					equip_as_last = false
+				}
+			)
+		end
+	end
 
-    local active_ailments = get_baby_ailments()
+	task.wait(1)
 
-    for k,_ in pairs(active_ailments) do
-        if StateDB.baby_active_ailments[k] then continue end
-        if baby_ailments[k] then
-            StateDB.baby_active_ailments[k] = true
-            queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
-        end
-    end
+	local active_ailments = get_baby_ailments()
 
-    Cooldown.init_baby_autofarm = 15
+	for k,_ in pairs(active_ailments) do
+		if StateDB.baby_active_ailments[k] then continue end
+		if baby_ailments[k] then
+			StateDB.baby_active_ailments[k] = true
+			print("baby enq:", k)
+			queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
+		end
+	end
+
+	Cooldown.init_baby_autofarm = 14
 
 end
 
@@ -2636,7 +2667,7 @@ local function init_lurebox_farm()
 
 		Cooldown.init_lurebox_farm = 3600
 
-		ev:Fire()
+		ev()
 
 	end})
 
