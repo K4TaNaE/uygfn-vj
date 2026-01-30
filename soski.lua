@@ -126,7 +126,6 @@ Queue.new = function()
 
 			self._data[self.__head] = nil
 			self.__head += 1
-			self.__tail -= 1
 
 			self:enqblock()
 
@@ -213,35 +212,50 @@ Queue.new = function()
 			while self.__head <= self.__tail do
 				local dtask = self._data[self.__head]
 
-				local name = dtask[1] or ""
+				local name = dtask[1] 
 				local callback = dtask[2]
 				local ev = Instance.new("BindableEvent")
+				local fired = fakse
+
+
+				function sfire:Fire()
+					
+					if not fired then
+						fired = true
+						ev:Fire()
+					end
+
+				end
+
 
 				task.spawn(function()
 					print("task started", name)
 					local ok, err = xpcall(function()
-						callback(ev)
+						callback(safeFire)
 					end, debug.traceback)
 
 					if not ok then
-						print("Task failed:", err)
+						warn("Task failed:", err)
 
 						local spl = name:split(": ")
+						local tag = spl[1]
+						local ail = spl[2]
 
-						if not spl then ev:Fire() return end
-
-						if spl[1]:match("ailment pet") then
-							pcall(function() StateDB.active_ailments[spl[2]] = nil end)
-						elseif spl[1]:match("ailment baby") then
-							pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end)
+						if tag and ail then 
+							if tag:match("ailment pet") then
+								StateDB.active_ailments[ail] = nil 
+							elseif tag[1]:match("ailment baby") then
+								StateDB.baby_active_ailments[ail] = nil
+							end
 						end
 
-						ev:Fire() 
+						safeFire()
 					end
 				end)
 				
 				ev.Event:Wait()
 				ev:Destroy() 
+
 				print("task ended. Event called", name)
 				
 				self:dequeue()
