@@ -924,7 +924,7 @@ end
 local function __baby_callbak(ailment) 
 
 	if _G.InternalConfig.BabyAutoFarm then
-		queue:taskdestroy("baby", ailment)
+		queue:taskdestroy("ailment baby", ailment)
 		StateDB.baby_active_ailments[ailment] = nil
 	end
 
@@ -1035,9 +1035,11 @@ end
 local function __pet_callback(age, friendship, ailment) 
 
 	if not _G.InternalConfig.FarmPriority then
+		queue:taskdestroy("ailment pet", ailment)
 		farmed.ailments += 1
 		update_gui("pet_needs", farmed.ailments) 
 	else
+		queue:taskdestroy("ailment pet", ailment)
 		enstat(age, friendship, nil, ailment)
 	end
 
@@ -1075,7 +1077,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end		
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1111,7 +1113,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 		
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1177,7 +1179,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1242,7 +1244,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1274,7 +1276,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1310,7 +1312,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1345,7 +1347,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1393,7 +1395,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 		
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1437,7 +1439,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1473,7 +1475,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1513,7 +1515,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1557,7 +1559,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1597,7 +1599,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1632,7 +1634,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
@@ -1676,7 +1678,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		for k,_ in loader("new:AilmentsDB") do
@@ -1701,7 +1703,7 @@ local pet_ailments = {
 			queue:destroy_linked("ailment pet")
 			actual_pet.unique = nil
 			table.clear(StateDB.active_ailments)
-			return 
+			error() 
 		end
 
 		local cdata = ClientData.get("inventory").pets[actual_pet.unique]
