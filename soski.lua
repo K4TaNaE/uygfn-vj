@@ -212,13 +212,18 @@ Queue.new = function()
 			while self.__head <= self.__tail do
 				local dtask = self._data[self.__head]
 
+				if not dtask then
+					self:dequeue()
+					continue
+				end
+
 				local name = dtask[1] 
 				local callback = dtask[2]
 				local ev = Instance.new("BindableEvent")
-				local fired = fakse
+				local fired = false
 
 
-				function sfire()
+				local function sfire()
 					
 					if not fired then
 						fired = true
@@ -244,7 +249,7 @@ Queue.new = function()
 						if tag and ail then 
 							if tag:match("ailment pet") then
 								StateDB.active_ailments[ail] = nil 
-							elseif tag[1]:match("ailment baby") then
+							elseif tag:match("ailment baby") then
 								StateDB.baby_active_ailments[ail] = nil
 							end
 						end
