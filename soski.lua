@@ -223,18 +223,19 @@ Queue.new = function()
 						local spl = name:split(": ")
 
 						if spl[1]:match("ailment pet") then
-							StateDB.active_ailments[spl[2]] = nil
+							pcall(function() StateDB.active_ailments[spl[2]] = nil end)
 						elseif spl[1]:match("ailment baby") then
-							StateDB.baby_active_ailments[spl[2]] = nil
+							pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end)
 						end
 
 						ev:Fire() 
 					end
 				end)
-				print("task ended", name)
+				
 				ev.Event:Wait()
 				ev:Destroy() 
-
+				print("task ended. Event called", name)
+				
 				self:dequeue(true)
 			end
 
@@ -1704,8 +1705,8 @@ local pet_ailments = {
 
 	end,
 	
-	["pet_me"] = function() end,
-	["party_zone"] = function() end, -- available on admin abuse
+	-- ["pet_me"] = function() end,
+	-- ["party_zone"] = function() end, -- available on admin abuse
 }
 
 baby_ailments = {
@@ -2625,7 +2626,7 @@ local function init_lurebox_farm()
 
 		task.wait(.5)
 
-		local bait_placed = debug.getupvalue(LureBaitHelper.run_tutorial, 11)() 
+		local bait_placed = debug.getupvalue(LureBaitHelper.run_tutorial, 11)()                                       
 
 		if not bait_placed then
 			print("[Lure] Reward collected.")
