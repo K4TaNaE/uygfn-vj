@@ -231,7 +231,7 @@ Queue.new = function()
 				task.spawn(function()
 					print("task started", name)
 					local ok, err = xpcall(function()
-						callback(safeFire)
+						callback(sfire)
 					end, debug.traceback)
 
 					if not ok then
@@ -249,7 +249,7 @@ Queue.new = function()
 							end
 						end
 
-						safeFire()
+						sfire()
 					end
 				end)
 				
