@@ -214,7 +214,7 @@ Queue.new = function()
 				print("dtask:", dtask)
 
 				if not dtask then
-					self:dequeue()
+					self.__head += 1
 					continue
 				end
 
@@ -260,8 +260,9 @@ Queue.new = function()
 				end)
 				
 				ev.Event:Wait()
-				self:dequeue()
 				ev:Destroy() 
+				
+				self:dequeue()
 
 				print("task ended. Event called", name)
 				
