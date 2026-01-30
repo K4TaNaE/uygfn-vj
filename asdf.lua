@@ -212,6 +212,7 @@ Queue.new = function()
 				local ev = Instance.new("BindableEvent")
 
 				task.spawn(function()
+					print("task started", name)
 					local ok, err = xpcall(function()
 						callback(ev)
 					end, debug.traceback)
@@ -222,18 +223,19 @@ Queue.new = function()
 						local spl = name:split(": ")
 
 						if spl[1]:match("ailment pet") then
-							StateDB.active_ailments[spl[2]] = nil
+							pcall(function() StateDB.active_ailments[spl[2]] = nil end)
 						elseif spl[1]:match("ailment baby") then
-							StateDB.baby_active_ailments[spl[2]] = nil
+							pcall(function() StateDB.baby_active_ailments[spl[2]] = nil end)
 						end
 
 						ev:Fire() 
 					end
 				end)
-
+				
 				ev.Event:Wait()
 				ev:Destroy() 
-
+				print("task ended. Event called", name)
+				
 				self:dequeue(true)
 			end
 
@@ -1703,8 +1705,8 @@ local pet_ailments = {
 
 	end,
 	
-	["pet_me"] = function() end,
-	["party_zone"] = function() end, -- available on admin abuse
+	-- ["pet_me"] = function() end,
+	-- ["party_zone"] = function() end, -- available on admin abuse
 }
 
 baby_ailments = {
@@ -2134,7 +2136,7 @@ baby_ailments = {
 }
 
 local function init_autofarm() 
-	print("initautofarm runned")
+
 	if count(get_owned_pets()) == 0 then
 		Cooldown.init_autofarm = 50
         return
@@ -2355,7 +2357,6 @@ local function init_autofarm()
                 queue:asyncrun({`ailment pet: {k}`, pet_ailments[k]}) 
                 continue 
             end
-			print("ailment pet "..k.." enqueued")
             queue:enqueue({`ailment pet: {k}`, pet_ailments[k]})
         end
     end
@@ -2366,7 +2367,6 @@ end
 	
 
 local function init_baby_autofarm() 
-	print("baby runned")
 
     if ClientData.get("team") ~= "Babies" then
         safeInvoke("TeamAPI/ChooseTeam",
@@ -2400,7 +2400,6 @@ local function init_baby_autofarm()
         if StateDB.baby_active_ailments[k] then continue end
         if baby_ailments[k] then
             StateDB.baby_active_ailments[k] = true
-			print("ailment baby "..k.." enqueued")
             queue:enqueue({`ailment baby {k}`, baby_ailments[k]})
         end
     end
@@ -2599,7 +2598,7 @@ end
 
 local function init_lurebox_farm() 
 
-	queue:enqueue({"lurebox_check", function() 
+	queue:enqueue({"lurebox_check", function(ev) 
 
 		to_home()
 		
@@ -2627,7 +2626,7 @@ local function init_lurebox_farm()
 
 		task.wait(.5)
 
-		local bait_placed = debug.getupvalue(LureBaitHelper.run_tutorial, 11)() 
+		local bait_placed = debug.getupvalue(LureBaitHelper.run_tutorial, 11)()                                       
 
 		if not bait_placed then
 			print("[Lure] Reward collected.")
@@ -2636,6 +2635,8 @@ local function init_lurebox_farm()
 		end
 
 		Cooldown.init_lurebox_farm = 3600
+
+		ev:Fire()
 
 	end})
 
