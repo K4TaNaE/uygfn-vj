@@ -116,13 +116,19 @@ Queue.new = function()
 		end,
 
 
-		dequeue = function(self,raw)
+		dequeue = function(self)
 
 			if self.__head > self.__tail then return end
 
+			self:enqunblock()
+
 			local v = self._data[self.__head]
+
 			self._data[self.__head] = nil
 			self.__head += 1
+			self.__tail -= 1
+
+			self:enqblock()
 
 			return v
 
@@ -207,7 +213,7 @@ Queue.new = function()
 			while self.__head <= self.__tail do
 				local dtask = self._data[self.__head]
 
-				local name = dtask[1]
+				local name = dtask[1] or ""
 				local callback = dtask[2]
 				local ev = Instance.new("BindableEvent")
 
@@ -221,7 +227,7 @@ Queue.new = function()
 						print("Task failed:", err)
 
 						local spl = name:split(": ")
-						
+
 						if not spl then ev:Fire() return end
 
 						if spl[1]:match("ailment pet") then
@@ -238,7 +244,7 @@ Queue.new = function()
 				ev:Destroy() 
 				print("task ended. Event called", name)
 				
-				self:dequeue(true)
+				self:dequeue()
 			end
 
 			self.running = false
