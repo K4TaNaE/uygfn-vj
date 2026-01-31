@@ -110,7 +110,11 @@ Queue.new = function()
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
-				if not self.running then task.spawn(function() self:__run() end) print('run started') end
+				if not self.running then 
+					self.running = true
+					task.spawn(function() self:__run() end) 
+					print('run started') 
+				end
 			end
 
 		end,
