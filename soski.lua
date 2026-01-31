@@ -110,7 +110,7 @@ Queue.new = function()
 				self.__tail += 1
 				self._data[self.__tail] = ttask
 
-				if not self.running then self:__run() print('run started') end
+				if not self.running then task.spawn(function() self:__run() end) print('run started') end
 			end
 
 		end,
@@ -167,12 +167,19 @@ Queue.new = function()
 
 		taskdestroy = function(self, pattern1, pattern2)
 
-			if self.__head <= self.__tail then
-				for i = self.__tail, self.__head, -1 do
-					local v = self._data[i]
+			if self.__head > self.__tail then
+				return
+			end
+		
+			for i = self.__tail, self.__head + 1, -1 do
+				local v = self._data[i]
+		
+				if v then
+					local name = v[1]
 
-					if v and v[1]:match(pattern1) and v[1]:match(pattern2) then
+					if name and name:match(pattern1) and name:match(pattern2) then
 						self._data[i] = nil
+		
 
 						if i == self.__tail then
 							while self.__tail >= self.__head and self._data[self.__tail] == nil do
