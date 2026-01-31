@@ -225,48 +225,26 @@ Queue.new = function()
 
 				local name = dtask[1] 
 				local callback = dtask[2]
-				local ev = Instance.new("BindableEvent")
-				local fired = false
 
+				print("task started", name)
+				local ok, err = xpcall(callback, debug.traceback)
 
-				local function sfire()
-					
-					if not fired then
-						fired = true
-						ev:Fire()
+				if not ok then
+					warn("Task failed:", err)
+
+					local spl = name:split(": ")
+					local tag = spl[1]
+					local ail = spl[2]
+
+					if tag and ail then 
+						if tag:match("ailment pet") then
+							StateDB.active_ailments[ail] = nil 
+						elseif tag:match("ailment baby") then
+							StateDB.baby_active_ailments[ail] = nil
+						end
 					end
-
 				end
 
-
-				task.spawn(function()
-					print("task started", name)
-					local ok, err = xpcall(function()
-						callback(sfire)
-					end, debug.traceback)
-
-					if not ok then
-						warn("Task failed:", err)
-
-						local spl = name:split(": ")
-						local tag = spl[1]
-						local ail = spl[2]
-
-						if tag and ail then 
-							if tag:match("ailment pet") then
-								StateDB.active_ailments[ail] = nil 
-							elseif tag:match("ailment baby") then
-								StateDB.baby_active_ailments[ail] = nil
-							end
-						end
-
-						sfire()
-					end
-				end)
-				
-				ev.Event:Wait()
-				ev:Destroy() 
-				
 				self:dequeue()
 
 				print("task ended. Event called", name)
@@ -1076,7 +1054,7 @@ end
 
 
 local pet_ailments = { 
-	["camping"] = function(ev)
+	["camping"] = function()
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1108,11 +1086,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "camping", baby_has_ailment)
 
-		ev()
+		
 
 	end,
 
-	["hungry"] = function(ev) -- healing_apple в прошлый раз не работало
+	["hungry"] = function() -- healing_apple в прошлый раз не работало
 		
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
@@ -1174,11 +1152,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "hungry")  
 
-		ev()
+		
 
 	end,
 
-	["thirsty"] = function(ev) 
+	["thirsty"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1240,11 +1218,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "thirsty")  
 
-		ev()
+		
 
 	end,
 
-	["sick"] = function(ev) 
+	["sick"] = function() 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 		
 		if not pet or not actual_pet.unique or pet.pet_unique ~= actual_pet.unique or not has_ailment("sick") then
@@ -1271,11 +1249,11 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "sick", baby_has_ailment)
 
-		ev()
+		
 
 	end,
 
-	["bored"] = function(ev) 
+	["bored"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1307,11 +1285,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "bored", baby_has_ailment)  
 
-		ev()
+		
 
 	end,
 
-	["salon"] = function(ev) 
+	["salon"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1342,11 +1320,11 @@ local pet_ailments = {
 		
 		enstat(age, friendship, money, "salon", baby_has_ailment)
 		
-		ev()
+		
 
 	end,
 
-	["play"] = function(ev) 
+	["play"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1390,11 +1368,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "play") 
 
-		ev()
+		
 
 	end,
 
-	["toilet"] = function(ev) 
+	["toilet"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1434,11 +1412,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "toilet")
 
-		ev()
+		
 
 	end,
 
-	["beach_party"] = function(ev) 
+	["beach_party"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1470,11 +1448,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "beach_party", baby_has_ailment)  
 		
-		ev()
+		
 
 	end,
 
-	["ride"] = function(ev)
+	["ride"] = function()
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1510,11 +1488,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "ride") 
 
-		ev()
+		
 
 	end,
 
-	["dirty"] = function(ev) 
+	["dirty"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1554,11 +1532,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "dirty")  
 
-		ev()
+		
 
 	end,
 
-	["walk"] = function(ev) 
+	["walk"] = function() 
 		
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1594,11 +1572,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "walk") 
 
-		ev()
+		
 
 	end,
 
-	["school"] = function(ev) 
+	["school"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1629,11 +1607,11 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "school", baby_has_ailment)
 		
-		ev()
+		
 
 	end,
 
-	["sleepy"] = function(ev)
+	["sleepy"] = function()
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1673,7 +1651,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "sleepy")  
 
-		ev()
+		
 
 	end,
 
@@ -1702,7 +1680,7 @@ local pet_ailments = {
 
 	end,
 
-	["pizza_party"] = function(ev) 
+	["pizza_party"] = function() 
 
 		local pet = ClientData.get("pet_char_wrappers")[1]
 
@@ -1733,7 +1711,7 @@ local pet_ailments = {
 
 		enstat(age, friendship, money, "pizza_party", baby_has_ailment)  
 		
-		ev()
+		
 
 	end,
 	
@@ -1743,7 +1721,7 @@ local pet_ailments = {
 
 baby_ailments = {
 
-	["camping"] = function(ev) 
+	["camping"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("camping") then
 			error() 
@@ -1773,11 +1751,11 @@ baby_ailments = {
 
 		enstat_baby(money, "camping", pet_has_ailment, { age, friendship, })
 	
-		ev()
+		
 
 	end,
 
-	["hungry"] = function(ev) 
+	["hungry"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("hungry") then
 			error() 
@@ -1826,11 +1804,11 @@ baby_ailments = {
 
 		enstat_baby(money, "hungry")  
 
-		ev()
+		
 
 	end,
 
-	["thirsty"] = function(ev) 
+	["thirsty"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("thirsty") then
 			error() 
@@ -1879,11 +1857,11 @@ baby_ailments = {
 
 		enstat_baby(money, "thirsty")  
 
-		ev()
+		
 
 	end,
 
-	["sick"] = function(ev) 
+	["sick"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sick") then
 			error() 
@@ -1909,11 +1887,11 @@ baby_ailments = {
 
 		enstat_baby(money, "sick", pet_has_ailment, { age, friendship, }) 
 		
-		ev()
+		
 
 	end,
 
-	["bored"] = function(ev) 
+	["bored"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("bored") then
 			error() 
@@ -1943,11 +1921,11 @@ baby_ailments = {
 
 		enstat_baby(money, "bored", pet_has_ailment, { age, friendship, })  
 		
-		ev()
+		
 
 	end,
 
-	["salon"] = function(ev) 
+	["salon"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("salon") then
 			error() 
@@ -1976,11 +1954,11 @@ baby_ailments = {
 
 		enstat_baby(money, "salon", pet_has_ailment, { age, friendship, }) 
 		
-		ev()
+		
 
 	end,
 
-	["beach_party"] = function(ev) 
+	["beach_party"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("beach_party") then
 			error() 
@@ -2010,11 +1988,11 @@ baby_ailments = {
 
 		enstat_baby(money, "beach_party", pet_has_ailment, { age, friendship, })  
 		
-		ev()
+		
 
 	end,
 
-	["dirty"] = function(ev) 
+	["dirty"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("dirty") then
 			error() 
@@ -2052,11 +2030,11 @@ baby_ailments = {
 		
 		enstat_baby(money, "dirty")  
 
-		ev()
+		
 
 	end,
 
-	["school"] = function(ev) 
+	["school"] = function() 
 		
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("school") then
 			error() 
@@ -2085,11 +2063,11 @@ baby_ailments = {
 
 		enstat_baby(money, "school", pet_has_ailment, { age, friendship, })  
 		
-		ev()
+		
 
 	end,
 
-	["sleepy"] = function(ev) 
+	["sleepy"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("sleepy") then
 			error() 
@@ -2127,11 +2105,11 @@ baby_ailments = {
 
 		enstat_baby(money, "sleepy")  
 
-		ev()
+		
 
 	end,
 
-	["pizza_party"] = function(ev) 
+	["pizza_party"] = function() 
 
 		if ClientData.get("team") ~= "Babies" or not has_ailment_baby("pizza_party") then
 			error() 
@@ -2160,7 +2138,7 @@ baby_ailments = {
 
 		enstat_baby(money, "pizza_party", pet_has_ailment, { age, friendship, })  
 		
-		ev()
+		
 
 	end,
 }
@@ -2634,7 +2612,7 @@ end
 
 local function init_lurebox_farm() 
 
-	queue:enqueue({"lurebox_check", function(ev) 
+	queue:enqueue({"lurebox_check", function() 
 
 		to_home()
 		
@@ -2672,7 +2650,7 @@ local function init_lurebox_farm()
 
 		Cooldown.init_lurebox_farm = 3600
 
-		ev()
+		
 
 	end})
 
